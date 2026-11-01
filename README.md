@@ -2,7 +2,7 @@
 
 A little interactive toy that shows why a flameproof (Ex d) enclosure works: an explosion goes off inside the box, the flame tries to escape through the flange gap, and the joint either cools it down or it doesn't.
 
-**[▶ Play with it](https://dizzyfer.github.io/anatomy/)** · [light version](https://dizzyfer.github.io/anatomy/light.html)
+**[▶ Play with it](https://dizzyfer.github.io/Anatomy/)** · [light version](https://dizzyfer.github.io/Anatomy/light.html)
 
 ![Hydrogen with the gap too wide: flame through](docs/preview-jet.png)
 
