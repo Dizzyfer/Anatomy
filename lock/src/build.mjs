@@ -105,7 +105,7 @@ const still = matchMedia("(prefers-reduced-motion: reduce)");
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const N = D.PINS.length, TOL = 1.3, FAST = 26, MAXLIFT = 15;
 
-let kind = "standard", tension = 0, sel = 2, pickLift = 0, raking = false, rakeT = 0, keyMode = "", open = false, openAt = -10;
+let kind = "standard", tension = 0, sel = 2, pickLift = 0, tip = 0, raking = false, rakeT = 0, keyMode = "", open = false, openAt = -10;
 let pins = [], order = [], lastShot = "", lastEvent = "", lastEventAt = -10;
 let frame = 0, last = 0, now = 0, visible = false, touring = true, slow = false, tourClock = 0, tourStep = -1, actions = [], auto = null;
 function newLock() {
@@ -114,7 +114,7 @@ function newLock() {
   pins = D.PINS.map((u, i) => ({ k: ks[i], set: false, over: false, fs: false, lift: 0, prev: 0, ping: -10 }));
   reset();
 }
-function reset() { pins.forEach((p) => { p.set = p.over = p.fs = false; p.lift = 0; p.prev = 0; }); open = false; keyMode = ""; raking = false; pickLift = 0; }
+function reset() { pins.forEach((p) => { p.set = p.over = p.fs = false; p.lift = 0; p.prev = 0; }); open = false; keyMode = ""; raking = false; pickLift = 0; tip = 0; }
 newLock();
 const need = (p) => D.REST - p.k - D.SHEAR; // lift that puts the top of the key pin on the shear line
 const event = (t) => { lastEvent = t; lastEventAt = now; };
@@ -123,11 +123,13 @@ const spool = () => kind === "security";
 
 function step(dt) {
   // what's pushing each pin up: the pick on one, the rake on all, or the key
+  // the pick moves like a hand, not a teleport
+  tip += clamp(pickLift * MAXLIFT - tip, -40 * dt, 14 * dt);
   const target = pins.map((p, i) => {
     if (keyMode === "right") return need(p);
     if (keyMode === "wrong") return clamp(need(p) + [3, -2, 2.5, -3, 2][i], 0, MAXLIFT);
     if (raking) return clamp(5 + 5 * Math.sin(rakeT * 9 + i * 1.7) + 3 * Math.sin(rakeT * 23 + i * 0.6), 0, MAXLIFT);
-    return i === sel ? pickLift * MAXLIFT : 0;
+    return i === sel ? tip : 0;
   });
   if (raking) rakeT += dt;
   if (tension < 0.12) {
@@ -140,7 +142,11 @@ function step(dt) {
     p.prev = p.lift;
     if (keyMode) { p.over = false; p.lift = want; return; }
     if (p.over) { p.lift = n + 3.2; return; }
-    if (p.set) { p.lift = Math.min(want, n); return; }
+    if (p.set) {
+      // keep shoving a pin after it's set and the key pin follows the driver up past the shear line
+      if (!raking && i === sel && want > n + 3 && tension >= 0.12 && !open) { p.set = false; p.over = true; p.lift = n + 3.2; event("Overset. You kept pushing after the click: the key pin's followed the driver up past the shear line and jammed there. Lift until it clicks, then stop. Drop the tension to start again."); return; }
+      p.lift = Math.min(want, n); return;
+    }
     if (i === b) {
       if (tension > 0.72 && want > p.lift) { if (want > p.lift + 0.5) event("Too much tension: the binding pin's jammed so hard it won't lift. Ease off."); p.lift = Math.min(want, p.lift + 0.02); return; }
       // a spool driver catches early: a false set
@@ -152,9 +158,8 @@ function step(dt) {
         if (want >= n - 0.4) { p.fs = false; p.set = true; p.lift = n; p.ping = now; event("Got it: eased the tension, the plug counter-rotated past the spool, and it set properly."); return; }
         p.lift = Math.min(want, n - 0.5); return;
       }
-      const speed = (want - p.lift) / Math.max(dt, 1e-3);
       if (p.lift < n && want >= n) {
-        if (want > n + TOL && speed > FAST) { p.over = true; p.lift = n + 3.2; event("Overset. Pushed too far, too fast: the key pin's gone up past the shear line and jammed there. The only fix is to drop the tension and start over."); return; }
+        if (raking && want > n + TOL && Math.random() < 0.2) { p.over = true; p.lift = n + 3.2; event("Overset: the rake shoved a binding pin straight past the shear line and it jammed. Drop the tension and start again."); return; }
         p.set = true; p.lift = n; p.ping = now; event("Click. Pin " + (i + 1) + " set: the driver pin's sitting on the plug's ledge above the shear line, and the plug turns a hair more. Find the next one that binds.");
         return;
       }
@@ -271,7 +276,7 @@ function story() {
   if (raking) return say("Raking: scrubbing the pins up and down with light tension and hoping each binding pin happens to set on the way past. Quick and dumb, and it works on cheap locks." + (kind === "security" ? " Spools make it much harder." : ""));
   const b = binding();
   if (tension < 0.12) return say("No tension: every pin springs up and down freely and nothing ever sets. Add a little tension with the wrench first.");
-  return say("Light tension on. The holes are never perfectly in line, so one pin binds first: pin " + (b + 1) + " right now. Lift it slowly until it clicks. The others just spring back. Drag a pin on the lock, or use the pin buttons and lift.");
+  return say("Light tension on. The holes are never perfectly in line, so one pin binds first: pin " + (b + 1) + " right now. Lift it slowly until it clicks, then stop. The others just spring back. Drag a pin up on the lock, or use the pin buttons and the Lift slider.");
 }
 
 // the demo: a hand that picks
@@ -329,7 +334,7 @@ const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationF
 const takeOver = () => { touring = false; actions = []; auto = null; };
 const guard = (fn) => (...a) => { takeOver(); fn(...a); run(); };
 const setKind = guard((v) => { kind = v; newLock(); tension = 0; });
-const setSel = guard((v) => { sel = v; pickLift = 0; keyMode = ""; raking = false; });
+const setSel = guard((v) => { sel = v; pickLift = 0; tip = 0; keyMode = ""; raking = false; });
 const setTen = guard((v) => { tension = v; });
 const setLift = guard((v) => { pickLift = v; keyMode = ""; raking = false; });
 const toggleRake = guard(() => { raking = !raking; keyMode = ""; pickLift = 0; });
@@ -354,6 +359,7 @@ stage.addEventListener("pointerdown", (ev) => {
   const r = stage.getBoundingClientRect(), sx = ((ev.clientX - r.left) / r.width) * D.W;
   let best = 0; D.pinScreen.forEach((x, i) => { if (Math.abs(x - sx) < Math.abs(D.pinScreen[best] - sx)) best = i; });
   if (best !== sel) setSel(best); else takeOver();
+  if (tension < 0.12 && !keyMode) { tension = 0.35; event("Added some tension on the wrench for you: without it nothing binds and nothing sets. Now lift that pin slowly until it clicks."); }
   drag = { y: ev.clientY, lift: pickLift, scale: r.height / D.H };
   stage.setPointerCapture(ev.pointerId); run();
 });

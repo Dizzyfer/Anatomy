@@ -16,7 +16,7 @@ A pin tumbler lock cut in half lengthways, with a pick and a tension wrench in t
 
 - **No tension:** pins just spring up and down and nothing sets.
 - **Too much tension:** the binding pin jams and won't lift.
-- **Too far, too fast:** an overset. The key pin goes up past the shear line and jams. Drop the tension and start again.
+- **Keep shoving after the click:** an overset. The key pin follows the driver up past the shear line and jams. Lift until it clicks, then stop. Drop the tension to start again.
 - **Security pins:** spool-shaped drivers catch early and give a false set. Ease the tension so the plug counter-rotates, and lift a touch more.
 
 ## What you can do
