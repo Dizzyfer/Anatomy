@@ -143,10 +143,7 @@ function bodyBack() {
   out.push(S(k.cylinder(sx, sy, 3, FLOOR_TOP + 2, 7, P, 24), { tone: "hi", inner: L(k.sideArc(sx, sy, 3, FLOOR_TOP + 5, P, 16) + k.sideArc(sx, sy, 3, FLOOR_TOP + 7, P, 16), { tone: "faint" }) }));
   out.push(S(k.cylinder(sx, sy, 1, FLOOR_TOP + 9, SPARK[2] - FLOOR_TOP - 10, P, 12), { tone: "mid", crease: "none" }));
   out.push(D([at([sx, sy, SPARK[2] - 1])], { size: 0.7, tone: "hi" }));
-  // back flange bars
-  out.push(S(box({ x: FLANGE.x, y: FLANGE.y, w: FLANGE.w, d: FW }, BODY_TOP, FLANGE_TOP - BODY_TOP), { tone: "mid" }));
-  out.push(S(box({ x: FLANGE.x, y: FLANGE.y + FW, w: FW, d: FLANGE.d - FW }, BODY_TOP, FLANGE_TOP - BODY_TOP), { tone: "mid" }));
-  out.push(L(BOLTS.filter((b) => !FRONT_BOLT(b)).map(([x, y]) => k.ring(x, y, 2.4, FLANGE_TOP, P, 16)).join(""), { tone: "lo" }));
+  out.push(`<g data-part="flange-back"></g>`);
   return out.join("");
 }
 
@@ -169,22 +166,7 @@ function bodyFront() {
     `<text class="iso-face-text" data-tone="mid" x="2.4" y="4.6" font-size="3.2">Ex db</text>` +
     `<path class="iso-line" data-tone="faint" data-free="" d="M2.4 8h23M2.4 10.6h23M2.4 13h16"/>` +
     [[1.3, 1.3], [26.7, 1.3], [1.3, 13.7], [26.7, 13.7]].map(([cx, cy]) => `<circle cx="${cx}" cy="${cy}" r=".45" style="fill:var(--anatomy-mid)"/>`).join("") + `</g>`);
-  // front flange bars: the fixed half of the flamepath, sectioned at the cut
-  const fx = { x: FLANGE.x + FLANGE.w - FW, y: FLANGE.y + FW, w: FW, d: CUT - FLANGE.y - FW };
-  const fy = { x: FLANGE.x + FW, y: FLANGE.y + FLANGE.d - FW, w: CUT - FLANGE.x - FW, d: FW };
-  const hatch = (face) => {
-    const lines = [];
-    for (let s = -8; s < FW + 8; s += 2.2) {
-      const a = Math.max(0, s), b = Math.min(FW, s + 8);
-      if (b - a < 0.3) continue;
-      const za = BODY_TOP + (a - s), zb = BODY_TOP + (b - s);
-      lines.push(face === "y" ? k.segment([fx.x + a, CUT, za], [fx.x + b, CUT, zb], P) : k.segment([CUT, fy.y + a, za], [CUT, fy.y + b, zb], P));
-    }
-    return L(lines.join(""), { tone: "faint" });
-  };
-  out.push(S(box(fx, BODY_TOP, FLANGE_TOP - BODY_TOP, 0.4, 0.3), { tone: "mid", inner: hatch("y") }));
-  out.push(S(box(fy, BODY_TOP, FLANGE_TOP - BODY_TOP, 0.4, 0.3), { tone: "mid", inner: hatch("x") }));
-  out.push(L(BOLTS.filter(FRONT_BOLT).map(([x, y]) => k.ring(x, y, 2.4, FLANGE_TOP, P, 16)).join(""), { tone: "lo" }));
+  out.push(`<g data-part="flange-front"></g>`);
   // earth stud on its own pad
   out.push(S(k.slabOf({ x: 44, y: -12, w: 10, d: 10, r: 2 }, 0, 3, P, 4, 0.3), { tone: "mid" }));
   out.push(S(k.cylinder(49, -7, 2.4, 3, 4, P, 6), { tone: "mid" }));
@@ -202,7 +184,7 @@ function lid() {
   sorted.filter((b) => depth2(b) < centre).forEach((b) => out.push(head(b)));
   out.push(S(lSolid(BOSS, FLANGE_TOP + LID_H, BOSS_H), { tone: "hi" }));
   out.push(L(k.ring(TIP[0], TIP[1], 4.2, LID_TOP, P, 24), { tone: "lo" }));
-  out.push(k.faceTextSvg(k.topMatrix([-28, -6], LID_TOP, P, "x"), "FLAMEPATH 25", { size: 2.6, tone: "lo" }));
+  out.push(k.faceTextSvg(k.topMatrix([-28, -6], LID_TOP, P, "x"), "FLAMEPATH 25", { size: 2.6, tone: "lo" }).replace("<text ", "<text data-part=\"fp-label\" "));
   sorted.filter((b) => depth2(b) >= centre).forEach((b) => out.push(head(b)));
   return out.join("");
 }
@@ -282,7 +264,7 @@ const frontSvg = layer([
 
 const DATA = {
   W, H, camera: glCamera(P), P, GASES, BOLTS, FLANGE, TIP, VIS, GAP_MAX, FLANGE_TOP, DIAL_R, DIAL_TOP, CUT, CAV, FLOOR_TOP, FW, SPARK, OUT,
-  front: BOLTS.filter(FRONT_BOLT), back: BOLTS.filter((b) => !FRONT_BOLT(b)), start: START,
+  front: BOLTS.filter(FRONT_BOLT), back: BOLTS.filter((b) => !FRONT_BOLT(b)), start: START, BODY_TOP,
   pivots: {
     bottles: Object.fromEntries(BOTTLES.map((b, i) => [b.id, { at: at([b.at[0], b.at[1] + BOTTLE_R + 1, 2]), order: i }])),
     stand: at([POST[0] + 16, POST[1] + 15, 0]),
@@ -357,6 +339,7 @@ uniform float uJet;
 uniform float uHaze;
 uniform float uIgnite;
 uniform float uBoom;
+uniform float uFW;
 float fan(vec2 vb,float zg,float face,float a0,float a1,bool xFace,float reach){
   float sum=0.;
   float h0=zg-6., h1=zg+reach*.9+6.;
@@ -381,9 +364,9 @@ float gapFlame(vec2 vb,out float gc){
   for(int f=0;f<2;f++){
     vec3 q=f==0?onWallY(vb,${CUT.toFixed(1)}):onWallX(vb,${CUT.toFixed(1)});
     float along=f==0?q.x:q.y;
-    float s=(along-${(FLANGE.x + FLANGE.w - FW).toFixed(1)}+(f==0?0.:${((FLANGE.x + FLANGE.w) - (FLANGE.y + FLANGE.d)).toFixed(1)}))/${FW.toFixed(1)};
-    float inGap=window(s,0.,1.,.7*px/${FW.toFixed(1)})*window(q.z,${FLANGE_TOP.toFixed(1)},${FLANGE_TOP.toFixed(1)}+uLift,.7*px);
-    float front=clamp((uAge-.1)/.28,0.,1.25);
+    float s=(along-(${(FLANGE.x + FLANGE.w).toFixed(1)}-uFW)+(f==0?0.:${((FLANGE.x + FLANGE.w) - (FLANGE.y + FLANGE.d)).toFixed(1)}))/uFW;
+    float inGap=window(s,0.,1.,.7*px/uFW)*window(q.z,${FLANGE_TOP.toFixed(1)},${FLANGE_TOP.toFixed(1)}+uLift,.7*px);
+    float front=clamp((uAge-.1)/(.28*uFW/13.5),0.,1.25);
     float sq=mix(uQuench,1.3,uThrough);
     float reach=1.-smoothstep(front-.08,front,s);
     float alive=1.-smoothstep(sq-.12,sq,s);
@@ -450,14 +433,41 @@ const sortB = (list) => [...list].sort((a, b) => depth2(a) - depth2(b));
 const backB = sortB(D.back), frontB = sortB(D.front);
 const view = [D.W, D.H];
 const inner = glLayer({ canvas: stage.querySelector(".fx-inner"), fragment: ${JSON.stringify(INNER_FRAG)}, view, camera: D.camera, uniforms: ["uAge", "uLift", "uThrough", "uQuench", "uFade"], fixed: { uLight: LIGHT } });
-const outer = glLayer({ canvas: stage.querySelector(".fx-outer"), fragment: ${JSON.stringify(OUTER_FRAG)}, view, camera: D.camera, uniforms: ["uAge", "uLift", "uThrough", "uQuench", "uFade", "uJet", "uHaze", "uIgnite", "uBoom"], fixed: { uLight: LIGHT } });
+const outer = glLayer({ canvas: stage.querySelector(".fx-outer"), fragment: ${JSON.stringify(OUTER_FRAG)}, view, camera: D.camera, uniforms: ["uAge", "uLift", "uThrough", "uQuench", "uFade", "uJet", "uHaze", "uIgnite", "uBoom", "uFW"], fixed: { uLight: LIGHT } });
 const GL = !!(inner && outer);
 if (GL) stage.setAttribute("data-gl", "");
 
 let gas = D.start.gas, gap = D.start.gap, target = gap;
-let drag = null, sliding = false;
+let drag = null, sliding = false, slidingL = false;
 let frame = 0, last = 0, clock = 0, touring = true, visible = false, slow = false, auto = false, lastShot = null;
 let bang = -10, now = 0, through = false, quench = 0.5, boomAt = null;
+let pathL = 25;
+const fwOf = (L) => 9 + (L - 6) * (17 - 9) / 34;
+// illustrative: a longer joint cools the gas for longer, so it tolerates a bigger gap. Exactly MESG at 25 mm.
+const limitOf = (m, L) => m * Math.sqrt(L / 25);
+const travel = () => 0.28 * fwOf(pathL) / 13.5 - 0.28;
+const flBack = q("flange-back"), flFront = q("flange-front"), fpLabel = stage.querySelector('[data-part="fp-label"]');
+function buildFlange() {
+  const FW = fwOf(pathL), F = D.FLANGE, Z0 = D.BODY_TOP, Z1 = FLANGE_TOP, CUT = D.CUT;
+  const box = (plan) => slabOf({ ...plan, r: 1.2 }, Z0, Z1 - Z0, P, 4, 0.5);
+  const rings = (list) => lineSvg(list.map(([x, y]) => ring(x, y, 2.4, Z1, P, 16)).join(""), { tone: "lo" });
+  flBack.innerHTML = solidSvg(box({ x: F.x, y: F.y, w: F.w, d: FW }), { tone: "mid" }) + solidSvg(box({ x: F.x, y: F.y + FW, w: FW, d: F.d - FW }), { tone: "mid" }) + rings(D.back);
+  const fx = { x: F.x + F.w - FW, y: F.y + FW, w: FW, d: CUT - F.y - FW };
+  const fy = { x: F.x + FW, y: F.y + F.d - FW, w: CUT - F.x - FW, d: FW };
+  const hatch = (face) => {
+    const lines = [];
+    for (let s = -8; s < FW + 8; s += 2.2) {
+      const a = Math.max(0, s), b = Math.min(FW, s + 8);
+      if (b - a < 0.3) continue;
+      const za = Z0 + (a - s), zb = Z0 + (b - s);
+      lines.push(face === "y" ? segment([fx.x + a, CUT, za], [fx.x + b, CUT, zb], P) : segment([CUT, fy.y + a, za], [CUT, fy.y + b, zb], P));
+    }
+    return lineSvg(lines.join(""), { tone: "faint" });
+  };
+  flFront.innerHTML = solidSvg(box(fx), { tone: "mid", inner: hatch("y") }) + solidSvg(box(fy), { tone: "mid", inner: hatch("x") }) + rings(D.front);
+  if (fpLabel) fpLabel.textContent = "FLAMEPATH " + (Math.round(pathL * 2) / 2);
+}
+buildFlange();
 const PERIOD = 3.2;
 const CYCLE = 12.8;
 
@@ -477,10 +487,11 @@ function svgJets(lift, env) {
 function frameAt() {
   const age = now - bang;
   const calm = still.matches;
-  const fade = calm ? 0 : burst(age, 0.02, 0.9);
-  const jet = calm ? 0 : burst(age - 0.36, 0.06, 0.55);
-  const haze = calm ? 0 : burst(age - 0.36, 0.12, 0.9);
-  const ignite = calm ? 0 : burst(age - 0.42, 0.15, 0.7);
+  const x = travel();
+  const fade = calm ? 0 : burst(age, 0.02, 0.9 + x);
+  const jet = calm ? 0 : burst(age - 0.36 - x, 0.06, 0.55);
+  const haze = calm ? 0 : burst(age - 0.36 - x, 0.12, 0.9);
+  const ignite = calm ? 0 : burst(age - 0.42 - x, 0.15, 0.7);
   return { age, fade, jet, haze, ignite };
 }
 const BOOM_END = 4.2;
@@ -535,18 +546,20 @@ function draw() {
   const f = frameAt();
   const active = f.fade > 0.002 || f.haze > 0.002 || K.c >= 0;
   if (GL) {
-    const u = { uAge: Math.max(0, f.age), uLift: lift, uThrough: through ? 1 : 0, uQuench: quench, uFade: f.fade, uJet: f.jet, uHaze: f.haze, uIgnite: f.ignite, uBoom: K.c };
+    const u = { uAge: Math.max(0, f.age), uLift: lift, uThrough: through ? 1 : 0, uQuench: quench, uFade: f.fade, uJet: f.jet, uHaze: f.haze, uIgnite: f.ignite, uBoom: K.c, uFW: fwOf(pathL) };
     if (active) { inner.draw(u, now); outer.draw(u, now); } else { inner.clear(); outer.clear(); }
   } else jetsSvg.innerHTML = svgJets(lift, f.jet);
   stage.querySelectorAll("[data-bottle]").forEach((g) => g.querySelectorAll(".iso-solid").forEach((s) => s.toggleAttribute("data-lit", g.dataset.bottle === GASES[gas].id)));
   stage.querySelectorAll("[data-tag] text").forEach((tx) => tx.setAttribute("data-tone", tx.parentNode.dataset.tag === GASES[gas].id ? "hi" : +tx.getAttribute("font-size") > 3.5 ? "mid" : "lo"));
   const g = GASES[gas];
-  const text = K.c >= 0 ? (K.c < 3.0 ? "BOOM · the box failed and lit the area" : "resetting…") : g.id + " MESG " + g.mesg.toFixed(2) + " · gap " + gap.toFixed(2) + " mm · " + (gap < g.mesg ? "quenched" : "flame through");
+  const lim = limitOf(g.mesg, pathL);
+  const text = K.c >= 0 ? (K.c < 3.0 ? "BOOM · the box failed and lit the area" : "resetting…") : g.id + " · L " + fmtL() + " mm · limit " + lim.toFixed(2) + " · gap " + gap.toFixed(2) + " mm · " + (gap < lim ? "holds" : "flame through");
   if (readout.textContent !== text) readout.textContent = text;
   stage.setAttribute("aria-valuenow", gap.toFixed(2));
   stage.setAttribute("aria-valuetext", text);
 }
 const ui = {
+  len: document.querySelector("#len"), lenOut: document.querySelector("#len-out"),
   gap: document.querySelector("#gap"), gapOut: document.querySelector("#gap-out"), mark: document.querySelector("#mesg-mark"),
   gas: [...document.querySelectorAll("[data-gas]")], fire: document.querySelector("#fire"), slow: document.querySelector("#slow"),
   auto: document.querySelector("#auto"), tour: document.querySelector("#tour"), shot: document.querySelector("#shot"),
@@ -555,30 +568,35 @@ const mesgMark = q("mesg-mark");
 function syncUi() {
   const g = GASES[gas];
   ui.gas.forEach((b, i) => b.setAttribute("aria-pressed", String(i === gas)));
-  ui.mark.style.left = (g.mesg / GAP_MAX * 100) + "%";
-  ui.mark.dataset.label = "MESG " + g.mesg.toFixed(2);
+  const lim = limitOf(g.mesg, pathL);
+  ui.mark.style.left = (Math.min(lim, GAP_MAX) / GAP_MAX * 100) + "%";
+  ui.mark.dataset.label = (Math.abs(pathL - 25) < 0.25 ? "MESG " : "limit ") + lim.toFixed(2);
+  if (!slidingL) ui.len.value = pathL;
+  ui.lenOut.textContent = fmtL() + " mm";
   if (!sliding) ui.gap.value = target.toFixed(2);
   ui.gapOut.textContent = target.toFixed(2) + " mm";
   ui.slow.setAttribute("aria-pressed", String(slow));
   ui.auto.setAttribute("aria-pressed", String(auto));
   ui.tour.setAttribute("aria-pressed", String(touring));
-  const a = g.mesg * Math.PI * 2, [x, y] = TIP;
+  const a = lim * Math.PI * 2, [x, y] = TIP;
   mesgMark.setAttribute("d", lineOnTop([x + Math.sin(a) * (DIAL_R - 6.5), y - Math.cos(a) * (DIAL_R - 6.5)], [x + Math.sin(a) * (DIAL_R - 2.2), y - Math.cos(a) * (DIAL_R - 2.2)], DIAL_TOP + 0.2, P));
 }
+const fmtL = () => (Math.round(pathL * 2) / 2).toString();
 function fire() {
   if (booming()) return;
   bang = now;
   const m = GASES[gas].mesg;
-  through = gap >= m;
-  // illustrative: how far along the 25 mm joint the flame survives before heat loss to the walls wins
-  quench = clamp(0.92 * Math.pow(gap / m, 2), 0.04, 0.92);
+  const lim = limitOf(m, pathL);
+  through = gap >= lim;
+  // illustrative: the flame survives about 25·(gap/MESG)² mm along the joint before heat loss wins
+  quench = clamp(25 * Math.pow(gap / m, 2) / pathL, 0.04, 0.92);
   const text = gap < 0.02
     ? "Shot: " + GASES[gas].id + " with the gap shut. The box held the pressure; nothing got out."
     : through
-    ? "Shot: " + GASES[gas].id + " at " + gap.toFixed(2) + " mm, over MESG " + GASES[gas].mesg.toFixed(2) + ". Flame ran the full 25 mm, lit the area, and that's the plant gone."
-    : "Shot: " + GASES[gas].id + " at " + gap.toFixed(2) + " mm. Quenched about " + Math.round(quench * 25) + " mm into the 25 mm joint; only cooled gas got out.";
+    ? "Shot: " + GASES[gas].id + " at " + gap.toFixed(2) + " mm on a " + fmtL() + " mm path, over the " + lim.toFixed(2) + " mm limit. Flame ran the whole joint, lit the area, and that's the plant gone."
+    : "Shot: " + GASES[gas].id + " at " + gap.toFixed(2) + " mm. Quenched about " + Math.round(quench * pathL) + " mm into the " + fmtL() + " mm joint; only cooled gas got out.";
   ui.shot.textContent = text;
-  if (through && gap >= 0.02) boomAt = now + 0.42;
+  if (through && gap >= 0.02) boomAt = now + 0.42 + travel();
 }
 function tick(t) {
   const dt = last ? Math.min((t - last) / 1000, 1 / 30) : 1 / 60;
@@ -588,7 +606,7 @@ function tick(t) {
     clock += dt;
     gas = Math.floor(clock / CYCLE) % GASES.length;
     const u = (clock % CYCLE) / CYCLE;
-    target = clamp([0.45, 0.8, 1.15, 1.6][Math.floor(u * 4)] * GASES[gas].mesg, 0.05, GAP_MAX);
+    target = clamp([0.45, 0.8, 1.15, 1.6][Math.floor(u * 4)] * limitOf(GASES[gas].mesg, pathL), 0.05, GAP_MAX);
   }
   gap = still.matches ? target : gap + (target - gap) * (1 - Math.exp(-dt / 0.2));
   if (Math.abs(target - gap) < 0.0005) gap = target;
@@ -609,6 +627,8 @@ if (still.matches) touring = false;
 
 // controls
 ui.gap.addEventListener("input", () => { sliding = true; setGap(+ui.gap.value); });
+ui.len.addEventListener("input", () => { slidingL = true; if (booming()) return; takeOver(); pathL = +ui.len.value; buildFlange(); bang = now - 10; run(); });
+ui.len.addEventListener("change", () => { slidingL = false; run(); });
 ui.gap.addEventListener("change", () => { sliding = false; run(); });
 ui.gas.forEach((b, i) => b.addEventListener("click", () => setGas(i)));
 ui.fire.addEventListener("click", shoot);
@@ -661,6 +681,9 @@ body[data-theme="dark"] .fx-gl{mix-blend-mode:screen}
 .ctl #fire{border-color:var(--anatomy-lit);color:var(--anatomy-lit);padding:7px 18px;font-weight:600;letter-spacing:.06em}
 .gap-wrap{position:relative;flex:1;min-width:110px;padding-top:16px}
 .gap-wrap input{width:100%;accent-color:var(--anatomy-lit);margin:0}
+#len-mark{position:absolute;top:0;bottom:2px;width:0;border-left:1px dashed var(--anatomy-lo);pointer-events:none}
+#len-mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:var(--anatomy-lo)}
+#len-out{min-width:58px;text-align:right}
 #mesg-mark{position:absolute;top:0;bottom:2px;width:0;border-left:1px dashed var(--anatomy-lit);pointer-events:none;transition:left .3s}
 #mesg-mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:var(--anatomy-lit)}
 #gap-out{min-width:58px;text-align:right;color:var(--anatomy-hi, var(--anatomy-mid))}
@@ -671,6 +694,7 @@ const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="slider" ar
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Gas</span>${GASES.map((g, i) => `<button type="button" data-gas="${i}" aria-pressed="${i === START.gas}">${g.id}<small>${g.group} · ${g.mesg.toFixed(2)}</small></button>`).join("")}</div>
+  <div class="ctl-row"><span class="ctl-label">Path</span><div class="gap-wrap"><span id="len-mark" aria-hidden="true" data-label="MESG test 25" style="left:${(25 - 6) / 34 * 100}%"></span><input id="len" type="range" min="6" max="40" step="0.5" value="25" aria-label="Flamepath length in mm"></div><output id="len-out">25 mm</output></div>
   <div class="ctl-row"><span class="ctl-label">Gap</span><div class="gap-wrap"><span id="mesg-mark" aria-hidden="true"></span><input id="gap" type="range" min="0" max="${GAP_MAX}" step="0.01" value="${START.gap}" aria-label="Flamepath gap in mm"></div><output id="gap-out">${START.gap.toFixed(2)} mm</output></div>
   <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="fire">FIRE</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="auto" aria-pressed="false">Auto-fire</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
   <div id="shot" aria-live="polite">Pick a gas, set the gap, hit FIRE. Or drag the box up and down and tap it to fire.</div>
