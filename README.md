@@ -12,7 +12,7 @@ A little interactive toy that shows why a flameproof (Ex d) enclosure works: an 
 - **Set the gap:** with the slider, or drag the box up and down. The dashed line (and the tick on the dial) is that gas's MESG.
 - **FIRE:** the spark plug lights the gas inside. Watch the flame front run along the 25 mm joint in the cutaway.
   - Under MESG it dies in the joint and only cooled gas leaks out.
-  - Over MESG it makes it through and lights up the outside.
+  - Over MESG it makes it through, lights the area, and the whole bench goes up: lid launched, bottles flattened. Then it resets for another go.
 - **Slow-mo** to watch the front crawl, **Auto-fire** to keep it popping while you play, **Demo tour** if you just want to watch.
 
 Keyboard: arrows = gap (Shift for big steps), G = gas, Space = fire, S = slow-mo.

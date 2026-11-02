@@ -272,15 +272,22 @@ const midSvg = layer([
 ].join(""));
 const frontSvg = layer([
   `<g data-part="jets-svg"></g>`,
+  `<g data-part="stand">`,
   stand(),
   dialHead(),
   `<path data-part="mesg-mark" class="iso-line" data-tone="lit" data-free="" d="" style="stroke-width:1.6"/>`,
   `<path data-part="needle" class="iso-line" data-tone="lit" data-free="start" d="${needleAt(START.gap)}" style="stroke-width:1"/>`,
+  `</g>`,
 ].join(""));
 
 const DATA = {
   W, H, camera: glCamera(P), P, GASES, BOLTS, FLANGE, TIP, VIS, GAP_MAX, FLANGE_TOP, DIAL_R, DIAL_TOP, CUT, CAV, FLOOR_TOP, FW, SPARK, OUT,
   front: BOLTS.filter(FRONT_BOLT), back: BOLTS.filter((b) => !FRONT_BOLT(b)), start: START,
+  pivots: {
+    bottles: Object.fromEntries(BOTTLES.map((b, i) => [b.id, { at: at([b.at[0], b.at[1] + BOTTLE_R + 1, 2]), order: i }])),
+    stand: at([POST[0] + 16, POST[1] + 15, 0]),
+    lid: at([0, 0, FLANGE_TOP + LID_H]),
+  },
 };
 
 const SHARED_GLSL = `
@@ -349,6 +356,7 @@ const OUTER_FRAG = SHARED_GLSL + `
 uniform float uJet;
 uniform float uHaze;
 uniform float uIgnite;
+uniform float uBoom;
 float fan(vec2 vb,float zg,float face,float a0,float a1,bool xFace,float reach){
   float sum=0.;
   float h0=zg-6., h1=zg+reach*.9+6.;
@@ -400,8 +408,26 @@ void main(){
   vec2 c=project(vec3(0.,0.,zg));
   float d=length(vb-c)/uK;
   float gr=26.+22.*uIgnite;float glow=exp(-pow(d/gr,2.))*(1.-smoothstep(gr*1.6,gr*2.2,d))*uIgnite*uThrough*.3;
-  float fire=jet+glow+gf*1.25;
-  vec4 hot=finish(fire,clamp((jet*.9+gc*1.5)/max(fire,1e-4),0.,1.));
+  // the box failed: the atmosphere outside goes up
+  float boom=0., boomHot=0.;
+  if(uBoom>0.){
+    float c=uBoom;
+    vec3 C=vec3(0.,0.,62.+26.*c);
+    float d=length(vb-project(C))/uK;
+    float R=20.+66.*(1.-exp(-c/.2));
+    float n=fbm3(vec3((vb-project(C))/uK*.045,c*1.6));
+    float shell=exp(-pow((d-R*(.84+.28*n))/(7.+R*.13),2.));
+    float core=(1.-smoothstep(R*.35,R*(.8+.25*n),d))*(.5+.7*n);
+    float life=smoothstep(0.,.05,c)*exp(-c/.6);
+    vec3 fp=onFloor(vb,0.);
+    float Rs=30.+420.*c;
+    float ring=exp(-pow((length(fp.xy)-Rs)/6.,2.))*exp(-c/.32)*.7;
+    float ef=smoothstep(0.,80.,min(min(vb.x,uView.x-vb.x),min(vb.y,uView.y-vb.y)));
+    boom=(shell*1.4+core*1.1)*life*ef+ring*ef;
+    boomHot=core*life*ef*exp(-c/.4)*1.4+ring*ef*.6;
+  }
+  float fire=jet+glow+gf*1.25+boom;
+  vec4 hot=finish(fire,clamp((jet*.9+gc*1.5+boomHot+boom*.35)/max(fire,1e-4),0.,1.));
   // cooled exhaust: grey haze
   float ha=(1.-exp(-haze*1.6))*mix(.55,.45,uLight);
   vec4 smoke=vec4(mix(vec3(.62,.58,.55),vec3(.35,.33,.32),uLight)*ha,ha);
@@ -424,14 +450,14 @@ const sortB = (list) => [...list].sort((a, b) => depth2(a) - depth2(b));
 const backB = sortB(D.back), frontB = sortB(D.front);
 const view = [D.W, D.H];
 const inner = glLayer({ canvas: stage.querySelector(".fx-inner"), fragment: ${JSON.stringify(INNER_FRAG)}, view, camera: D.camera, uniforms: ["uAge", "uLift", "uThrough", "uQuench", "uFade"], fixed: { uLight: LIGHT } });
-const outer = glLayer({ canvas: stage.querySelector(".fx-outer"), fragment: ${JSON.stringify(OUTER_FRAG)}, view, camera: D.camera, uniforms: ["uAge", "uLift", "uThrough", "uQuench", "uFade", "uJet", "uHaze", "uIgnite"], fixed: { uLight: LIGHT } });
+const outer = glLayer({ canvas: stage.querySelector(".fx-outer"), fragment: ${JSON.stringify(OUTER_FRAG)}, view, camera: D.camera, uniforms: ["uAge", "uLift", "uThrough", "uQuench", "uFade", "uJet", "uHaze", "uIgnite", "uBoom"], fixed: { uLight: LIGHT } });
 const GL = !!(inner && outer);
 if (GL) stage.setAttribute("data-gl", "");
 
 let gas = D.start.gas, gap = D.start.gap, target = gap;
 let drag = null, sliding = false;
 let frame = 0, last = 0, clock = 0, touring = true, visible = false, slow = false, auto = false, lastShot = null;
-let bang = -10, now = 0, through = false, quench = 0.5;
+let bang = -10, now = 0, through = false, quench = 0.5, boomAt = null;
 const PERIOD = 3.2;
 const CYCLE = 12.8;
 
@@ -457,24 +483,65 @@ function frameAt() {
   const ignite = calm ? 0 : burst(age - 0.42, 0.15, 0.7);
   return { age, fade, jet, haze, ignite };
 }
+const BOOM_END = 4.2;
+const booming = () => boomAt !== null && now - boomAt < BOOM_END;
+const standG = q("stand"), flash = stage.querySelector(".fx-flash");
+const bottleGs = [...stage.querySelectorAll("[data-bottle]")];
+const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+// a part that tips over onto the bench: overshoots, bounces, settles
+const tip = (c, delay, target) => { const u = Math.max(0, c - delay); return u <= 0 ? 0 : target * (1 - Math.exp(-u / 0.11) * Math.cos(u * 13)); };
+function chaos() {
+  if (boomAt === null) return { c: -1, back: 0 };
+  const c = now - boomAt;
+  if (c < 0 || c > BOOM_END) return { c: -1, back: 0 };
+  return { c, back: 1 - sm(3.0, 3.9, c) };
+}
 function draw() {
   const lift = gap * VIS;
   const t = translateAlong(P, [0, 0, lift]);
-  lidG.setAttribute("transform", t);
-  plungerG.setAttribute("transform", t);
-  needle.setAttribute("d", needleAt(gap));
-  shB.innerHTML = shanks(backB, lift);
-  shF.innerHTML = shanks(frontB, lift);
+  const K = chaos();
+  let lidT = t;
+  if (K.c >= 0) {
+    const c = K.c, land = 0.97, cl = Math.min(c, land);
+    const dx = 165 * cl, dy = c < land ? -620 * c + 700 * c * c : 60;
+    const rot = 540 * cl;
+    const [px, py] = D.pivots.lid;
+    lidT = "translate(" + (dx * K.back).toFixed(1) + " " + (dy * K.back).toFixed(1) + ") rotate(" + (rot * K.back).toFixed(1) + " " + px.toFixed(1) + " " + py.toFixed(1) + ") " + t;
+    bottleGs.forEach((g) => {
+      const pv = D.pivots.bottles[g.dataset.bottle];
+      const a = tip(c, 0.05 + 0.06 * pv.order, -86) * K.back;
+      const slide = -18 * sm(0.05 + 0.06 * pv.order, 0.6, c) * K.back;
+      g.setAttribute("transform", "translate(" + slide.toFixed(1) + " " + (-slide * 0.3).toFixed(1) + ") rotate(" + a.toFixed(1) + " " + pv.at[0].toFixed(1) + " " + pv.at[1].toFixed(1) + ")");
+    });
+    const sa = tip(c, 0.08, 80) * K.back;
+    standG.setAttribute("transform", "rotate(" + sa.toFixed(1) + " " + D.pivots.stand[0].toFixed(1) + " " + D.pivots.stand[1].toFixed(1) + ")");
+    const A = 7 * Math.exp(-c / 0.35);
+    stage.style.transform = "translate(" + (A * Math.sin(c * 90)).toFixed(1) + "px," + (A * Math.cos(c * 71)).toFixed(1) + "px)";
+    flash.style.opacity = (0.8 * burst(c, 0.03, 0.22)).toFixed(3);
+  } else if (boomAt !== null && now - boomAt > BOOM_END) {
+    boomAt = null;
+    bottleGs.forEach((g) => g.removeAttribute("transform"));
+    standG.removeAttribute("transform");
+    stage.style.transform = "";
+    flash.style.opacity = "0";
+    ui.shot.textContent = "Reset. Close the gap under MESG and try again.";
+  }
+  lidG.setAttribute("transform", lidT);
+  plungerG.setAttribute("transform", lidT);
+  needle.setAttribute("d", needleAt(K.c >= 0 && K.c < 3.0 ? 0 : gap));
+  const sheared = K.c >= 0 && K.c < 3.4;
+  shB.innerHTML = sheared ? "" : shanks(backB, lift);
+  shF.innerHTML = sheared ? "" : shanks(frontB, lift);
   const f = frameAt();
-  const active = f.fade > 0.002 || f.haze > 0.002;
+  const active = f.fade > 0.002 || f.haze > 0.002 || K.c >= 0;
   if (GL) {
-    const u = { uAge: Math.max(0, f.age), uLift: lift, uThrough: through ? 1 : 0, uQuench: quench, uFade: f.fade, uJet: f.jet, uHaze: f.haze, uIgnite: f.ignite };
+    const u = { uAge: Math.max(0, f.age), uLift: lift, uThrough: through ? 1 : 0, uQuench: quench, uFade: f.fade, uJet: f.jet, uHaze: f.haze, uIgnite: f.ignite, uBoom: K.c };
     if (active) { inner.draw(u, now); outer.draw(u, now); } else { inner.clear(); outer.clear(); }
   } else jetsSvg.innerHTML = svgJets(lift, f.jet);
   stage.querySelectorAll("[data-bottle]").forEach((g) => g.querySelectorAll(".iso-solid").forEach((s) => s.toggleAttribute("data-lit", g.dataset.bottle === GASES[gas].id)));
   stage.querySelectorAll("[data-tag] text").forEach((tx) => tx.setAttribute("data-tone", tx.parentNode.dataset.tag === GASES[gas].id ? "hi" : +tx.getAttribute("font-size") > 3.5 ? "mid" : "lo"));
   const g = GASES[gas];
-  const text = g.id + " MESG " + g.mesg.toFixed(2) + " · gap " + gap.toFixed(2) + " mm · " + (gap < g.mesg ? "quenched" : "flame through");
+  const text = K.c >= 0 ? (K.c < 3.0 ? "BOOM · the box failed and lit the area" : "resetting…") : g.id + " MESG " + g.mesg.toFixed(2) + " · gap " + gap.toFixed(2) + " mm · " + (gap < g.mesg ? "quenched" : "flame through");
   if (readout.textContent !== text) readout.textContent = text;
   stage.setAttribute("aria-valuenow", gap.toFixed(2));
   stage.setAttribute("aria-valuetext", text);
@@ -499,6 +566,7 @@ function syncUi() {
   mesgMark.setAttribute("d", lineOnTop([x + Math.sin(a) * (DIAL_R - 6.5), y - Math.cos(a) * (DIAL_R - 6.5)], [x + Math.sin(a) * (DIAL_R - 2.2), y - Math.cos(a) * (DIAL_R - 2.2)], DIAL_TOP + 0.2, P));
 }
 function fire() {
+  if (booming()) return;
   bang = now;
   const m = GASES[gas].mesg;
   through = gap >= m;
@@ -507,9 +575,10 @@ function fire() {
   const text = gap < 0.02
     ? "Shot: " + GASES[gas].id + " with the gap shut. The box held the pressure; nothing got out."
     : through
-    ? "Shot: " + GASES[gas].id + " at " + gap.toFixed(2) + " mm. Flame ran the full 25 mm and lit the outside."
+    ? "Shot: " + GASES[gas].id + " at " + gap.toFixed(2) + " mm, over MESG " + GASES[gas].mesg.toFixed(2) + ". Flame ran the full 25 mm, lit the area, and that's the plant gone."
     : "Shot: " + GASES[gas].id + " at " + gap.toFixed(2) + " mm. Quenched about " + Math.round(quench * 25) + " mm into the 25 mm joint; only cooled gas got out.";
   ui.shot.textContent = text;
+  if (through && gap >= 0.02) boomAt = now + 0.42;
 }
 function tick(t) {
   const dt = last ? Math.min((t - last) / 1000, 1 / 30) : 1 / 60;
@@ -524,10 +593,10 @@ function tick(t) {
   gap = still.matches ? target : gap + (target - gap) * (1 - Math.exp(-dt / 0.2));
   if (Math.abs(target - gap) < 0.0005) gap = target;
   const period = PERIOD * (slow ? 1 / 0.12 : 1);
-  if (!still.matches && (touring || auto) && now - bang > PERIOD * (slow ? 1.2 : 1) && Math.abs(target - gap) < 0.01) fire();
+  if (!still.matches && (touring || auto) && now - bang > PERIOD * (slow ? 1.2 : 1) && !booming() && (boomAt === null) && Math.abs(target - gap) < 0.01) fire();
   draw();
   syncUi();
-  const busy = touring || auto || gap !== target || now - bang < 3.5 || (drag && drag.moved);
+  const busy = touring || auto || gap !== target || now - bang < 3.5 || boomAt !== null || (drag && drag.moved);
   frame = visible && busy ? requestAnimationFrame(tick) : 0;
 }
 const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
@@ -579,6 +648,8 @@ draw();
 
 const CSS = `.fx-stage{position:relative}.fx-layer{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.fx-gl{display:block}
 body[data-theme="dark"] .fx-gl{mix-blend-mode:screen}
+.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 45%,#fff8e8 0%,#ffd9a0 35%,rgba(255,170,90,0) 75%)}
+.iso-plate{overflow:hidden}
 .fx-stage{cursor:ns-resize;touch-action:none}
 .ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
 .ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -596,7 +667,7 @@ body[data-theme="dark"] .fx-gl{mix-blend-mode:screen}
 #shot{min-height:2.6em;color:var(--anatomy-mid);font-size:12px;line-height:1.4}
 @media (max-width:520px){.ctl button small{display:none}.ctl-label{min-width:34px}.ctl button{padding:7px 8px}}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="slider" aria-label="Flamepath gap: drag or arrow keys change the gap, G changes gas, space fires" aria-valuemin="0" aria-valuemax="${GAP_MAX}" aria-valuenow="${START.gap}">${backSvg}<canvas class="fx-layer fx-gl fx-inner" aria-hidden="true"></canvas>${midSvg}<canvas class="fx-layer fx-gl fx-outer" aria-hidden="true"></canvas>${frontSvg}</div>`;
+const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="slider" aria-label="Flamepath gap: drag or arrow keys change the gap, G changes gas, space fires" aria-valuemin="0" aria-valuemax="${GAP_MAX}" aria-valuenow="${START.gap}">${backSvg}<canvas class="fx-layer fx-gl fx-inner" aria-hidden="true"></canvas>${midSvg}<canvas class="fx-layer fx-gl fx-outer" aria-hidden="true"></canvas>${frontSvg}<div class="fx-flash" aria-hidden="true"></div></div>`;
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Gas</span>${GASES.map((g, i) => `<button type="button" data-gas="${i}" aria-pressed="${i === START.gas}">${g.id}<small>${g.group} · ${g.mesg.toFixed(2)}</small></button>`).join("")}</div>
@@ -618,6 +689,8 @@ const card = k.plateHtml({
   body: stageHtml,
 });
 
-const name = theme === "light" ? "ex-d-mk3-light.html" : "ex-d-mk3.html";
-writeFileSync(join(HERE, name), k.pageHtml({ title: "Ex d flamepath Mk III", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}`, script: kitScript() + glScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 700 }));
+const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
+const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a certified anything. MESG values are the real reference-gas numbers; the rest is for fun.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="https://github.com/Dizzyfer/Anatomy" style="color:inherit">Source</a></p>`;
+const name = theme === "light" ? "light.html" : "index.html";
+writeFileSync(join(HERE, name), k.pageHtml({ title: "Ex d flamepath", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + glScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 700 }));
 console.log("wrote", name);
