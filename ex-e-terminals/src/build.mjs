@@ -14,10 +14,16 @@ const H = 420;
 // Truth: T4 = 135 °C max surface. Diethyl ether autoignition ≈ 160 °C (a T4 gas).
 // Toy: 2.5 mΩ per circuit, box rated 10 W MDP, sits at exactly 135 °C at MDP in 40 °C ambient.
 const MODEL = {
-  rCircuit: 0.0025, mdp: 10, tAmb: 40, t4: 135, ait: 160,
+  rCircuit: 0.0025, mdp: 10, tAmb: 40, t4: 135, tMax: 300,
   rth: (135 - 40) / 10, tau: 2.4,
   creepClean: 550, creepDirty: 230, clearance: 800,
 };
+// autoignition temperatures: ether 160 °C (T4), carbon disulphide 90 °C (T6), diesel ~240 °C (T3)
+const GASES = [
+  { id: "ether", name: "diethyl ether", btn: "Ether", tc: "T4", ait: 160, label: ["DIETHYL", "ETHER"] },
+  { id: "cs2", name: "carbon disulphide", btn: "CS₂", tc: "T6", ait: 90, label: ["CARBON", "DISULPHIDE"] },
+  { id: "diesel", name: "diesel", btn: "Diesel", tc: "T3", ait: 240, label: ["DIESEL", ""] },
+];
 const N_TERM = 16;
 const V_MIN = 24, V_MAX = 1000, I_MAX = 25;
 
@@ -71,8 +77,8 @@ function drum() {
   out.push(L(k.ring(x, y, DRUM_R - 2, DRUM_H, P, 48), { tone: "lo" }));
   out.push(S(k.cylinder(x + 8, y - 4, 2.6, DRUM_H, 1.6, P, 6), { tone: "mid" }));
   out.push(S(k.cylinder(x - 9, y + 3, 1.8, DRUM_H, 1.4, P, 6), { tone: "mid" }));
-  out.push(k.faceTextSvg(k.topMatrix([x - 11, y + 6], DRUM_H, P, "x"), "DIETHYL", { size: 3.4, tone: "mid" }));
-  out.push(k.faceTextSvg(k.topMatrix([x - 11, y + 10.5], DRUM_H, P, "x"), "ETHER", { size: 3.4, tone: "mid" }));
+  out.push(k.faceTextSvg(k.topMatrix([x - 11, y + 6], DRUM_H, P, "x"), "DIETHYL", { size: 3.4, tone: "mid" }).replace("<text ", '<text data-part="drum-l1" '));
+  out.push(k.faceTextSvg(k.topMatrix([x - 11, y + 10.5], DRUM_H, P, "x"), "ETHER", { size: 3.4, tone: "mid" }).replace("<text ", '<text data-part="drum-l2" '));
   return `<g data-part="drum">${out.join("")}</g>`;
 }
 
@@ -161,7 +167,7 @@ function boxFront() {
   return out.join("");
 }
 
-const START = { n: 6, amps: 16, volts: 230, dirty: false };
+const START = { n: 6, amps: 16, volts: 230, dirty: false, gas: 0 };
 const fig = k.figureSvg({
   width: W, height: H,
   label: "An Ex e terminal box on a bench with its lid off and front walls cut away. A DIN rail carries sixteen terminals with wiring ducts either side. A drum of diethyl ether stands nearby. Too much current heats the box past its T4 rating; too much voltage, especially on a dirty surface, tracks or flashes over between terminals.",
@@ -169,7 +175,7 @@ const fig = k.figureSvg({
 });
 
 const DATA = {
-  W, H, camera: glCamera(P), P, MODEL, TERM_D, N_TERM, V_MIN, V_MAX, I_MAX, PITCH, TW, X0, TERM_Y, Z_TT, CL_A, CL_B, TRACK, BOX, Z_FLOOR, start: START,
+  W, H, camera: glCamera(P), P, MODEL, GASES, TERM_D, N_TERM, V_MIN, V_MAX, I_MAX, PITCH, TW, X0, TERM_Y, Z_TT, CL_A, CL_B, TRACK, BOX, Z_FLOOR, start: START,
   ductBack: BOX.y + 7 + 9, ductFront: TERM_Y + TERM_D + 3,
   pivots: { drum: at([DRUM[0] - DRUM_R, DRUM[1], 0]), box: at([0, 0, 0]) },
 };
@@ -280,7 +286,9 @@ const gl = glLayer({ canvas: stage.querySelector(".fx-gl"), fragment: ${JSON.str
 if (gl) stage.setAttribute("data-gl", "");
 
 let n = D.start.n, amps = D.start.amps, volts = D.start.volts, dirty = D.start.dirty;
-let on = false, temp = M.tAmb, track = 0, flashAt = -10, boomAt = null, cause = "";
+let on = false, temp = M.tAmb, track = 0, flashAt = -10, boomAt = null, cause = "", arcAt = null, gas = D.start.gas;
+const G = () => D.GASES[gas];
+const drumL1 = stage.querySelector('[data-part="drum-l1"]'), drumL2 = stage.querySelector('[data-part="drum-l2"]');
 let frame = 0, last = 0, now = 0, visible = false, touring = true, slow = false, tourClock = 0, tourStep = -1, lastShot = "";
 const BOOM_END = 4.2;
 const booming = () => boomAt !== null && now - boomAt < BOOM_END + 0.3;
@@ -322,6 +330,7 @@ function drawTrack() {
 const ui = {
   n: document.querySelector("#n"), nOut: document.querySelector("#n-out"), amps: document.querySelector("#amps"), aOut: document.querySelector("#amps-out"),
   heatFill: document.querySelector("#heat-fill"), heatOut: document.querySelector("#heat-out"),
+  tFill: document.querySelector("#temp-fill"), tOut: document.querySelector("#temp-out"), t4: document.querySelector("#t4-mark"), ait: document.querySelector("#ait-mark"), gasBtns: [...document.querySelectorAll("[data-gas]")],
   volts: document.querySelector("#volts"), vOut: document.querySelector("#volts-out"), creep: document.querySelector("#creep-mark"), clear: document.querySelector("#clear-mark"),
   surf: [...document.querySelectorAll("[data-surf]")], on: document.querySelector("#energise"), slow: document.querySelector("#slow"), tour: document.querySelector("#tour"),
   shot: document.querySelector("#shot"),
@@ -335,7 +344,16 @@ function syncUi() {
   ui.vOut.textContent = volts + " V";
   ui.heatFill.style.width = (clamp(p / (2 * M.mdp), 0, 1) * 100).toFixed(1) + "%";
   ui.heatFill.dataset.bad = String(p > M.mdp);
-  ui.heatOut.textContent = p.toFixed(1) + " W · " + Math.round(temp) + " °C";
+  ui.heatOut.textContent = p.toFixed(1) + " W";
+  const tpos = (t) => (clamp((t - 20) / (M.tMax - 20), 0, 1) * 100).toFixed(1) + "%";
+  ui.tFill.style.width = tpos(temp);
+  ui.tFill.dataset.state = temp >= G().ait ? "fire" : temp > M.t4 ? "hot" : "ok";
+  ui.tOut.textContent = Math.round(temp) + " °C";
+  ui.t4.style.left = tpos(M.t4);
+  ui.ait.style.left = tpos(G().ait);
+  ui.ait.dataset.label = G().btn + " ignites " + G().ait;
+  ui.gasBtns.forEach((b, i) => b.setAttribute("aria-pressed", String(i === gas)));
+  if (drumL1.textContent !== G().label[0]) { drumL1.textContent = G().label[0]; drumL2.textContent = G().label[1]; }
   const pos = (v) => ((v - D.V_MIN) / (D.V_MAX - D.V_MIN) * 100).toFixed(1) + "%";
   ui.creep.style.left = pos(creepLimit());
   ui.clear.style.left = pos(M.clearance);
@@ -350,9 +368,13 @@ const say = (t) => { if (t !== lastShot) { ui.shot.textContent = t; lastShot = t
 function blowUp(why) {
   if (boomAt !== null) return;
   boomAt = now + 0.15; cause = why; on = false;
-  say(why === "heat" ? "Boom. " + power().toFixed(1) + " W in a box rated for " + M.mdp + " W: the surface hit " + Math.round(temp) + " °C, past the ether's " + M.ait + " °C ignition temperature. MDP is there to keep the box inside T4."
-    : why === "creep" ? "Boom. " + volts + " V across a " + (dirty ? "dusty, damp" : "clean") + " terminal surface rated for " + creepLimit() + " V of creepage. The track crept across the plastic, bridged, and arced."
-    : "Boom. " + volts + " V jumped the air gap between terminals: the clearance is only good for " + M.clearance + " V. Clearance doesn't care how clean it is.");
+  const g = G(), p = power();
+  say(why === "heat"
+      ? (p <= M.mdp
+        ? "Boom, and the box did nothing wrong. It was inside its " + M.mdp + " W MDP and its T4 rating, but " + g.name + " is a " + g.tc + " gas: it self-ignites at " + g.ait + " °C, well below what a T4 box is allowed to reach. Wrong T-class for the gas."
+        : "Boom, no spark needed. " + p.toFixed(1) + " W in a box rated for " + M.mdp + " W pushed the surface to " + g.ait + " °C, the temperature where " + g.name + " vapour lights itself on hot metal. MDP exists to stop the box getting that hot.")
+    : why === "creep" ? "Boom. The carbon track bridged the terminals, the short arced, and an arc lights any gas. Creepage is there so leakage never gets a surface path to cook into a track."
+    : "Boom. " + volts + " V jumped straight through the air between terminals: the clearance is only good for " + M.clearance + " V. That arc lit the " + g.name + ". Clearance doesn't care how clean it is.");
 }
 
 function chaos() {
@@ -370,9 +392,10 @@ function step(dt) {
     else if (volts > creepLimit()) {
       const over = volts / creepLimit() - 1;
       track = Math.min(1, track + dt * (0.18 + over * 0.6));
-      if (track >= 1) blowUp("creep");
+      if (track >= 1 && arcAt === null) { arcAt = now; say("Bridged. The carbon track is now a conductor between two live terminals, so it shorts and arcs. An arc runs at thousands of degrees…"); }
+      if (arcAt !== null && now - arcAt > 0.8) blowUp("creep");
     }
-    if (temp >= M.ait) blowUp("heat");
+    if (temp >= G().ait) blowUp("heat");
   } else if (boomAt === null) {
     temp += (M.tAmb - temp) * (1 - Math.exp(-dt / (M.tau * 1.6)));
   }
@@ -390,26 +413,30 @@ function draw() {
     stage.style.transform = "translate(" + (A * Math.sin(c * 90)).toFixed(1) + "px," + (A * Math.cos(c * 71)).toFixed(1) + "px)";
     flash.style.opacity = (0.8 * burst(c, 0.03, 0.22)).toFixed(3);
   } else if (boomAt !== null && now - boomAt > BOOM_END) {
-    boomAt = null; temp = M.tAmb; track = 0;
+    boomAt = null; temp = M.tAmb; track = 0; arcAt = null;
     drumG.removeAttribute("transform"); boxG.removeAttribute("transform");
     stage.style.transform = ""; flash.style.opacity = "0";
     say("Reset. Fewer circuits, less current, lower voltage or a cleaner box.");
   }
   if (gl) {
-    const heat = clamp((temp - 55) / (M.ait - 55), 0, 1.2);
+    const heat = clamp((temp - 50) / 110, 0, 1.2);
     const tOn = on && track > 0 && boomAt === null ? 1 : (boomAt !== null && cause === "creep" ? Math.max(0, 1 - (now - boomAt) * 4) : 0);
-    const fl = burst(now - flashAt, 0.01, 0.25);
+    const arcing = arcAt !== null && (boomAt === null || now < boomAt + 0.2);
+    const fl = Math.max(burst(now - flashAt, 0.01, 0.25), arcing ? 0.8 + 0.2 * Math.sin(now * 90) : 0);
     gl.draw({ uHeat: K.c >= 0 ? heat * Math.max(0, 1 - K.c * 2) : heat, uN: n, uTrack: track, uTrackOn: tOn, uFlash: fl, uBoom: K.c }, now);
   }
   const p = power();
   const t4 = temp > M.t4 ? "over T4" : "T4 ok";
   const ins = volts > M.clearance ? "clearance gone" : volts > creepLimit() ? "creepage over" : "insulation ok";
-  const text = K.c >= 0 ? (K.c < 3.0 ? "BOOM · " + (cause === "heat" ? "hot surface lit the ether" : cause === "creep" ? "tracking arc" : "flashover") : "resetting…")
+  const text = K.c >= 0 ? (K.c < 3.0 ? "BOOM · " + (cause === "heat" ? "hot surface lit the " + G().name : cause === "creep" ? "tracking arc" : "flashover") : "resetting…")
     : (on ? "LIVE · " : "OFF · ") + p.toFixed(1) + " W / " + M.mdp + " W MDP · " + Math.round(temp) + " °C · " + t4 + " · " + volts + " V · " + ins;
   if (readout.textContent !== text) readout.textContent = text;
   if (on && boomAt === null) {
-    if (temp > M.t4) say("Over MDP: the surface is at " + Math.round(temp) + " °C, past T4's " + M.t4 + " °C. The ether lights at about " + M.ait + " °C…");
-    else if (track > 0) say("Creepage exceeded: a carbon track is crawling across the terminal surface…");
+    const g = G();
+    if (arcAt !== null) {}
+    else if (temp > M.t4) say("Surface " + Math.round(temp) + " °C: past the box's T4 rating of " + M.t4 + " °C. " + g.btn + " lights itself at " + g.ait + " °C…");
+    else if (g.ait < M.t4 && temp > M.tAmb + 15) say("Surface " + Math.round(temp) + " °C. Legal for a T4 box, but " + g.name + " is a " + g.tc + " gas that lights at " + g.ait + " °C…");
+    else if (track > 0) say("Creepage exceeded. Leakage current is creeping across the " + (dirty ? "dusty, damp " : "") + "surface and cooking the plastic into a carbon track…");
     else if (p > M.mdp) say("Over MDP (" + p.toFixed(1) + " W). Watch the temperature climb…");
     else say("Live and happy: " + p.toFixed(1) + " W of " + M.mdp + " W, " + Math.round(temp) + " °C, insulation fine.");
   }
@@ -417,11 +444,12 @@ function draw() {
 
 // demo: a happy box, then each way to kill it
 const TOUR = [
-  { n: 6, amps: 16, volts: 230, dirty: false, hold: 4.5 },
-  { n: 16, amps: 22, volts: 230, dirty: false, hold: 7 },
-  { n: 8, amps: 14, volts: 400, dirty: false, hold: 3.5 },
-  { n: 8, amps: 14, volts: 400, dirty: true, hold: 6 },
-  { n: 4, amps: 10, volts: 900, dirty: false, hold: 5 },
+  { n: 6, amps: 16, volts: 230, dirty: false, gas: 0, hold: 4.5 },
+  { n: 16, amps: 22, volts: 230, dirty: false, gas: 0, hold: 7 },
+  { n: 10, amps: 18, volts: 230, dirty: false, gas: 1, hold: 7 },
+  { n: 8, amps: 14, volts: 400, dirty: false, gas: 0, hold: 3.5 },
+  { n: 8, amps: 14, volts: 400, dirty: true, gas: 0, hold: 7 },
+  { n: 4, amps: 10, volts: 900, dirty: false, gas: 0, hold: 5 },
 ];
 let tourEnd = 0;
 function tick(t) {
@@ -434,8 +462,8 @@ function tick(t) {
     if (tourStep < 0 || tourClock > tourEnd) {
       tourStep = (tourStep + 1) % TOUR.length;
       const s = TOUR[tourStep];
-      n = s.n; amps = s.amps; volts = s.volts; dirty = s.dirty;
-      if (tourStep === 0 || tourStep === 2 || tourStep === 4 || tourStep === 1) { temp = M.tAmb; track = 0; }
+      n = s.n; amps = s.amps; volts = s.volts; dirty = s.dirty; gas = s.gas;
+      if (tourStep !== 4) { temp = M.tAmb; track = 0; arcAt = null; }
       on = true; tourEnd = tourClock + s.hold;
     }
   }
@@ -451,6 +479,7 @@ const setN = guard((v) => { n = clamp(Math.round(v), 1, 16); });
 const setA = guard((v) => { amps = clamp(Math.round(v), 0, D.I_MAX); });
 const setV = guard((v) => { volts = clamp(Math.round(v / 10) * 10, D.V_MIN, D.V_MAX); if (volts < creepLimit()) track = 0; });
 const setDirty = guard((d) => { dirty = d; if (volts < creepLimit()) track = 0; });
+const setGas = guard((i) => { gas = i; });
 const toggle = guard(() => { on = !on; if (!on) track = 0; });
 new IntersectionObserver((es) => { visible = es[es.length - 1].isIntersecting; if (visible) run(); }, { rootMargin: "120px 0px" }).observe(stage);
 if (still.matches) touring = false;
@@ -460,6 +489,7 @@ for (const [key, el, fn] of [["n", ui.n, setN], ["amps", ui.amps, setA], ["volts
   el.addEventListener("change", () => { sliding[key] = false; run(); });
 }
 ui.surf.forEach((b) => b.addEventListener("click", () => setDirty(b.dataset.surf === "dirty")));
+ui.gasBtns.forEach((b, i) => b.addEventListener("click", () => setGas(i)));
 ui.on.addEventListener("click", toggle);
 ui.slow.addEventListener("click", () => { slow = !slow; run(); });
 ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; tourClock = 0; } else on = false; run(); });
@@ -510,6 +540,15 @@ body[data-theme="dark"] .iso-track{stroke:#a4572a}
 .mark{position:absolute;top:0;bottom:2px;width:0;border-left:1px dashed var(--anatomy-lit);pointer-events:none;transition:left .3s}
 .mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:var(--anatomy-lit)}
 #mdp-mark{left:50%;top:-14px;bottom:-3px}
+.tmeter{margin-top:26px}
+#temp-fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--anatomy-mid);transition:width .1s}
+#temp-fill[data-state="hot"]{background:#ffb347}
+#temp-fill[data-state="fire"]{background:#ff5a2a}
+#t4-mark{top:-14px;bottom:-3px;border-left-style:solid;border-left-color:var(--anatomy-mid)}
+#t4-mark::after{color:var(--anatomy-mid)}
+#ait-mark{top:-26px;bottom:-3px;border-left-color:#ff6a3d}
+#ait-mark::after{color:#ff6a3d}
+.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
 #clear-mark{border-left-style:solid}
 #shot{min-height:2.6em;font-size:12px;line-height:1.4}
 @media (max-width:520px){.ctl-label{min-width:48px}.ctl button{padding:7px 8px}.ctl output{min-width:64px}}`;
@@ -517,13 +556,15 @@ body[data-theme="dark"] .iso-track{stroke:#a4572a}
 const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="slider" aria-label="Current per circuit: drag up and down or arrow keys; left and right change voltage; space energises" aria-valuemin="0" aria-valuemax="${I_MAX}" aria-valuenow="${START.amps}">${fig}<canvas class="fx-layer fx-gl" aria-hidden="true"></canvas><div class="fx-flash" aria-hidden="true"></div></div>`;
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
+  <div class="ctl-row"><span class="ctl-label">Gas</span>${GASES.map((g, i) => `<button type="button" data-gas="${i}" aria-pressed="${i === 0}">${g.btn}<small>${g.tc} · lights ${g.id === "diesel" ? "~" : ""}${g.ait} °C</small></button>`).join("")}</div>
   <div class="ctl-row"><span class="ctl-label">Circuits</span><div class="slide"><input id="n" type="range" min="1" max="16" step="1" value="${START.n}" aria-label="Populated circuits"></div><output id="n-out">${START.n} of 16</output></div>
   <div class="ctl-row"><span class="ctl-label">Current</span><div class="slide"><input id="amps" type="range" min="0" max="${I_MAX}" step="1" value="${START.amps}" aria-label="Current per circuit in amps"></div><output id="amps-out">${START.amps} A</output></div>
   <div class="ctl-row"><span class="ctl-label">Heat</span><div class="meter" aria-hidden="true"><span id="heat-fill"></span><span id="mdp-mark" class="mark" data-label="MDP 10 W"></span></div><output id="heat-out">0 W</output></div>
+  <div class="ctl-row"><span class="ctl-label">Surface °C</span><div class="meter tmeter" aria-hidden="true"><span id="temp-fill"></span><span id="t4-mark" class="mark" data-label="T4 135"></span><span id="ait-mark" class="mark ait" data-label="ignites"></span></div><output id="temp-out">40 °C</output></div>
   <div class="ctl-row"><span class="ctl-label">Volts</span><div class="slide marked"><span id="creep-mark" class="mark" data-label="creepage"></span><span id="clear-mark" class="mark" data-label="clearance"></span><input id="volts" type="range" min="${V_MIN}" max="${V_MAX}" step="10" value="${START.volts}" aria-label="Working voltage"></div><output id="volts-out">${START.volts} V</output></div>
   <div class="ctl-row"><span class="ctl-label">Surface</span><button type="button" data-surf="clean" aria-pressed="true">Clean</button><button type="button" data-surf="dirty" aria-pressed="false">Dusty &amp; damp</button></div>
   <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="energise" aria-pressed="false">ENERGISE</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
-  <div id="shot" aria-live="polite">Set the circuits, current and voltage, pick clean or grubby, then ENERGISE.</div>
+  <div id="shot" aria-live="polite">Pick the gas, set the circuits, current and voltage, clean or grubby, then ENERGISE.</div>
 </div>`;
 
 const card = k.plateHtml({
@@ -535,12 +576,12 @@ const card = k.plateHtml({
     { mark: "lit", label: "Live terminals, heat, tracking and arcs" },
     { mark: "raised", label: "Terminal box, lid off, front walls cut away" },
   ],
-  caption: "Ex e has no flamepath to save it. It works by never making a spark or a hot surface in the first place. Two ways that goes wrong. Heat: every circuit dissipates I²R, and the box is only certified to keep its surface inside T4 (135 °C) up to its maximum dissipated power. Insulation: creepage is the distance along the surface between terminals, and dirt and damp ruin it; clearance is the distance through air. Exceed either and you get an arc.",
+  caption: "Ex e has no flamepath to save it. It works by never making a spark or a hot surface in the first place. Heat: every circuit dissipates I²R, and the box is only certified to keep its surface inside T4 (135 °C) up to its maximum dissipated power. A gas lights itself on hot metal at its autoignition temperature, no spark needed, so the gas must ignite above the box's T-class. Insulation: creepage is the distance along the surface between terminals. Leakage over a dirty, damp surface cooks the plastic into a carbon track, the track bridges, and the short arcs. Clearance is the distance through air; exceed it and it flashes straight over.",
   body: stageHtml,
 });
 
 const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
-const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a certified anything. T4 (135 °C) and diethyl ether's ~160 °C ignition temperature are real; the box's resistance, MDP and the creepage and clearance limits are made up to show the idea.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/ex-e-terminals" style="color:inherit">Source</a></p>`;
+const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a certified anything. T4 (135 °C) and the autoignition temperatures (ether ~160 °C, carbon disulphide ~90 °C, diesel ~240 °C) are real; the box's resistance, MDP and the creepage and clearance limits are made up to show the idea.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/ex-e-terminals" style="color:inherit">Source</a></p>`;
 const name = theme === "light" ? "light.html" : "index.html";
 writeFileSync(join(HERE, name), k.pageHtml({ title: "Ex e terminals", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + glScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 700 }));
 console.log("wrote", name);
