@@ -7,6 +7,7 @@ Interactive engineering toys you can break. Poke them, push them past the limit,
 | Figure | What it is |
 |---|---|
 | [Ex d flamepath](ex-d-flamepath/) · [play](https://dizzyfer.github.io/Anatomy/ex-d-flamepath/) | Pick a gas, set the flange gap, hit fire. Under MESG the box holds; over it, the bench goes up. |
+| [Ex i: cable length](ex-i-spark/) · [play](https://dizzyfer.github.io/Anatomy/ex-i-spark/) | Set the barrier voltage, pay out cable, break the wire. ½CV² past the gas's MIE and Zone 1 goes up. |
 
 All built with [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22), an open-source kit for interactive isometric figures. The drawing kit, isometric camera and WebGL layer are his work.
 

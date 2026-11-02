@@ -668,7 +668,7 @@ draw();
 
 const CSS = `.fx-stage{position:relative}.fx-layer{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.fx-gl{display:block}
 body[data-theme="dark"] .fx-gl{mix-blend-mode:screen}
-.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 45%,#fff8e8 0%,#ffd9a0 35%,rgba(255,170,90,0) 75%)}
+.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(closest-side at 50% 45%,#fff8e8 0%,#ffd9a0 40%,rgba(255,170,90,0) 100%)}
 .iso-plate{overflow:hidden}
 .fx-stage{cursor:ns-resize;touch-action:none}
 .ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
