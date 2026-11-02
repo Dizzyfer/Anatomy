@@ -11,6 +11,7 @@ Interactive engineering toys you can break. Poke them, push them past the limit,
 | [Ex e: MDP and creepage](ex-e-terminals/) · [play](https://dizzyfer.github.io/Anatomy/ex-e-terminals/) | Load the terminals past the box's MDP and it cooks past T4; crank the voltage on a dirty surface and it tracks, or flashes over. |
 | [Ex m: encapsulation](ex-m-potted/) · [play](https://dizzyfer.github.io/Anatomy/ex-m-potted/) | A relay sparks harmlessly inside the resin. Thin the pour, overheat the parts or pull the fuse, and the gas gets to the contacts. |
 | [Ex t: dust and housekeeping](ex-t-dust/) · [play](https://dizzyfer.github.io/Anatomy/ex-t-dust/) | Months without cleaning bury a light until it smoulders and a bag cloud finds it; a missing plug lets conductive dust into a JB until it shorts and arcs. Primary, then secondary. |
+| [Ex p: purge and pressure](ex-p-purge/) · [play](https://dizzyfer.github.io/Anatomy/ex-p-purge/) | Purge, pressurise, power. Skip the purge, bypass the interlock and open the door live, or take the purge air from inside the zone. |
 
 All built with [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22), an open-source kit for interactive isometric figures. The drawing kit, isometric camera and WebGL layer are his work.
 
