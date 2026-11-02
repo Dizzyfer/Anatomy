@@ -372,7 +372,7 @@ function syncUi() {
   ui.tour.setAttribute("aria-pressed", String(touring));
 }
 
-// ---- break the wire ----
+// ---- the spark: a conductor coming off its terminal live ----
 function fire() {
   if (booming()) return;
   const g = GASES[gas], E = energy(volts, len);
@@ -471,7 +471,7 @@ ui.slow.addEventListener("click", () => { slow = !slow; run(); });
 ui.auto.addEventListener("click", () => { takeOver(); auto = !auto; run(); });
 ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { auto = false; tourClock = 0; tourStep = -1; } run(); });
 
-// on the figure: drag sideways to pay out cable, tap to break the wire, tap a bottle for gas
+// on the figure: drag sideways to pay out cable, tap for a spark, tap a bottle for gas
 let drag = null;
 stage.addEventListener("pointerdown", (ev) => { drag = { x: ev.clientX, y: ev.clientY, from: len, moved: false }; stage.setPointerCapture(ev.pointerId); });
 stage.addEventListener("pointermove", (ev) => {
@@ -528,15 +528,15 @@ body[data-theme="dark"] .fx-gl{mix-blend-mode:screen}
 #shot{min-height:2.6em;font-size:12px;line-height:1.4}
 @media (max-width:520px){.ctl button small{display:none}.ctl-label{min-width:44px}.ctl button{padding:7px 8px}}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="slider" aria-label="Cable length: drag sideways or use arrow keys; up and down change voltage; space breaks the wire" aria-valuemin="0" aria-valuemax="${L_MAX}" aria-valuenow="${START.len}">${fig}<canvas class="fx-layer fx-gl" aria-hidden="true"></canvas><div class="fx-flash" aria-hidden="true"></div></div>`;
+const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="slider" aria-label="Cable length: drag sideways or use arrow keys; up and down change voltage; space makes a spark" aria-valuemin="0" aria-valuemax="${L_MAX}" aria-valuenow="${START.len}">${fig}<canvas class="fx-layer fx-gl" aria-hidden="true"></canvas><div class="fx-flash" aria-hidden="true"></div></div>`;
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Gas</span>${GASES.map((g, i) => `<button type="button" data-gas="${i}" aria-pressed="${i === START.gas}">${g.id}<small>${g.group} · ${g.mie} µJ</small></button>`).join("")}</div>
   <div class="ctl-row"><span class="ctl-label">Volts</span><div class="slide"><input id="volts" type="range" min="${V_MIN}" max="${V_MAX}" step="1" value="${START.v}" aria-label="Barrier voltage"></div><output id="volts-out">${START.v} V</output></div>
   <div class="ctl-row"><span class="ctl-label">Cable</span><div class="slide"><input id="len" type="range" min="0" max="${L_MAX}" step="10" value="${START.len}" aria-label="Cable length in metres"></div><output id="len-out">${START.len} m</output></div>
   <div class="ctl-row"><span class="ctl-label">Spark</span><div class="meter" aria-hidden="true"><span id="meter-fill"></span><span id="meter-mie" data-label="MIE"></span></div><output id="energy-out">0 µJ</output></div>
-  <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="fire">BREAK WIRE</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="auto" aria-pressed="false">Auto</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
-  <div id="shot" aria-live="polite">Pick a gas, set the voltage, pay out some cable, break the wire.</div>
+  <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="fire">SPARK</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="auto" aria-pressed="false">Auto</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
+  <div id="shot" aria-live="polite">Pick a gas, set the voltage, pay out some cable, hit SPARK.</div>
 </div>`;
 
 const card = k.plateHtml({
@@ -545,10 +545,10 @@ const card = k.plateHtml({
   hint: "Drag: cable · tap: spark",
   readout: "",
   keys: [
-    { mark: "lit", label: "The wire that breaks, and the spark" },
+    { mark: "lit", label: "The wire that comes off its terminal, and the spark" },
     { mark: "raised", label: "Barrier in the safe area; cable drum and loops on the bench" },
   ],
-  caption: "An intrinsically safe loop stores energy in its cable: about 200 pF per metre, charged to the barrier voltage. Break the wire and that energy comes out as a spark, ½CV². Under the gas's minimum ignition energy it fizzles; over it, Zone 1 goes up. More cable means more capacitance, so a loop that was fine at 50 m can be a bomb at 500 m. MIE values: methane 280, propane 250, ethylene 70, hydrogen 17 µJ.",
+  caption: "An intrinsically safe loop stores energy in its cable: about 200 pF per metre, charged to the barrier voltage. Let a wire come off its terminal live (an open circuit) and that energy comes out as a spark, ½CV². Under the gas's minimum ignition energy it fizzles; over it, Zone 1 goes up. More cable means more capacitance, so a loop that was fine at 50 m can be a bomb at 500 m. MIE values: methane 280, propane 250, ethylene 70, hydrogen 17 µJ.",
   body: stageHtml,
 });
 

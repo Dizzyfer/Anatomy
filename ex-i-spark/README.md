@@ -11,11 +11,11 @@ Why an intrinsically safe loop can stop being safe just by being longer.
 - **Pick a gas:** methane, propane, ethylene or hydrogen. Tap a button or a bottle.
 - **Set the barrier voltage:** 6 to 30 V.
 - **Pay out cable:** 0 to 5000 m, with the slider or by dragging sideways on the bench. The drum unwinds and the cable piles up in loops.
-- **BREAK WIRE:** the conductor lifts off its terminal in the junction box and sparks. The spark energy is the cable's stored charge, ½CV².
+- **SPARK:** a conductor comes off its terminal in the junction box while live (an open-circuit fault) and sparks. The spark energy is the cable's stored charge, ½CV².
   - Under the gas's minimum ignition energy it fizzles.
   - Over it, Zone 1 goes up. The safe area doesn't flinch.
 
-The **Spark** meter shows the energy against the gas's MIE. Keyboard: left/right = cable, up/down = volts, G = gas, Space = break the wire, S = slow-mo.
+The **Spark** meter shows the energy against the gas's MIE. Keyboard: left/right = cable, up/down = volts, G = gas, Space = spark, S = slow-mo.
 
 ## The numbers
 
