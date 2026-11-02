@@ -14,6 +14,7 @@ Interactive engineering toys you can break. Poke them, push them past the limit,
 | [Ex p: purge and pressure](ex-p-purge/) · [play](https://dizzyfer.github.io/Anatomy/ex-p-purge/) | Purge, pressurise, power. Skip the purge, bypass the interlock and open the door live, or take the purge air from inside the zone. |
 | [How an LED works](led/) · [play](https://dizzyfer.github.io/Anatomy/led/) | mA in, volts, light and heat. CC vs CV, Vf bins, the heat path, thermal runaway, and a zoom into the die. |
 | [Arc flash](arc-flash/) · [play](https://dizzyfer.github.io/Anatomy/arc-flash/) | Drop a spanner across the bars. Fault level, clearing time, working distance and PPE decide what you cop. Real IEEE 1584-2002 numbers. |
+| [How a motor starts](motor/) · [play](https://dizzyfer.github.io/Anatomy/motor/) | Rotating field and slip, DOL vs star-delta vs VFD inrush on a scope, star-delta failing on a loaded conveyor, and a jammed rotor racing the overload. |
 
 All built with [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22), an open-source kit for interactive isometric figures. The drawing kit, isometric camera and WebGL layer are his work.
 
