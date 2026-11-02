@@ -12,6 +12,7 @@ A 415 V switchboard with the door open, a spanner left on the bar support, and y
 2. **Three things decide how bad it is:** how much current the arc draws, how long it lasts before the protection clears it, and how far away you are.
 3. **Energy is counted in cal/cm².** 1.2 is enough for a second-degree burn on bare skin. The **arc flash boundary** is how far out that 1.2 reaches, drawn on the floor.
 4. **PPE is rated in the same units.** CAT 1 is 4, CAT 2 is 8, CAT 4 is 40. If the energy beats the rating, the gear doesn't save you. Above 40 there's no category: switch it off.
+5. **Past 40 cal/cm², it's the blast as much as the heat.** The toy throws you clean out of your clothes and across the room, and leaves your boots behind.
 
 ## The one that catches people out
 
@@ -31,7 +32,7 @@ Keyboard: Space = drop, ← → = distance, ↑ ↓ = fault level, M = maintenan
 
 Real: the IEEE 1584-2002 empirical equations for under 1 kV (enclosed switchgear, solidly earthed, 32 mm gap, distance exponent 1.473, Cf 1.5), the 1.2 cal/cm² boundary, and the NFPA 70E PPE categories (4, 8, 25, 40 cal/cm²). Real studies use the newer IEEE 1584-2018 model and the actual protection curves.
 
-Made up for the toy: the protection settings (10 kA instantaneous pickup, 0.06 s, 0.4 s, 1 s), the burn grading, when work clothes catch fire, the knockdown and all the visuals. Don't label a board off it.
+Made up for the toy: the protection settings (10 kA instantaneous pickup, 0.06 s, 0.4 s, 1 s), the burn grading, when work clothes catch fire, the knockdown, the 40 cal/cm² launch and all the visuals. Don't label a board off it.
 
 ## How it's built
 

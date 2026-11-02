@@ -105,22 +105,28 @@ function boardFront() {
 }
 
 // a person, standing at x = 0 and facing the board (−x); JS slides them out to the working distance
+// boots stay put, the clothes are separate pieces, and underneath there's a bloke in his undies,
+// so the extreme case can blow him clean out of his clothes
 function worker() {
-  const out = [];
-  const part = (cls, paths, tone = "hi") => out.push(`<g class="${cls}">${S(paths, { tone })}</g>`);
-  part("boot", box(-5, 2.6, -5.6, -1.4, 0, 3, 0.8, 0.4));
-  part("arm", box(-2, 2, -10.4, -7, 37, 22, 1.2, 0.5));
-  part("pants", box(-2.2, 2.2, -5.2, -1, 3, 32, 1, 0.3));
-  part("boot", box(-5, 2.6, 1.4, 5.6, 0, 3, 0.8, 0.4));
-  part("pants", box(-2.2, 2.2, 1, 5.2, 3, 32, 1, 0.3));
-  part("shirt", box(-3.6, 3.6, -7.2, 7.2, 34, 26, 2.2, 0.8));
-  part("arm", box(-2, 2, 7, 10.4, 37, 22, 1.2, 0.5));
-  part("skin", k.cylinder(0, 0, 2, 59.5, 3.5, P, 20));
-  part("skin", k.cylinder(0, 0, 4.2, 62.5, 10, P, 28, 2.2));
-  out.push(`<g class="shield">${S(box(-6.4, -5.6, -5, 5, 61, 10.5, 0.3, 0.1), { tone: "hi" })}</g>`);
-  out.push(`<g class="hood">${S(slab({ x: -5.2, y: -5.6, w: 10, d: 11.2 }, 59.5, 15, 3.6, 2), { tone: "hi" })}</g>`);
-  part("hat", k.cylinder(0, 0, 5, 71, 3.4, P, 28, 1.6));
-  return `<g data-part="worker" class="wk" data-ppe="2" data-burn="0">${out.join("")}</g>`;
+  const g = (cls, paths, extra = "") => `<g class="${cls}"${extra}>${S(paths, { tone: "hi" })}</g>`;
+  const boots = g("boot", box(-5, 2.6, -5.6, -1.4, 0, 3, 0.8, 0.4)) + g("boot", box(-5, 2.6, 1.4, 5.6, 0, 3, 0.8, 0.4));
+  const under = [
+    g("skin", box(-1.8, 1.8, -4.8, -1.4, 3, 20, 0.9, 0.3)), g("skin", box(-1.8, 1.8, 1.4, 4.8, 3, 20, 0.9, 0.3)),
+    g("undies", box(-2.4, 2.4, -5.4, 5.4, 22, 13, 1.2, 0.4)),
+    g("skin", box(-1.6, 1.6, -9.6, -7.4, 38, 20, 1, 0.4)), g("skin", box(-3.1, 3.1, -6.6, 6.6, 35, 25, 2, 0.8)), g("skin", box(-1.6, 1.6, 7.4, 9.6, 38, 20, 1, 0.4)),
+  ].join("");
+  const clothes = [
+    g("arm", box(-2, 2, -10.4, -7, 37, 22, 1.2, 0.5), ' data-frag="0"'),
+    g("pants", box(-2.2, 2.2, -5.2, -1, 3, 32, 1, 0.3), ' data-frag="1"'),
+    g("pants", box(-2.2, 2.2, 1, 5.2, 3, 32, 1, 0.3), ' data-frag="2"'),
+    g("shirt", box(-3.6, 3.6, -7.2, 7.2, 34, 26, 2.2, 0.8), ' data-frag="3"'),
+    g("arm", box(-2, 2, 7, 10.4, 37, 22, 1.2, 0.5), ' data-frag="4"'),
+  ].join("");
+  const head = g("skin", k.cylinder(0, 0, 2, 59.5, 3.5, P, 20)) + g("skin", k.cylinder(0, 0, 4.2, 62.5, 10, P, 28, 2.2))
+    + `<g class="shield">${S(box(-6.4, -5.6, -5, 5, 61, 10.5, 0.3, 0.1), { tone: "hi" })}</g>`
+    + `<g class="hood">${S(slab({ x: -5.2, y: -5.6, w: 10, d: 11.2 }, 59.5, 15, 3.6, 2), { tone: "hi" })}</g>`
+    + g("hat", k.cylinder(0, 0, 5, 71, 3.4, P, 28, 1.6));
+  return `<g data-part="worker" class="wk" data-ppe="2" data-burn="0">${boots}<g data-part="body-under" class="under" style="display:none">${under}</g><g data-part="clothes">${clothes}</g><g data-part="body-head">${head}</g></g>`;
 }
 
 const backSvg = k.figureSvg({
@@ -135,7 +141,7 @@ const DATA = {
   W, H, camera: glCamera(P), P, MODEL, U, BAR_X, BX1, ARC, PERCH,
   ax: k.axisVector(P, [1, 0, 0]),
   drop: (() => { const a = at(PERCH), b = at([ARC[0] + 3.4, ARC[1], ARC[2]]); return [a[0] - b[0], a[1] - b[1]]; })(),
-  feet0: at([0, 0, 0]),
+  feet0: at([0, 0, 0]), body0: at([0, 0, 40]),
   fallDeg: (() => { const a = k.axisVector(P, [1, 0, 0]); return Math.atan2(a[0], -a[1]) * 180 / Math.PI; })(),
 };
 
@@ -278,11 +284,12 @@ function calc(ibf, dmm, prot) {
 const catOf = (e) => e <= 1.2 ? "none needed" : e <= 4 ? "CAT 1" : e <= 8 ? "CAT 2" : e <= 25 ? "CAT 3" : e <= 40 ? "CAT 4" : "no category";
 
 let ibf = 25, dmm = 610, prot = "inst", ppe = 2;
-let arcAt = null, res = null, out = null, frame = 0, last = 0, now = 0, visible = false, touring = true, slow = false, tourClock = 0, tourStep = -1, actions = [], lastShot = "";
+let frags = [], arcAt = null, res = null, out = null, frame = 0, last = 0, now = 0, visible = false, touring = true, slow = false, tourClock = 0, tourStep = -1, actions = [], lastShot = "";
 const END_PAD = 4.2;
 const vt = (t) => 0.22 + t * 1.1;
 const busy = () => arcAt !== null;
 
+const bodyUnder = q("body-under"), bodyHead = q("body-head"), clothesG = q("clothes"), fragEls = [...stage.querySelectorAll("[data-frag]")];
 const wk = q("worker"), sp = q("spanner"), lamp = q("lamp"), zone = q("zone"), afb = q("afb"), dim = q("dim"), flash = stage.querySelector(".fx-flash");
 const dimPath = dim.querySelector("path"), dimText = dim.querySelector("text");
 const lab = { e: q("lab-e"), d: q("lab-d"), b: q("lab-b"), p: q("lab-p") };
@@ -327,7 +334,9 @@ function strike() {
   res = calc(ibf, dmm, prot);
   const rate = M.ppe[ppe], lim = Math.max(M.eb, rate);
   const burn = res.e <= lim ? 0 : (res.e > 3 * lim || (rate === 0 && res.e > 4)) ? 2 : 1;
-  out = { burn, fire: rate === 0 && res.e > 4, knock: res.e > 12, rate };
+  const extreme = res.e >= 40;
+  out = { burn, fire: rate === 0 && res.e > 4 && !extreme, knock: res.e > 12 && !extreme, extreme, rate };
+  frags = [...Array(5)].map((_, i) => ({ vx: 60 + Math.random() * 220, vy: 160 + Math.random() * 220, w: (Math.random() - 0.5) * 1400, s: i }));
   arcAt = now + 0.45;
   say("The spanner slips off the support…");
 }
@@ -335,6 +344,7 @@ function strike() {
 function verdict() {
   const r = res, o = out, e = r.e.toFixed(1), tt = r.t.toFixed(2) + " s";
   const why = r.slow ? " The fault current was below the breaker's instantaneous pickup, so it waited out its " + M.delay + " s delay. Less fault current, more energy." : prot === "maint" ? " Maintenance mode dropped the pickup, so it went instantaneous." : prot === "backup" ? " Only the upstream backup saw it, and that took a full second." : "";
+  if (o.extreme) return "Arc for " + tt + ", " + e + " cal/cm² at " + dmm + " mm. That's past every PPE category there is, and at this size it's not just heat: the blast throws you across the room and leaves your boots behind." + (ppe ? " The suit didn't stand a chance." : "") + " Nobody works on that live. Switch it off." + why;
   if (o.burn === 0 && r.e <= M.eb) return "Arc for " + tt + ", " + e + " cal/cm² at " + dmm + " mm. Under 1.2, the line for a second-degree burn. A fright, ringing ears, nothing worse." + why;
   if (o.burn === 0) return "Arc for " + tt + ", " + e + " cal/cm² at " + dmm + " mm. Your " + ppeName(ppe) + " held. You walk away shaking, deaf for a bit, with a ruined shirt." + why;
   if (o.fire) return "Arc for " + tt + ", " + e + " cal/cm² at " + dmm + " mm, in work clothes. They caught fire and kept burning after the arc was out: that's the bit that does the damage." + (r.e > 40 ? " No PPE category goes above 40." : "") + why;
@@ -354,10 +364,31 @@ function draw() {
     if (c > 0.05) burnLvl = out.burn;
     if (out.knock) { kd = sm(0.02, 0.5, c) * (1 - sm(END_PAD + tv - 0.9, END_PAD + tv - 0.2, c)); const f = D.feet0, sh = 10 * kd; tf += " translate(" + (D.ax[0] * sh).toFixed(1) + " " + (D.ax[1] * sh).toFixed(1) + ") rotate(" + (D.fallDeg * 0.86 * kd).toFixed(1) + " " + f[0].toFixed(1) + " " + f[1].toFixed(1) + ")"; }
     if (out.fire) fireF = sm(0.05, 0.4, c) * (1 - sm(tv + 2.4, tv + 3.4, c));
+    if (out.extreme) fireF = 0.55 * sm(0.05, 0.3, c) * (1 - sm(tv + 2.6, tv + 3.6, c));
     if (c > tv + END_PAD - 0.8) burnLvl = 0;
   }
   wk.setAttribute("transform", tf);
   wk.dataset.ppe = String(ppe); wk.dataset.burn = String(burnLvl);
+  const tb = c - 0.03, flying = c >= 0 && out && out.extreme && tb > 0 && c < vt(res.t) + END_PAD - 0.8;
+  bodyUnder.style.display = flying ? "" : "none";
+  if (flying) {
+    // launched away from the board, up and over, spinning
+    const ax = D.ax[0], ay = D.ax[1], m = Math.hypot(ax, ay), ux = ax / m, uy = ay / m;
+    const bx = ux * 420 * tb, by = uy * 420 * tb - 330 * tb + 420 * tb * tb, rot = 720 * tb;
+    const t2 = "translate(" + bx.toFixed(1) + " " + by.toFixed(1) + ") rotate(" + rot.toFixed(0) + " " + D.body0[0].toFixed(1) + " " + D.body0[1].toFixed(1) + ")";
+    bodyUnder.setAttribute("transform", t2); bodyHead.setAttribute("transform", t2);
+    fragEls.forEach((f, i) => {
+      const q2 = frags[i];
+      const fx = ux * q2.vx * tb + (i - 2) * 40 * tb, fy = uy * q2.vx * tb - q2.vy * tb + 380 * tb * tb;
+      f.setAttribute("transform", "translate(" + fx.toFixed(1) + " " + fy.toFixed(1) + ") rotate(" + (q2.w * tb).toFixed(0) + " " + D.body0[0].toFixed(1) + " " + D.body0[1].toFixed(1) + ")");
+      f.style.opacity = (1 - sm(0.9, 1.8, tb)).toFixed(2);
+    });
+    wk.dataset.burn = "0"; clothesG.dataset.burn = "2";
+  } else {
+    bodyUnder.removeAttribute("transform"); bodyHead.removeAttribute("transform");
+    fragEls.forEach((f) => { f.removeAttribute("transform"); f.style.opacity = ""; });
+    clothesG.dataset.burn = "0";
+  }
   // the spanner: on its perch, then falling onto L1 and L2
   const fall = arcAt === null ? 0 : clamp((now - (arcAt - 0.45)) / 0.42, 0, 1);
   const k2 = 1 - fall * fall;
@@ -379,7 +410,7 @@ function draw() {
     const tv = vt(res.t);
     arc = c < tv ? sm(0, 0.02, c) : 0;
     lamp.dataset.on = String(c > tv - 0.02 && Math.sin(now * 9) > -0.2);
-    const A = 9 * pow * Math.exp(-c / 0.35);
+    const A = (out && out.extreme ? 22 : 9 * pow) * Math.exp(-c / (out && out.extreme ? 0.5 : 0.35));
     stage.style.transform = "translate(" + (A * Math.sin(c * 95)).toFixed(1) + "px," + (A * Math.cos(c * 77)).toFixed(1) + "px)";
     flash.style.opacity = ((0.35 + 0.6 * pow) * (c < tv ? 0.75 + 0.25 * Math.sin(now * 80) : Math.exp(-(c - tv) / 0.15))).toFixed(3);
     if (c > tv + 0.05) say(verdict());
@@ -391,7 +422,7 @@ function draw() {
   }
   if (GL) {
     const tv = res ? vt(res.t) : 0;
-    const u = { uArc: arc, uC: c, uTv: tv, uReach: Math.min(rU, 150) * (0.55 + 0.45 * pow), uWx: wx + kd * 34, uFz: 46 - kd * 38, uBurnF: fireF, uPow: pow };
+    const u = { uArc: arc, uC: c, uTv: tv, uReach: Math.min(rU, 150) * (0.55 + 0.45 * pow), uWx: wx + kd * 34, uFz: out && out.extreme ? 2 : 46 - kd * 38, uBurnF: fireF, uPow: pow };
     inner.draw(u, now); outer.draw(u, now);
   }
   const text = c >= 0 ? (c < vt(res.t) ? "ARC · " + res.ia.toFixed(1) + " kA · " + res.t.toFixed(2) + " s" : "cleared · " + res.e.toFixed(1) + " cal/cm² at " + dmm + " mm")
@@ -408,7 +439,7 @@ const TOUR = [
   [25, 610, "inst", 2, "25 kA, breaker trips instantly, CAT 2 at 610 mm. Watch."],
   [18, 455, "inst", 2, "Less fault current, a bit closer. Should be easier, right?"],
   [18, 455, "maint", 2, "Same again with the maintenance mode switch on."],
-  [40, 610, "backup", 0, "Big board, only the upstream backup protecting it, work clothes."],
+  [50, 610, "backup", 0, "Big board, only the upstream backup protecting it, work clothes."],
   [40, 3000, "backup", 4, "Same board, CAT 4 suit, and stand back 3 m."],
 ];
 function tick(t) {
@@ -487,6 +518,8 @@ body[data-theme="dark"] .fx-gl{mix-blend-mode:screen}
 .wk[data-ppe="4"] .shirt .iso-top,.wk[data-ppe="4"] .arm .iso-top,.wk[data-ppe="4"] .pants .iso-top{fill:#b8aa7c}
 .wk[data-ppe="4"] .hood{display:inline}.wk[data-ppe="4"] .hat{display:none}
 .wk{transition:filter .25s}
+.wk .undies .iso-fill,.wk .undies .iso-shade,.wk .undies .iso-top{fill:#d94040}
+[data-part="clothes"][data-burn="2"]{filter:sepia(.8) brightness(.35)}
 .wk[data-burn="1"]{filter:sepia(.7) brightness(.62) saturate(1.4)}
 .wk[data-burn="2"]{filter:sepia(.8) brightness(.32)}
 .ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
