@@ -16,6 +16,7 @@ Interactive engineering toys you can break. Poke them, push them past the limit,
 | [Arc flash](arc-flash/) · [play](https://dizzyfer.github.io/Anatomy/arc-flash/) | Drop a spanner across the bars. Fault level, clearing time, working distance and PPE decide what you cop. Real IEEE 1584-2002 numbers. |
 | [How a motor starts](motor/) · [play](https://dizzyfer.github.io/Anatomy/motor/) | Rotating field and slip, DOL vs star-delta vs VFD inrush on a scope, star-delta failing on a loaded conveyor, and a jammed rotor racing the overload. |
 | [Lithium thermal runaway](lithium/) · [play](https://dizzyfer.github.io/Anatomy/lithium/) | Overcharge, nail or heat a cell and watch the stages, then see whether NMC vs LFP, charge level and cell spacing let it spread through the pack. |
+| [Lost neutral](lost-neutral/) · [play](https://dizzyfer.github.io/Anatomy/lost-neutral/) | LED high bays on three phases sharing a neutral. Break or loosen it, unbalance the rows, and watch the star point float, drivers die and rows trip. |
 
 All built with [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22), an open-source kit for interactive isometric figures. The drawing kit, isometric camera and WebGL layer are his work.
 
