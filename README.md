@@ -9,7 +9,7 @@ A little interactive toy that shows why a flameproof (Ex d) enclosure works: an 
 ## What you can do
 
 - **Pick a gas:** methane, propane, ethylene or hydrogen. Tap the buttons or the bottles on the bench.
-- **Set the flamepath length:** 6 to 40 mm. The flange gets physically wider or narrower, and the safe gap moves with it.
+- **Set the flamepath length:** below the notch the joint's too short to cool the flame, and it fails whatever the gap. The flange gets physically wider or narrower as you slide it.
 - **Set the gap:** with the slider, or drag the box up and down. The dashed line (and the tick on the dial) is that gas's MESG.
 - **FIRE:** the spark plug lights the gas inside. Watch the flame front run along the 25 mm joint in the cutaway.
   - Under MESG it dies in the joint and only cooled gas leaks out.
@@ -22,7 +22,7 @@ Keyboard: arrows = gap (Shift for big steps), G = gas, Space = fire, S = slow-mo
 
 ## The numbers
 
-MESG values (maximum experimental safe gap) are the reference gases from IEC 60079-20-1: methane 1.14, propane 0.92, ethylene 0.65, hydrogen 0.29 mm. How the safe gap changes with path length is made up for the toy (MESG × √(L/25), so exactly MESG at the 25 mm test length), and so is how far the flame gets into the joint before it dies. The gap is drawn hugely enlarged. It's a toy, so don't design anything off it.
+MESG values (maximum experimental safe gap) are the reference gases from IEC 60079-20-1: methane 1.14, propane 0.92, ethylene 0.65, hydrogen 0.29 mm. The path-length notch and how far the flame gets into the joint before it dies are made up for the toy. The gap is drawn hugely enlarged. It's a toy, so don't design anything off it.
 
 ## How it's built
 

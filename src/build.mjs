@@ -184,7 +184,7 @@ function lid() {
   sorted.filter((b) => depth2(b) < centre).forEach((b) => out.push(head(b)));
   out.push(S(lSolid(BOSS, FLANGE_TOP + LID_H, BOSS_H), { tone: "hi" }));
   out.push(L(k.ring(TIP[0], TIP[1], 4.2, LID_TOP, P, 24), { tone: "lo" }));
-  out.push(k.faceTextSvg(k.topMatrix([-28, -6], LID_TOP, P, "x"), "FLAMEPATH 25", { size: 2.6, tone: "lo" }).replace("<text ", "<text data-part=\"fp-label\" "));
+  out.push(k.faceTextSvg(k.topMatrix([-28, -6], LID_TOP, P, "x"), "FLAMEPATH", { size: 2.6, tone: "lo" }));
   sorted.filter((b) => depth2(b) >= centre).forEach((b) => out.push(head(b)));
   return out.join("");
 }
@@ -441,12 +441,13 @@ let gas = D.start.gas, gap = D.start.gap, target = gap;
 let drag = null, sliding = false, slidingL = false;
 let frame = 0, last = 0, clock = 0, touring = true, visible = false, slow = false, auto = false, lastShot = null;
 let bang = -10, now = 0, through = false, quench = 0.5, boomAt = null;
-let pathL = 25;
-const fwOf = (L) => 9 + (L - 6) * (17 - 9) / 34;
-// illustrative: a longer joint cools the gas for longer, so it tolerates a bigger gap. Exactly MESG at 25 mm.
-const limitOf = (m, L) => m * Math.sqrt(L / 25);
+// path length is a toy dial: 0..100, notch at NOTCH. Below it the joint is too short to cool the flame.
+const NOTCH = 40;
+let pathL = 70;
+const fwOf = (L) => 9 + L * 0.08;
+const tooShort = () => pathL < NOTCH;
 const travel = () => 0.28 * fwOf(pathL) / 13.5 - 0.28;
-const flBack = q("flange-back"), flFront = q("flange-front"), fpLabel = stage.querySelector('[data-part="fp-label"]');
+const flBack = q("flange-back"), flFront = q("flange-front"), fpLabel = null;
 function buildFlange() {
   const FW = fwOf(pathL), F = D.FLANGE, Z0 = D.BODY_TOP, Z1 = FLANGE_TOP, CUT = D.CUT;
   const box = (plan) => slabOf({ ...plan, r: 1.2 }, Z0, Z1 - Z0, P, 4, 0.5);
@@ -465,7 +466,6 @@ function buildFlange() {
     return lineSvg(lines.join(""), { tone: "faint" });
   };
   flFront.innerHTML = solidSvg(box(fx), { tone: "mid", inner: hatch("y") }) + solidSvg(box(fy), { tone: "mid", inner: hatch("x") }) + rings(D.front);
-  if (fpLabel) fpLabel.textContent = "FLAMEPATH " + (Math.round(pathL * 2) / 2);
 }
 buildFlange();
 const PERIOD = 3.2;
@@ -552,8 +552,8 @@ function draw() {
   stage.querySelectorAll("[data-bottle]").forEach((g) => g.querySelectorAll(".iso-solid").forEach((s) => s.toggleAttribute("data-lit", g.dataset.bottle === GASES[gas].id)));
   stage.querySelectorAll("[data-tag] text").forEach((tx) => tx.setAttribute("data-tone", tx.parentNode.dataset.tag === GASES[gas].id ? "hi" : +tx.getAttribute("font-size") > 3.5 ? "mid" : "lo"));
   const g = GASES[gas];
-  const lim = limitOf(g.mesg, pathL);
-  const text = K.c >= 0 ? (K.c < 3.0 ? "BOOM · the box failed and lit the area" : "resetting…") : g.id + " · L " + fmtL() + " mm · limit " + lim.toFixed(2) + " · gap " + gap.toFixed(2) + " mm · " + (gap < lim ? "holds" : "flame through");
+  const fails = gap >= g.mesg || tooShort();
+  const text = K.c >= 0 ? (K.c < 3.0 ? "BOOM · the box failed and lit the area" : "resetting…") : g.id + " MESG " + g.mesg.toFixed(2) + " · gap " + gap.toFixed(2) + " mm" + (tooShort() ? " · path too short" : "") + " · " + (fails ? "flame through" : "holds");
   if (readout.textContent !== text) readout.textContent = text;
   stage.setAttribute("aria-valuenow", gap.toFixed(2));
   stage.setAttribute("aria-valuetext", text);
@@ -568,33 +568,33 @@ const mesgMark = q("mesg-mark");
 function syncUi() {
   const g = GASES[gas];
   ui.gas.forEach((b, i) => b.setAttribute("aria-pressed", String(i === gas)));
-  const lim = limitOf(g.mesg, pathL);
-  ui.mark.style.left = (Math.min(lim, GAP_MAX) / GAP_MAX * 100) + "%";
-  ui.mark.dataset.label = (Math.abs(pathL - 25) < 0.25 ? "MESG " : "limit ") + lim.toFixed(2);
+  ui.mark.style.left = (g.mesg / GAP_MAX * 100) + "%";
+  ui.mark.dataset.label = "MESG " + g.mesg.toFixed(2);
   if (!slidingL) ui.len.value = pathL;
-  ui.lenOut.textContent = fmtL() + " mm";
+  ui.lenOut.textContent = tooShort() ? "too short" : "ok";
+  ui.lenOut.dataset.bad = String(tooShort());
   if (!sliding) ui.gap.value = target.toFixed(2);
   ui.gapOut.textContent = target.toFixed(2) + " mm";
   ui.slow.setAttribute("aria-pressed", String(slow));
   ui.auto.setAttribute("aria-pressed", String(auto));
   ui.tour.setAttribute("aria-pressed", String(touring));
-  const a = lim * Math.PI * 2, [x, y] = TIP;
+  const a = g.mesg * Math.PI * 2, [x, y] = TIP;
   mesgMark.setAttribute("d", lineOnTop([x + Math.sin(a) * (DIAL_R - 6.5), y - Math.cos(a) * (DIAL_R - 6.5)], [x + Math.sin(a) * (DIAL_R - 2.2), y - Math.cos(a) * (DIAL_R - 2.2)], DIAL_TOP + 0.2, P));
 }
-const fmtL = () => (Math.round(pathL * 2) / 2).toString();
 function fire() {
   if (booming()) return;
   bang = now;
   const m = GASES[gas].mesg;
-  const lim = limitOf(m, pathL);
-  through = gap >= lim;
-  // illustrative: the flame survives about 25·(gap/MESG)² mm along the joint before heat loss wins
-  quench = clamp(25 * Math.pow(gap / m, 2) / pathL, 0.04, 0.92);
+  through = gap >= m || tooShort();
+  // illustrative: how far along the joint the flame survives before heat loss wins
+  quench = clamp(0.92 * Math.pow(gap / m, 2), 0.04, 0.92);
   const text = gap < 0.02
     ? "Shot: " + GASES[gas].id + " with the gap shut. The box held the pressure; nothing got out."
     : through
-    ? "Shot: " + GASES[gas].id + " at " + gap.toFixed(2) + " mm on a " + fmtL() + " mm path, over the " + lim.toFixed(2) + " mm limit. Flame ran the whole joint, lit the area, and that's the plant gone."
-    : "Shot: " + GASES[gas].id + " at " + gap.toFixed(2) + " mm. Quenched about " + Math.round(quench * pathL) + " mm into the " + fmtL() + " mm joint; only cooled gas got out.";
+    ? (gap >= m
+        ? "Shot: " + GASES[gas].id + " at " + gap.toFixed(2) + " mm, over MESG " + m.toFixed(2) + ". Flame ran the whole joint, lit the area, and that's the plant gone."
+        : "Shot: " + GASES[gas].id + " at " + gap.toFixed(2) + " mm. Gap's fine, but the joint's too short to cool the flame. It got out, and that's the plant gone.")
+    : "Shot: " + GASES[gas].id + " at " + gap.toFixed(2) + " mm. Flame died in the joint; only cooled gas got out.";
   ui.shot.textContent = text;
   if (through && gap >= 0.02) boomAt = now + 0.42 + travel();
 }
@@ -606,7 +606,7 @@ function tick(t) {
     clock += dt;
     gas = Math.floor(clock / CYCLE) % GASES.length;
     const u = (clock % CYCLE) / CYCLE;
-    target = clamp([0.45, 0.8, 1.15, 1.6][Math.floor(u * 4)] * limitOf(GASES[gas].mesg, pathL), 0.05, GAP_MAX);
+    target = clamp([0.45, 0.8, 1.15, 1.6][Math.floor(u * 4)] * GASES[gas].mesg, 0.05, GAP_MAX);
   }
   gap = still.matches ? target : gap + (target - gap) * (1 - Math.exp(-dt / 0.2));
   if (Math.abs(target - gap) < 0.0005) gap = target;
@@ -681,9 +681,9 @@ body[data-theme="dark"] .fx-gl{mix-blend-mode:screen}
 .ctl #fire{border-color:var(--anatomy-lit);color:var(--anatomy-lit);padding:7px 18px;font-weight:600;letter-spacing:.06em}
 .gap-wrap{position:relative;flex:1;min-width:110px;padding-top:16px}
 .gap-wrap input{width:100%;accent-color:var(--anatomy-lit);margin:0}
-#len-mark{position:absolute;top:0;bottom:2px;width:0;border-left:1px dashed var(--anatomy-lo);pointer-events:none}
-#len-mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:var(--anatomy-lo)}
+#len-mark{position:absolute;top:8px;bottom:-2px;width:0;border-left:2px solid var(--anatomy-mid);pointer-events:none}
 #len-out{min-width:58px;text-align:right}
+#len-out[data-bad="true"]{color:var(--anatomy-lit)}
 #mesg-mark{position:absolute;top:0;bottom:2px;width:0;border-left:1px dashed var(--anatomy-lit);pointer-events:none;transition:left .3s}
 #mesg-mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:var(--anatomy-lit)}
 #gap-out{min-width:58px;text-align:right;color:var(--anatomy-hi, var(--anatomy-mid))}
@@ -694,7 +694,7 @@ const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="slider" ar
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Gas</span>${GASES.map((g, i) => `<button type="button" data-gas="${i}" aria-pressed="${i === START.gas}">${g.id}<small>${g.group} · ${g.mesg.toFixed(2)}</small></button>`).join("")}</div>
-  <div class="ctl-row"><span class="ctl-label">Path</span><div class="gap-wrap"><span id="len-mark" aria-hidden="true" data-label="MESG test 25" style="left:${(25 - 6) / 34 * 100}%"></span><input id="len" type="range" min="6" max="40" step="0.5" value="25" aria-label="Flamepath length in mm"></div><output id="len-out">25 mm</output></div>
+  <div class="ctl-row"><span class="ctl-label">Path</span><div class="gap-wrap"><span id="len-mark" aria-hidden="true" style="left:40%"></span><input id="len" type="range" min="0" max="100" step="1" value="70" aria-label="Flamepath length: below the notch it is too short"></div><output id="len-out">ok</output></div>
   <div class="ctl-row"><span class="ctl-label">Gap</span><div class="gap-wrap"><span id="mesg-mark" aria-hidden="true"></span><input id="gap" type="range" min="0" max="${GAP_MAX}" step="0.01" value="${START.gap}" aria-label="Flamepath gap in mm"></div><output id="gap-out">${START.gap.toFixed(2)} mm</output></div>
   <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="fire">FIRE</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="auto" aria-pressed="false">Auto-fire</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
   <div id="shot" aria-live="polite">Pick a gas, set the gap, hit FIRE. Or drag the box up and down and tap it to fire.</div>
