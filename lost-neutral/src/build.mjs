@@ -78,6 +78,7 @@ function board() {
 // local (27, 29.5) on the face: x runs along −y from DB.y + DB.d − 1, y runs down from DBZ − 4
 const NT = [DB.x + DB.w + 0.5, DB.y + DB.d - 1 - 27, DBZ - 4 - 29.5];
 
+const NJ = [64, ROWS_Y[0] - 2, ZB + 2.6];
 const PH = ["l1", "l2", "l3"];
 function cables() {
   const out = [];
@@ -113,7 +114,7 @@ function rows() {
   for (let r = 0; r < 3; r++) {
     out.push(`<g class="beam ph-${PH[r]}">${S(slab({ x: -62, y: ROWS_Y[r] - 1.5, w: 132, d: 3 }, ZB - 0.2, 2.4, 0.3, 0.1), { tone: "mid" })}</g>`);
     out.push(`<path class="cab ${PH[r]}" d="${k.pathOf([[-60, ROWS_Y[r] + 2, ZB + 2.6], [60, ROWS_Y[r] + 2, ZB + 2.6]].map(at))}"/>`);
-    out.push(`<path class="cab nn" d="${k.pathOf([[-60, ROWS_Y[r] - 2, ZB + 2.6], [60, ROWS_Y[r] - 2, ZB + 2.6]].map(at))}"/>`);
+    out.push(`<path class="cab nn" data-rn="${r}" d="${k.pathOf([[-60, ROWS_Y[r] - 2, ZB + 2.6], [64, ROWS_Y[r] - 2, ZB + 2.6]].map(at))}"/>`);
     for (let c = 0; c < 4; c++) out.push(lum(r, c));
     out.push(k.faceTextSvg(k.sideMatrix([-61.98, ROWS_Y[r] + 4], ZB + 1.8, P, "right"), "L" + (r + 1), { size: 2.6, tone: "mid" }));
   }
@@ -121,6 +122,8 @@ function rows() {
   out.push(`<path class="cab nn" d="${k.pathOf([[64, -32, ZB + 2.6], [64, 32, ZB + 2.6]].map(at))}"/>`);
   for (let r = 0; r < 3; r++) out.push(`<path class="cab ${PH[r]}" d="${k.pathOf([[64, -20 + r * 2, ZB + 2.6], [64, ROWS_Y[r] + 2, ZB + 2.6], [60, ROWS_Y[r] + 2, ZB + 2.6]].map(at))}"/>`);
   for (const p of POSTS.filter(([x, y]) => depth2([x, y]) >= depth2([0, 0]))) out.push(S(slab({ x: p[0] - 1.6, y: p[1] - 1.6, w: 3.2, d: 3.2 }, 0, ZB, 0.4, 0.2), { tone: "mid" }));
+  const tag = at([-20, ROWS_Y[0] - 2, ZB + 9]);
+  out.push(`<g data-part="nlive" style="display:none"><text class="nlive-t" x="${tag[0].toFixed(1)}" y="${tag[1].toFixed(1)}" text-anchor="middle">L1 neutral: 230 V</text></g>`);
   return out.join("");
 }
 
@@ -131,10 +134,24 @@ const floorSvg = k.figureSvg({
 });
 const layer = (body) => `<svg xmlns="http://www.w3.org/2000/svg" class="iso-svg fx-layer" viewBox="0 0 ${W} ${H}" aria-hidden="true">${body}</svg>`;
 const topSvg = layer([board(), cables(), frame(), rows()].join(""));
+const PZ = { x: 12, y: 26, w: 128, h: 112, cx: 64, cy: 66, R: 34 };
+const pv = (re, im) => [PZ.cx + (im / 230) * PZ.R, PZ.cy - (re / 230) * PZ.R];
+const VERT = [0, -120, 120].map((a) => pv(230 * Math.cos(a * Math.PI / 180), 230 * Math.sin(a * Math.PI / 180)));
+const phasorSvg = layer(`<g class="pz" transform="translate(${PZ.x} ${PZ.y})">
+  <rect x="0" y="0" width="${PZ.w}" height="${PZ.h}" rx="6" class="pz-bg"/>
+  <text x="8" y="13" class="pz-h">STAR POINT</text>
+  <path class="pz-tri" d="M${VERT.map((v) => v.map((n) => n.toFixed(1)).join(" ")).join("L")}Z"/>
+  <path class="pz-zero" d="M${PZ.cx - 2.5} ${PZ.cy}h5M${PZ.cx} ${PZ.cy - 2.5}v5"/>
+  ${VERT.map((v, r) => `<line data-part="sp${r}" class="pz-sp ph-${PH[r]}" x1="${PZ.cx}" y1="${PZ.cy}" x2="${v[0].toFixed(1)}" y2="${v[1].toFixed(1)}"/>`).join("")}
+  ${VERT.map((v, r) => `<circle class="pz-v ph-${PH[r]}" cx="${v[0].toFixed(1)}" cy="${v[1].toFixed(1)}" r="2.6"/>`).join("")}
+  ${[0, 1, 2].map((r) => `<circle data-part="nr${r}" class="pz-nr" cx="${PZ.cx}" cy="${PZ.cy}" r="2.4" style="display:none"/>`).join("")}
+  <circle data-part="nl" class="pz-n" cx="${PZ.cx}" cy="${PZ.cy}" r="3"/>
+  ${VERT.map((v, r) => { const dx = v[0] - PZ.cx, dy = v[1] - PZ.cy, m = Math.hypot(dx, dy); return `<text data-part="pt${r}" class="pz-t" x="${(v[0] + (dx / m) * 9).toFixed(1)}" y="${(v[1] + (dy / m) * 9 + 3).toFixed(1)}" text-anchor="${Math.abs(dx) < 4 ? "middle" : dx > 0 ? "end" : "start"}">L${r + 1} 230</text>`; }).join("")}
+</g>`);
 
 const LUMS = [];
 for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) LUMS.push([COLS_X[c], ROWS_Y[r]]);
-const DATA = { W, H, camera: glCamera(P), P, MODEL, LUMS };
+const DATA = { W, H, camera: glCamera(P), P, MODEL, LUMS, PZ, NT, NJ };
 
 const SHARED = `
 uniform float uLight;
@@ -143,6 +160,7 @@ uniform float uPop[12];
 uniform float uSmoke[12];
 uniform float uArc;
 uniform float uJoint;
+uniform vec3 uNT;
 const vec2 LP[12]=vec2[12](${LUMS.map(([x, y]) => `vec2(${x.toFixed(1)},${y.toFixed(1)})`).join(",")});
 vec4 inkFor(vec3 seen,float cover){vec3 ab=1.-seen;float a=max(max(ab.r,max(ab.g,ab.b)),cover);return vec4(vec3(a)-ab,a);}
 vec4 over(vec4 t,vec4 u){return t+u*(1.-t.a);}
@@ -181,7 +199,7 @@ ${unroll((v, i) => `  {
   o=over(glowInk(vec3(1.,.93,.82),cone),o);
   o=over(glowInk(vec3(.62,.78,1.),pop),o);
   if(uArc+uJoint>.002){
-    vec2 d=(vb-project(vec3(${NT.map((v) => v.toFixed(1)).join(",")})))/uK;
+    vec2 d=(vb-project(uNT))/uK;
     float fl=.5+.5*noise2(vec2(uTime*40.,3.));
     o=over(glowInk(vec3(1.,.4,.1),exp(-pow(length(d)/3.,2.))*uJoint*1.4),o);
     o=over(glowInk(vec3(.62,.78,1.),(exp(-pow(length(d)/.8,2.))*2.+exp(-pow(length(d)/5.,2.))*.5)*uArc*fl),o);
@@ -200,7 +218,7 @@ const readout = document.querySelector("[data-readout]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
 const LIGHT = document.body.dataset.theme === "light" ? 1 : 0;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-const U = ["uB", "uPop", "uSmoke", "uArc", "uJoint"];
+const U = ["uB", "uPop", "uSmoke", "uArc", "uJoint", "uNT"];
 const floor = glLayer({ canvas: stage.querySelector(".fx-floor"), fragment: ${JSON.stringify(FLOOR)}, view: [D.W, D.H], camera: D.camera, uniforms: U, fixed: { uLight: LIGHT } });
 const fx = glLayer({ canvas: stage.querySelector(".fx-top"), fragment: ${JSON.stringify(FX)}, view: [D.W, D.H], camera: D.camera, uniforms: U, fixed: { uLight: LIGHT } });
 const GL = !!(floor && fx);
@@ -208,7 +226,7 @@ if (GL) stage.setAttribute("data-gl", "");
 
 // phasors: 230 V at 0, −120, +120
 const SRC = [0, -120, 120].map((a) => [230 * Math.cos(a * Math.PI / 180), 230 * Math.sin(a * Math.PI / 180)]);
-let neutral = "solid", drvKind = "narrow", counts = [4, 2, 1];
+let where = "link", neutral = "solid", drvKind = "narrow", counts = [4, 2, 1], nRow = [[0, 0], [0, 0], [0, 0]];
 let rowShow = [230, 230, 230], lums = [], mcb = [true, true, true], rowV = [230, 230, 230], vn = [0, 0], inA = 0, rn = M.rSolid, rnNext = 0, arc = 0, joint = 0;
 let frame = 0, last = 0, now = 0, visible = false, touring = true, slow = false, tourClock = 0, tourStep = -1, actions = [], lastShot = "", lastEvent = "", lastEventAt = -10;
 function fresh() { lums = Array.from({ length: 12 }, () => ({ st: "on", v: 230, stress: 0, popAt: null })); mcb = [true, true, true]; lastEvent = ""; }
@@ -233,13 +251,17 @@ function step(dt) {
     // a running driver's PFC front end looks roughly like a resistor; dropped out, it's a tiny load
     G[r] += (l.st === "on" || l.st === "flick" ? M.P : M.standby) / (230 * 230);
   });
-  const yn = 1 / rn;
-  const sg = G[0] + G[1] + G[2] + yn;
-  const nv = [(G[0] * SRC[0][0] + G[1] * SRC[1][0] + G[2] * SRC[2][0]) / sg, (G[0] * SRC[0][1] + G[1] * SRC[1][1] + G[2] * SRC[2][1]) / sg];
-  vn = nv;
-  rowV = SRC.map((s, r) => (mcb[r] ? Math.hypot(s[0] - vn[0], s[1] - vn[1]) : 0));
+  // each row's own neutral runs to the board's neutral link, and the link goes back to the supply neutral.
+  // The broken (or loose) bit is either L1's own neutral or the link.
+  const ys = 1 / M.rSolid, yx = 1 / rn;
+  const yLink = where === "link" ? yx : ys, yRow = [where === "circuit" ? yx : ys, ys, ys];
+  const yEq = G.map((g, r) => (g > 0 ? (g * yRow[r]) / (g + yRow[r]) : 0));
+  const se = yEq[0] + yEq[1] + yEq[2] + yLink;
+  vn = [0, 1].map((c) => (yEq[0] * SRC[0][c] + yEq[1] * SRC[1][c] + yEq[2] * SRC[2][c]) / se);
+  nRow = [0, 1, 2].map((r) => (G[r] + yRow[r] > 0 ? [0, 1].map((c) => (G[r] * SRC[r][c] + yRow[r] * vn[c]) / (G[r] + yRow[r])) : [...vn]));
+  rowV = SRC.map((s, r) => (mcb[r] ? Math.hypot(s[0] - nRow[r][0], s[1] - nRow[r][1]) : 0));
   rowShow = rowShow.map((v, r) => v + (rowV[r] - v) * (1 - Math.exp(-dt / 0.12)));
-  inA = Math.hypot(vn[0], vn[1]) * yn;
+  inA = where === "link" ? Math.hypot(vn[0], vn[1]) * yx : Math.hypot(nRow[0][0] - vn[0], nRow[0][1] - vn[1]) * yx;
   joint += ((neutral === "loose" && rn < 1e5 ? inA * inA * rn : 0) / 40 - joint) * (1 - Math.exp(-dt / 1.2));
   // each driver
   lums.forEach((l, i) => {
@@ -262,9 +284,10 @@ function step(dt) {
 }
 
 const lumG = [...stage.querySelectorAll("[data-lum]")];
-const mcbG = [0, 1, 2].map((r) => q("mcb-" + r)), nterm = q("nterm"), nslot = q("nslot"), nwire = q("nwire");
+const mcbG = [0, 1, 2].map((r) => q("mcb-" + r)), nterm = q("nterm"), nslot = q("nslot"), nwire = q("nwire"), nlive = q("nlive");
+const rowN = [0, 1, 2].map((r) => stage.querySelector('[data-rn="' + r + '"]')), pzN = q("nl"), pzSp = [0, 1, 2].map((r) => q("sp" + r)), pzNr = [0, 1, 2].map((r) => q("nr" + r)), pzT = [0, 1, 2].map((r) => q("pt" + r));
 const ui = {
-  n: [...document.querySelectorAll("[data-n]")], drv: [...document.querySelectorAll("[data-drv]")],
+  n: [...document.querySelectorAll("[data-n]")], where: [...document.querySelectorAll("[data-where]")], drv: [...document.querySelectorAll("[data-drv]")],
   rows: [0, 1, 2].map((r) => document.querySelector("#row" + r)), rowsOut: [0, 1, 2].map((r) => document.querySelector("#row" + r + "-out")),
   fills: [0, 1, 2].map((r) => document.querySelector("#v" + r + "-fill")), outs: [0, 1, 2].map((r) => document.querySelector("#v" + r + "-out")), maxMarks: [...document.querySelectorAll(".maxmark")],
   stats: document.querySelector("#stats"), fresh: document.querySelector("#fresh"), slow: document.querySelector("#slow"), tour: document.querySelector("#tour"), shot: document.querySelector("#shot"),
@@ -275,6 +298,7 @@ const vPct = (v) => (clamp(v / 420, 0, 1) * 100).toFixed(1) + "%";
 function syncUi() {
   const d = DRV();
   ui.n.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.n === neutral)));
+  ui.where.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.where === where)));
   ui.drv.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.drv === drvKind)));
   for (let r = 0; r < 3; r++) {
     ui.rows[r].value = counts[r]; ui.rowsOut[r].textContent = counts[r] + " on";
@@ -285,7 +309,7 @@ function syncUi() {
   }
   ui.maxMarks.forEach((m) => { m.style.left = vPct(d.max); m.dataset.label = d.max + " V driver max"; });
   const dead = lums.filter((l) => l.st === "dead").length;
-  ui.stats.innerHTML = "star point shifted <b>" + Math.round(Math.hypot(vn[0], vn[1])) + " V</b> · neutral current <b>" + (neutral === "broken" ? "none" : inA.toFixed(1) + " A") + "</b>" + (neutral === "loose" ? " · joint <b>" + Math.round(joint * 40) + " W</b>" : "") + " · drivers dead <b>" + dead + "</b>";
+  ui.stats.innerHTML = (where === "link" ? "star point shifted <b>" + Math.round(Math.hypot(vn[0], vn[1])) + " V</b>" : "L1 neutral at the fittings <b>" + Math.round(Math.hypot(nRow[0][0], nRow[0][1])) + " V</b>") + " · current through the " + (where === "link" ? "link" : "L1 neutral") + " <b>" + (neutral === "broken" ? "none" : inA.toFixed(1) + " A") + "</b>" + (neutral === "loose" ? " · joint <b>" + Math.round(joint * 40) + " W</b>" : "") + " · drivers dead <b>" + dead + "</b>";
   ui.slow.setAttribute("aria-pressed", String(slow)); ui.tour.setAttribute("aria-pressed", String(touring));
 }
 
@@ -296,8 +320,27 @@ function draw() {
     if (g.dataset.st !== st) g.dataset.st = st;
   });
   mcbG.forEach((g, r) => (g.dataset.on = String(mcb[r])));
-  nterm.dataset.state = neutral; nwire.style.opacity = neutral === "broken" ? "0.25" : "1";
-  nslot.setAttribute("transform", neutral === "loose" ? "rotate(" + (35 + 20 * Math.sin(now * 3)).toFixed(0) + " 27 29.5)" : "");
+  const atLink = where === "link";
+  nterm.dataset.state = atLink ? neutral : "solid"; nwire.style.opacity = atLink && neutral === "broken" ? "0.25" : "1";
+  nslot.setAttribute("transform", atLink && neutral === "loose" ? "rotate(" + (35 + 20 * Math.sin(now * 3)).toFixed(0) + " 27 29.5)" : "");
+  const n1 = Math.hypot(nRow[0][0], nRow[0][1]);
+  const liveN = !atLink && neutral !== "solid" && n1 > 40;
+  rowN[0].dataset.live = String(liveN); rowN[0].dataset.cut = String(!atLink && neutral !== "solid");
+  nlive.style.display = liveN && neutral === "broken" ? "" : "none";
+  if (liveN) nlive.querySelector("text").textContent = "L1 neutral: " + Math.round(n1) + " V";
+  // the phasor inset
+  const pv = (p) => [D.PZ.cx + (p[1] / 230) * D.PZ.R, D.PZ.cy - (p[0] / 230) * D.PZ.R];
+  const L = pv(vn);
+  pzN.setAttribute("cx", L[0].toFixed(1)); pzN.setAttribute("cy", L[1].toFixed(1));
+  for (let r = 0; r < 3; r++) {
+    const a = pv(nRow[r]);
+    pzSp[r].setAttribute("x1", a[0].toFixed(1)); pzSp[r].setAttribute("y1", a[1].toFixed(1));
+    pzSp[r].style.opacity = mcb[r] && counts[r] > 0 ? "1" : "0.2";
+    const sep = Math.hypot(a[0] - L[0], a[1] - L[1]) > 2.5;
+    pzNr[r].style.display = sep ? "" : "none"; pzNr[r].setAttribute("cx", a[0].toFixed(1)); pzNr[r].setAttribute("cy", a[1].toFixed(1));
+    pzT[r].textContent = "L" + (r + 1) + " " + (mcb[r] ? Math.round(rowShow[r]) : "off");
+    pzT[r].dataset.state = !mcb[r] ? "off" : rowShow[r] > DRV().max ? "bad" : rowShow[r] < DRV().off || rowShow[r] > 253 ? "warn" : "ok";
+  }
   const B = lums.map((l, i) => {
     if (!switched(i) || !mcb[rowOf(i)] || l.st === "dead" || l.st === "off" || l.st === "idle") return 0;
     if (l.st === "flick") return Math.random() < 0.5 ? 0.15 : 0.9;
@@ -308,11 +351,11 @@ function draw() {
       uB: B,
       uPop: lums.map((l) => (l.popAt === null ? 0 : Math.exp(-(now - l.popAt) / 0.15) * (now - l.popAt < 1 ? 1 : 0))),
       uSmoke: lums.map((l) => (l.popAt === null ? 0 : Math.exp(-(now - l.popAt) / 6))),
-      uArc: arc, uJoint: clamp(joint, 0, 1.5),
+      uArc: arc, uJoint: clamp(joint, 0, 1.5), uNT: where === "link" ? D.NT : D.NJ,
     };
     floor.draw(u, now); fx.draw(u, now);
   }
-  const text = rowShow.map((v, r) => "L" + (r + 1) + " " + (mcb[r] ? Math.round(v) + " V" : "off")).join(" · ") + " · neutral " + neutral;
+  const text = rowShow.map((v, r) => "L" + (r + 1) + " " + (mcb[r] ? Math.round(v) + " V" : "off")).join(" · ") + " · " + (where === "link" ? "neutral link " : "L1 neutral ") + neutral;
   if (readout.textContent !== text) readout.textContent = text;
 }
 
@@ -321,7 +364,12 @@ function story() {
   if (now - lastEventAt < 3.5 && lastEvent) return say(lastEvent);
   const live = [0, 1, 2].filter((r) => mcb[r] && counts[r] > 0);
   const dead = lums.filter((l) => l.st === "dead").length;
-  if (neutral === "solid") return say(dead ? dead + " drivers dead from before, " + (mcb.some((m) => !m) ? "and a breaker's still tripped. " : "") + "Hit Replace to fit new ones." : "Neutral solid: every row gets its 230 V whatever the others are doing, and the neutral carries the out-of-balance current back. Now break it.");
+  if (where === "circuit" && neutral !== "solid") {
+    const n1 = Math.round(Math.hypot(nRow[0][0], nRow[0][1]));
+    if (neutral === "broken") return say(counts[0] === 0 ? "L1's neutral is broken, but there's nothing on L1 switched on to notice." : "L1's own neutral is broken. No return path, so the L1 row is simply off, and L2 and L3 don't notice because they've still got theirs. But the neutral at the L1 fittings now sits at " + n1 + " V through the drivers. It looks dead. It isn't.");
+    return say("L1's own neutral is loose: the joint makes and breaks, so just the L1 row flickers and dims, and the joint heats up on its current. L2 and L3 are fine, they've still got their neutrals.");
+  }
+  if (neutral === "solid") return say(dead ? dead + " drivers dead from before, " + (mcb.some((m) => !m) ? "and a breaker's still tripped. " : "") + "Hit Replace to fit new ones." : "Neutral solid: every row gets its 230 V whatever the others are doing, and the neutral carries the out-of-balance current back. The dot in the triangle is the star point, sitting on 0 V. Now break something.");
   if (neutral === "loose") return say("A loose neutral: the joint makes and breaks and arcs, so the star point jumps about and the lights flicker and surge. The joint cooks itself on the neutral current. This is how most lost neutrals start.");
   if (live.length === 0) return say("All dark. " + dead + " drivers dead, " + mcb.filter((m) => !m).length + " breakers tripped, from one loose screw on the neutral link.");
   if (live.length === 2 && mcb.some((m) => !m)) return say("With a row tripped and no neutral, the other two rows are in series across 400 V, shared by how much each draws. " + live.map((r) => "L" + (r + 1) + " " + Math.round(rowShow[r]) + " V").join(", ") + ".");
@@ -331,12 +379,13 @@ function story() {
 }
 
 const TOUR = [
-  { n: "solid", drv: "narrow", c: [4, 2, 1], acts: [[5, "end"]] },
-  { n: "solid", drv: "narrow", c: [4, 2, 1], acts: [[1, "break"], [14, "end"]] },
-  { n: "solid", drv: "narrow", c: [4, 4, 4], acts: [[1, "break"], [6, "c3"], [16, "end"]] },
-  { n: "solid", drv: "narrow", c: [4, 3, 2], acts: [[1, "loose"], [10, "end"]] },
-  { n: "solid", drv: "narrow", c: [4, 4, 2], acts: [[1, "break"], [9, "end"]] },
-  { n: "solid", drv: "wide", c: [4, 4, 2], acts: [[1, "break"], [9, "end"]] },
+  { w: "link", n: "solid", drv: "narrow", c: [4, 2, 1], acts: [[5, "end"]] },
+  { w: "circuit", n: "solid", drv: "narrow", c: [4, 2, 1], acts: [[1, "break"], [9, "end"]] },
+  { w: "link", n: "solid", drv: "narrow", c: [4, 2, 1], acts: [[1, "break"], [14, "end"]] },
+  { w: "link", n: "solid", drv: "narrow", c: [4, 4, 4], acts: [[1, "break"], [6, "c3"], [16, "end"]] },
+  { w: "link", n: "solid", drv: "narrow", c: [4, 3, 2], acts: [[1, "loose"], [10, "end"]] },
+  { w: "link", n: "solid", drv: "narrow", c: [4, 4, 2], acts: [[1, "break"], [9, "end"]] },
+  { w: "link", n: "solid", drv: "wide", c: [4, 4, 2], acts: [[1, "break"], [9, "end"]] },
 ];
 function tick(t) {
   const dt = last ? Math.min((t - last) / 1000, 1 / 30) : 1 / 60;
@@ -348,7 +397,7 @@ function tick(t) {
     if (tourStep < 0 || actions.length === 0) {
       tourStep = (tourStep + 1) % TOUR.length;
       const s = TOUR[tourStep];
-      neutral = s.n; drvKind = s.drv; counts = [...s.c]; fresh();
+      where = s.w; neutral = s.n; drvKind = s.drv; counts = [...s.c]; fresh();
       actions = s.acts.map(([w, a]) => [tourClock + w, a]);
     }
     while (actions.length && tourClock >= actions[0][0]) {
@@ -365,6 +414,7 @@ const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationF
 const takeOver = () => { touring = false; actions = []; };
 const guard = (fn) => (...a) => { takeOver(); fn(...a); run(); };
 const setN = guard((v) => { neutral = v; });
+const setWhere = guard((v) => { where = v; });
 const setDrv = guard((v) => { drvKind = v; fresh(); });
 const setRow = guard((r, v) => { counts[r] = v; });
 const doFresh = guard(() => fresh());
@@ -372,6 +422,7 @@ new IntersectionObserver((es) => { visible = es[es.length - 1].isIntersecting; i
 if (still.matches) touring = false;
 
 ui.n.forEach((b) => b.addEventListener("click", () => setN(b.dataset.n)));
+ui.where.forEach((b) => b.addEventListener("click", () => setWhere(b.dataset.where)));
 ui.drv.forEach((b) => b.addEventListener("click", () => setDrv(b.dataset.drv)));
 ui.rows.forEach((el, r) => el.addEventListener("input", () => setRow(r, +el.value)));
 ui.fresh.addEventListener("click", doFresh);
@@ -379,7 +430,7 @@ ui.slow.addEventListener("click", () => { slow = !slow; run(); });
 ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; tourClock = 0; actions = []; } run(); });
 stage.addEventListener("click", () => setN(neutral === "solid" ? "broken" : "solid"));
 stage.addEventListener("keydown", (ev) => {
-  const map = { " ": () => setN(neutral === "solid" ? "broken" : "solid"), n: () => setN(neutral === "solid" ? "loose" : neutral === "loose" ? "broken" : "solid"), w: () => setDrv(drvKind === "narrow" ? "wide" : "narrow"), r: doFresh, "1": () => setRow(0, (counts[0] + 1) % 5), "2": () => setRow(1, (counts[1] + 1) % 5), "3": () => setRow(2, (counts[2] + 1) % 5), s: () => { slow = !slow; run(); } };
+  const map = { " ": () => setN(neutral === "solid" ? "broken" : "solid"), n: () => setN(neutral === "solid" ? "loose" : neutral === "loose" ? "broken" : "solid"), b: () => setWhere(where === "link" ? "circuit" : "link"), w: () => setDrv(drvKind === "narrow" ? "wide" : "narrow"), r: doFresh, "1": () => setRow(0, (counts[0] + 1) % 5), "2": () => setRow(1, (counts[1] + 1) % 5), "3": () => setRow(2, (counts[2] + 1) % 5), s: () => { slow = !slow; run(); } };
   if (map[ev.key]) { ev.preventDefault(); map[ev.key](); }
 });
 window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
@@ -405,6 +456,20 @@ body[data-theme="dark"] .cab.nn{stroke:#5a5a5a;stroke-dasharray:none}
 .screw{fill:#d6d9dc;stroke:var(--anatomy-mid);stroke-width:.3}.slot{stroke:#333;stroke-width:.5}
 [data-part="nterm"][data-state="broken"] .screw{fill:#ff4a3d}
 [data-part="nterm"][data-state="loose"] .screw{fill:#ffb347}
+.pz-bg{fill:var(--anatomy-paper);stroke:var(--anatomy-lo);stroke-width:.6;opacity:.92}
+.pz-h{font-family:var(--anatomy-mono);font-size:7px;letter-spacing:.08em;fill:var(--anatomy-lo)}
+.pz-tri{fill:none;stroke:var(--anatomy-lo);stroke-width:.6;stroke-dasharray:2 2}
+.pz-zero{stroke:var(--anatomy-mid);stroke-width:.7}
+.pz-sp{stroke-width:2;stroke-linecap:round}
+.pz-sp.ph-l1,.pz-v.ph-l1{stroke:#d9534f;fill:#d9534f}.pz-sp.ph-l2,.pz-v.ph-l2{stroke:#cfcfca;fill:#cfcfca}.pz-sp.ph-l3,.pz-v.ph-l3{stroke:#3d7bd9;fill:#3d7bd9}
+body[data-theme="light"] .pz-sp.ph-l2,body[data-theme="light"] .pz-v.ph-l2{stroke:#9a9a95;fill:#9a9a95}
+.pz-n{fill:#ffb347;stroke:var(--anatomy-paper);stroke-width:.8}
+.pz-nr{fill:var(--anatomy-paper);stroke:#ff6a3d;stroke-width:1}
+.pz-t{font-family:var(--anatomy-mono);font-size:7px;fill:var(--anatomy-mid)}
+.pz-t[data-state="bad"]{fill:#ff5a2a}.pz-t[data-state="warn"]{fill:#ffb347}.pz-t[data-state="off"]{fill:var(--anatomy-lo)}
+.cab.nn[data-cut="true"]{stroke-dasharray:3 2}
+.cab.nn[data-live="true"]{stroke:#ff4a3d;stroke-dasharray:3 2}
+.nlive-t{font-family:var(--anatomy-mono);font-size:7px;fill:#ff4a3d}
 .ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
 .ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .ctl-label{min-width:72px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
@@ -429,12 +494,13 @@ body[data-theme="dark"] .cab.nn{stroke:#5a5a5a;stroke-dasharray:none}
 #shot{min-height:3.6em;font-size:12px;line-height:1.4}
 @media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:60px}.ctl button small{display:none}}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Lighting array: space breaks or fixes the neutral, N cycles solid, loose and broken, 1 2 3 change how many lights are on per row, W swaps the drivers, R replaces dead ones">${floorSvg}<canvas class="fx-layer fx-gl fx-floor" aria-hidden="true"></canvas>${topSvg}<canvas class="fx-layer fx-gl fx-top" aria-hidden="true"></canvas></div>`;
+const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Lighting array: space breaks or fixes the neutral, N cycles solid, loose and broken, 1 2 3 change how many lights are on per row, W swaps the drivers, R replaces dead ones">${floorSvg}<canvas class="fx-layer fx-gl fx-floor" aria-hidden="true"></canvas>${topSvg}<canvas class="fx-layer fx-gl fx-top" aria-hidden="true"></canvas>${phasorSvg}</div>`;
 
 const vp = (v) => (v / 420 * 100).toFixed(1);
 const meterRow = (r, col) => `<div class="ctl-row"><span class="ctl-label"><span class="ph" style="background:${col}"></span>L${r + 1} row</span><div class="meter"><span class="band" style="left:${vp(216)}%;width:${(vp(253) - vp(216)).toFixed(1)}%"></span><span id="v${r}-fill" class="fill"></span>${r === 0 ? `<span class="mark quiet" style="left:${vp(230)}%"></span>` : ""}<span class="mark maxmark${r ? " quiet" : ""}" style="left:${vp(264)}%" data-label="264 V driver max"></span></div><output id="v${r}-out">230 V</output></div>`;
 const countRow = (r, col, v) => `<div class="slide" style="min-width:70px"><input id="row${r}" type="range" min="0" max="4" step="1" value="${v}" aria-label="Lights on, row L${r + 1}"></div><output id="row${r}-out" style="min-width:40px">${v} on</output>`;
 const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
+  <div class="ctl-row"><span class="ctl-label">Where</span><button type="button" data-where="circuit" aria-pressed="false">L1's own neutral<small>one circuit</small></button><button type="button" data-where="link" aria-pressed="true">Board neutral link<small>shared by all three rows</small></button></div>
   <div class="ctl-row"><span class="ctl-label">Neutral</span><button type="button" data-n="solid" aria-pressed="true">Solid</button><button type="button" data-n="loose" aria-pressed="false">Loose<small>making and breaking</small></button><button type="button" data-n="broken" aria-pressed="false">Broken</button></div>
   <div class="ctl-row"><span class="ctl-label">Drivers</span><button type="button" data-drv="narrow" aria-pressed="true">Narrow<small>198 to 264 V</small></button><button type="button" data-drv="wide" aria-pressed="false">Wide range<small>90 to 305 V</small></button></div>
   <div class="ctl-row"><span class="ctl-label">Lights on</span><span class="ph" style="background:#d9534f"></span>${countRow(0, "#d9534f", 4)}<span class="ph" style="background:#bdbdb8"></span>${countRow(1, "#e8e8e4", 2)}<span class="ph" style="background:#3d7bd9"></span>${countRow(2, "#3d7bd9", 1)}</div>
@@ -453,7 +519,7 @@ const card = k.plateHtml({
     { mark: "lit", label: "Light from each high bay; the loose joint arcing; drivers popping" },
     { mark: "raised", label: "Twelve LED high bays on three phases, one shared neutral, the lighting board" },
   ],
-  caption: "Three rows of LED high bays, one row per phase, all bringing their current home on one shared neutral. With the neutral connected, each row gets its 230 V no matter what the others are doing. Lose it and the star point floats: it slides toward the most heavily loaded row, so that row drops and the lightly loaded row climbs toward 400 V. A driver that sees too little drops out, and one that sees too much cooks its surge protection and dies, often short, which trips its row. Then the two rows left are in series across 400 V and it cascades. Balanced loads hide it completely, until somebody switches a row off.",
+  caption: "Three rows of LED high bays, one row per phase. Each row has its own neutral back to the board's neutral link, and the link takes them all home. Break one row's own neutral and that row just goes off, though its neutral is now live through the drivers. Break the shared link instead and nothing goes off. With the link connected, each row gets its 230 V no matter what the others are doing. Lose it and the star point floats: it slides toward the most heavily loaded row, so that row drops and the lightly loaded row climbs toward 400 V. A driver that sees too little drops out, and one that sees too much cooks its surge protection and dies, often short, which trips its row. Then the two rows left are in series across 400 V and it cascades. Balanced loads hide it completely, until somebody switches a row off.",
   body: stageHtml,
 });
 
