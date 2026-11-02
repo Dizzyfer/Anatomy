@@ -1,14 +1,21 @@
 # Lost neutral
 
-Twelve LED high bays in three rows, one row per phase, all sharing one neutral back to the lighting board. Loosen the neutral, break it, change how many lights are on per row, and see what happens to the drivers.
+Twelve LED high bays in three rows, one row per phase. Each row has its own neutral back to the board's neutral link, and the link takes them all home. Break a neutral in either place, change how many lights are on per row, and see what happens to the drivers.
 
 **[▶ Play with it](https://dizzyfer.github.io/Anatomy/lost-neutral/)** · [light version](https://dizzyfer.github.io/Anatomy/lost-neutral/light.html) · [all figures](https://dizzyfer.github.io/Anatomy/)
 
 ![A driver popping after the neutral broke](docs/thumb.jpg)
 
-## How it works
+## Where it breaks matters
 
-1. **With the neutral connected,** every row gets its 230 V no matter what the others are doing. The neutral carries the out-of-balance current home.
+- **One row's own neutral:** that circuit has no return path, so the row just goes off. The other rows don't notice. The catch: the neutral at those fittings now sits at 230 V through the drivers. It looks dead and it isn't.
+- **The shared neutral link (or the submain):** nothing goes off. The rows are now in series between phases through a floating star point, and the voltages go wherever the load balance puts them.
+
+The triangle in the corner shows it: the phases at the corners, 0 V in the middle, and the star point as the orange dot. Each coloured line is the voltage across that row.
+
+## How the shared break works
+
+1. **With the link connected,** every row gets its 230 V no matter what the others are doing. The neutral carries the out-of-balance current home.
 2. **Lose the neutral** and the rows' common point (the star point) is no longer held at 0 V. It floats toward the most heavily loaded row. That row's voltage drops and the lightly loaded row's climbs toward 400 V.
 3. **The drivers:** too little voltage and they drop out or flicker. Too much and the surge MOV cooks, fails short and trips that row's breaker.
 4. **Then it cascades.** With one row tripped and no neutral, the other two rows are in series across 400 V, split by how much each draws.
@@ -21,11 +28,11 @@ Twelve LED high bays in three rows, one row per phase, all sharing one neutral b
 
 ## What you can do
 
-- **Neutral:** solid, loose, broken. **Drivers:** narrow or wide range. **Lights on:** 0 to 4 per row.
+- **Where:** L1's own neutral or the board neutral link. **Neutral:** solid, loose, broken. **Drivers:** narrow or wide range. **Lights on:** 0 to 4 per row.
 - A voltage meter per row with the 216 to 253 V band and the driver's max, plus how far the star point has shifted, the neutral current, the joint's heat and how many drivers are dead.
 - Tap the gantry to break and fix the neutral, **Replace dead drivers**, Slow-mo and Demo tour like the others.
 
-Keyboard: Space = break/fix, N = solid/loose/broken, 1 2 3 = lights per row, W = drivers, R = replace, S = slow-mo.
+Keyboard: Space = break/fix, B = where it breaks, N = solid/loose/broken, 1 2 3 = lights per row, W = drivers, R = replace, S = slow-mo.
 
 ## The numbers
 
