@@ -14,13 +14,14 @@ const H = 420;
 // Truth: IEC 60079-14 dust Tmax = min(2/3 × cloud ignition temp, 5 mm layer ignition temp − 75 K); the layer rule only holds to 5 mm.
 // Literature values (5 mm layer / cloud ignition, °C).
 const DUSTS = [
-  { id: "coal", name: "coal dust", btn: "Coal", layer: 250, cloud: 600, colour: ["#2a2622", "#3a3530"], light: ["#5a534c", "#7a7168"] },
-  { id: "wood", name: "wood flour", btn: "Wood flour", layer: 340, cloud: 490, colour: ["#6b5236", "#7e6342"], light: ["#c9a676", "#d9ba8c"] },
-  { id: "sugar", name: "sugar dust", btn: "Sugar", layer: 480, cloud: 490, colour: ["#9a968c", "#b0aca2"], light: ["#e2ddd2", "#efebe2"] },
+  { id: "coal", name: "coal dust", btn: "Coal", group: "IIIB", cond: false, layer: 250, cloud: 600, colour: ["#2a2622", "#3a3530"], light: ["#5a534c", "#7a7168"] },
+  { id: "wood", name: "wood flour", btn: "Wood flour", group: "IIIB", cond: false, layer: 340, cloud: 490, colour: ["#6b5236", "#7e6342"], light: ["#c9a676", "#d9ba8c"] },
+  // aluminium: conductive, so group IIIC. Its ignition temperatures swing hundreds of degrees with particle size, so none are claimed here.
+  { id: "alu", name: "aluminium dust", btn: "Aluminium", group: "IIIC", cond: true, layer: null, cloud: null, colour: ["#a9b4c0", "#c6d0db"], light: ["#7f8790", "#959da6"] },
 ];
 // Toy: dust settles at 0.4 mm a week. The light is marked T135 °C and reaches it with exactly 5 mm on top
 // (90 °C bare, +9 K per mm). Thicker layers light lower (3 K per mm past 5 mm). A JB with a missing plug fills in ~20 weeks.
-const MODEL = { mmPerWeek: 0.4, bare: 90, perMm: 9, marked: 135, thickDrop: 3, tau: 2.2, maxWeeks: 60, jbFillWeeks: 20, jbBurn: 0.55 };
+const MODEL = { mmPerWeek: 0.4, bare: 90, perMm: 9, marked: 135, thickDrop: 3, tau: 2.2, maxWeeks: 60, jbFillWeeks: 20, jbBurn: 0.45 };
 
 const PLATE = { x: -124, y: -84, w: 256, d: 166, r: 8 };
 const PLATE_H = 12, FOOT_H = 5;
@@ -175,6 +176,7 @@ uniform float uLamp;
 uniform float uSmoulder;
 uniform float uDustTop;
 uniform float uJbFire;
+uniform float uArc;
 uniform float uIngress;
 uniform float uCloud;
 uniform float uPrimary;
@@ -201,6 +203,13 @@ vec4 lightInk(float e){
   float la=1.-exp(-1.2*e);
   vec3 seen=mix(vec3(1.),vec3(.97,.86,.55),la);
   return mix(vec4(c,a)*.9,inkFor(seen,0.)*la*.55,uLight);
+}
+vec4 arcInk(float e){
+  vec3 c=tonemap(vec3(.62,.78,1.)*e,1.6)+tonemap(vec3(1.)*max(0.,e-1.2),1.);
+  c=min(c,vec3(1.));float a=max(c.r,max(c.g,c.b));
+  float la=1.-exp(-1.6*e);
+  vec3 seen=mix(vec3(1.),mix(vec3(.18,.3,.85),vec3(.75,.85,1.),smoothstep(1.,2.,e)),la);
+  return mix(vec4(c,a),inkFor(seen,.85*smoothstep(1.2,2.2,e))*la,uLight);
 }
 vec4 smokeInk(float d,vec3 col){float a=1.-exp(-d);return vec4(col*a,a);}
 float edgeFade(vec2 vb){return smoothstep(0.,80.,min(min(vb.x,uView.x-vb.x),min(vb.y,uView.y-vb.y)));}
@@ -259,6 +268,14 @@ void main(){
     float lick=exp(-pow(length(hv*vec2(1.,.5)-vec2(0.,-3.))/2.6,2.))*(.4+.8*noise2(hv*.8+vec2(0.,-uTime*6.)));
     o=over(fireInk((glow*1.3+lick*1.1)*uJbFire,.5),o);
   }
+  if(uArc>.002){
+    vec2 a=project(JH+vec3(-3.,-2.,-6.)), b=project(JH+vec3(1.4,-2.,-6.));
+    vec2 pa=vb-a, ba=b-a; float t=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);
+    float jag=(noise2(vec2(t*9.,uTime*70.))-.5)*1.2*uK*sin(t*3.1416);
+    float d=length(pa-ba*t-vec2(0.,jag))/uK;
+    float c=length(vb-mix(a,b,.5))/uK;
+    o=over(arcInk((exp(-pow(d/.35,2.))*2.4+exp(-pow(c/7.,2.))*.9)*uArc),o);
+  }
   if(uCloud>.002){
     float d=0.;
     for(int i=0;i<9;i++){
@@ -307,19 +324,19 @@ const LIGHT = document.body.dataset.theme === "light" ? 1 : 0;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
-const gl = glLayer({ canvas: stage.querySelector(".fx-gl"), fragment: ${JSON.stringify(GLSL)}, view: [D.W, D.H], camera: D.camera, uniforms: ["uLamp", "uSmoulder", "uDustTop", "uJbFire", "uIngress", "uCloud", "uPrimary", "uPrimAt", "uBoom", "uBig", "uDustCol"], fixed: { uLight: LIGHT } });
+const gl = glLayer({ canvas: stage.querySelector(".fx-gl"), fragment: ${JSON.stringify(GLSL)}, view: [D.W, D.H], camera: D.camera, uniforms: ["uLamp", "uSmoulder", "uDustTop", "uJbFire", "uArc", "uIngress", "uCloud", "uPrimary", "uPrimAt", "uBoom", "uBig", "uDustCol"], fixed: { uLight: LIGHT } });
 if (gl) stage.setAttribute("data-gl", "");
 
 let dust = D.start.dust, weeks = D.start.weeks, sealed = D.start.sealed, lamp = true, lampLevel = 1, temp = M.bare;
-let smoulder = 0, jbFire = 0, tipAt = null, cloudAt = null, primaryAt = null, primSrc = "", boomAt = null, big = 0;
+let shortAt = null, smoulder = 0, jbFire = 0, tipAt = null, cloudAt = null, primaryAt = null, primSrc = "", boomAt = null, big = 0;
 let frame = 0, last = 0, now = 0, visible = false, touring = true, slow = false, tourClock = 0, tourStep = -1, tourEnd = 0, lastShot = "", pendingTip = null, ageing = false;
 const BOOM_END = 4.4;
 const booming = () => primaryAt !== null || (boomAt !== null && now - boomAt < BOOM_END + 0.3);
 const Dd = () => D.DUSTS[dust];
 const mm = () => Math.round(weeks * M.mmPerWeek * 10) / 10;
 const tUnder = () => M.bare + M.perMm * mm();
-const layerIgn = () => Dd().layer - (mm() > 5 ? M.thickDrop * (mm() - 5) : 0);
-const tmax = () => Math.min(Dd().cloud * 2 / 3, Dd().layer - 75);
+const layerIgn = () => Dd().layer === null ? 9999 : Dd().layer - (mm() > 5 ? M.thickDrop * (mm() - 5) : 0);
+const tmax = () => Dd().layer === null ? 9999 : Math.min(Dd().cloud * 2 / 3, Dd().layer - 75);
 const jbFill = () => sealed ? 0 : clamp(weeks / M.jbFillWeeks, 0, 1);
 const weeksFor5mm = 5 / M.mmPerWeek;
 
@@ -361,11 +378,13 @@ function syncUi() {
   ui.tFill.dataset.state = smoulder > 0 ? "fire" : temp > tmax() ? "hot" : "ok";
   ui.tOut.textContent = Math.round(temp) + " °C";
   ui.mk.style.left = tpos(M.marked);
+  const known = Dd().layer !== null;
+  ui.lim.style.display = known ? "" : "none"; ui.ign.style.display = known ? "" : "none";
   ui.lim.style.left = tpos(tmax()); ui.lim.dataset.label = "limit " + Math.round(tmax());
   ui.ign.style.left = tpos(layerIgn()); ui.ign.dataset.label = "layer lights " + Math.round(layerIgn());
   ui.jbFill.style.width = (jbFill() * 100).toFixed(1) + "%";
-  ui.jbFill.dataset.state = jbFire > 0 ? "fire" : jbFill() >= M.jbBurn ? "hot" : "ok";
-  ui.jbOut.textContent = jbFire > 0.1 ? "burning" : sealed ? "clean" : Math.round(jbFill() * 100) + " % full";
+  ui.jbFill.dataset.state = shortAt !== null ? "fire" : Dd().cond && jbFill() > 0.2 ? "hot" : "ok";
+  ui.jbOut.textContent = shortAt !== null ? "SHORT" : sealed ? "clean" : Math.round(jbFill() * 100) + " % full";
   ui.jb.forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.jb === "sealed") === sealed)));
   ui.age.setAttribute("aria-pressed", String(ageing));
   ui.lamp.setAttribute("aria-pressed", String(lamp)); ui.lamp.textContent = lamp ? "Light on" : "Light off";
@@ -384,9 +403,12 @@ function step(dt) {
   if (primaryAt !== null && boomAt === null) {
     if (now - primaryAt > 0.5) { boomAt = now; big = clamp((weeks - 3) / 30, 0, 1); lamp = false;
       const g = Dd();
+      const first = primSrc === "jb"
+        ? "The short inside the junction box lit the aluminium dust it had just blown into a cloud, and the flame came out of the plug hole (the primary)."
+        : "The smouldering layer on the light lit the cloud from the bag (the primary).";
       say(big > 0.4
-        ? "Boom, then the big one. The " + (primSrc === "jb" ? "fire in the junction box" : "smouldering layer on the light") + " lit the cloud from the bag (the primary). Its blast threw " + Math.round(weeks) + " weeks of " + g.name + " off every beam and ledge into the air, and that lit too: the secondary. That's the one that takes buildings. How big it gets is purely housekeeping."
-        : "Boom, a small one. The " + (primSrc === "jb" ? "fire in the junction box" : "smouldering layer on the light") + " lit the cloud from the bag, but the beams were fairly clean, so there wasn't much for a secondary to feed on. Clean plants have small accidents.");
+        ? "Boom, then the big one. " + first + " Its blast threw " + Math.round(weeks) + " weeks of " + g.name + " off every beam and ledge into the air, and that lit too: the secondary. That's the one that takes buildings."
+        : "Boom, a small one. " + first + " The beams were fairly clean, so there wasn't much for a secondary to feed on. Clean plants have small accidents.");
     }
     return;
   }
@@ -396,15 +418,18 @@ function step(dt) {
   temp += (target - temp) * (1 - Math.exp(-dt / M.tau));
   if (temp >= layerIgn() && mm() > 0.3) smoulder = Math.min(1, smoulder + dt * 0.5);
   else smoulder = Math.max(0, smoulder - dt * 0.4);
-  // a loose terminal arcs in the dust that got into the box
-  if (!sealed && jbFill() >= M.jbBurn && lamp) jbFire = Math.min(1, jbFire + dt * 0.45);
-  else jbFire = Math.max(0, jbFire - dt * 0.5);
+  // conductive dust that got in through the missing plug bridges two live terminals: short, arc
+  if (!sealed && Dd().cond && jbFill() >= M.jbBurn && lamp && shortAt === null) {
+    shortAt = now;
+    say("Short. Aluminium dust conducts, and it has piled up until it bridges two live terminals. The arc blasts the dust inside the box into a cloud, and lights it…");
+  }
+  if (shortAt !== null && primaryAt === null && now - shortAt > 0.45) { primaryAt = now; primSrc = "jb"; }
+  jbFire = shortAt === null ? 0 : sm(0.1, 0.4, now - shortAt);
   // the cloud from the bag spreads; if it reaches a burning nest, that's the primary
   if (cloudAt !== null && now >= cloudAt) {
     const age = now - cloudAt;
     if (primaryAt === null && age > 0.7) {
-      if (jbFire > 0.6) { primaryAt = now; primSrc = "jb"; say("The cloud from the bag drifted over the junction box, into the flame at the open plug hole…"); }
-      else if (smoulder > 0.6) { primaryAt = now; primSrc = "lum"; say("The cloud from the bag drifted up into the smouldering layer on the light…"); }
+      if (smoulder > 0.6) { primaryAt = now; primSrc = "lum"; say("The cloud from the bag drifted up into the smouldering layer on the light…"); }
     }
     if (age > 4) cloudAt = null;
   }
@@ -435,7 +460,7 @@ function draw() {
     stage.style.transform = "translate(" + (A * Math.sin(c * 90)).toFixed(1) + "px," + (A * Math.cos(c * 71)).toFixed(1) + "px)";
     flash.style.opacity = ((0.3 + 0.55 * big) * burst(c, 0.03, 0.25)).toFixed(3);
   } else if (boomAt !== null && now - boomAt > BOOM_END) {
-    boomAt = null; primaryAt = null; smoulder = 0; jbFire = 0; cloudAt = null; tipAt = null; temp = M.bare; weeks = 0; built = ""; lamp = true;
+    boomAt = null; primaryAt = null; shortAt = null; smoulder = 0; jbFire = 0; cloudAt = null; tipAt = null; temp = M.bare; weeks = 0; built = ""; lamp = true;
     lumG.removeAttribute("transform"); jbG.removeAttribute("transform");
     for (const g of [beamDust, floorDust, lumDust, jbTop]) g.style.opacity = "";
     stage.style.transform = ""; flash.style.opacity = "0";
@@ -446,19 +471,22 @@ function draw() {
     const cl = cloudAt === null || now < cloudAt ? 0 : sm(0, 1.2, now - cloudAt) * (1 - sm(2.4, 4, now - cloudAt));
     const prim = primaryAt !== null ? now - primaryAt : -1;
     const at = primSrc === "jb" ? [D.JB.x + 18, D.JB.y + D.JB.d + 4, D.JB.z0 + 14] : [D.LAMP_C[0], D.LAMP_C[1], D.LUM.z1 + 2];
-    gl.draw({ uLamp: K.c >= 0 ? 0 : lampLevel, uSmoulder: K.c >= 0 ? 0 : smoulder, uDustTop: D.LUM.z1 + mm() * D.DUST_K + 0.1, uJbFire: K.c >= 0 ? 0 : jbFire, uIngress: sealed || K.c >= 0 ? 0 : 0.35 + 0.65 * (ageing ? 1 : 0.3), uCloud: K.c >= 0 ? 0 : cl, uPrimary: prim, uPrimAt: at, uBoom: K.c, uBig: big, uDustCol: hex(c) }, now);
+    gl.draw({ uLamp: K.c >= 0 ? 0 : lampLevel, uSmoulder: K.c >= 0 ? 0 : smoulder, uDustTop: D.LUM.z1 + mm() * D.DUST_K + 0.1, uJbFire: K.c >= 0 ? 0 : jbFire, uArc: shortAt === null ? 0 : burst(now - shortAt, 0.01, 0.3) * (0.7 + 0.3 * Math.sin(now * 120)), uIngress: sealed || K.c >= 0 ? 0 : 0.35 + 0.65 * (ageing ? 1 : 0.3), uCloud: K.c >= 0 ? 0 : cl, uPrimary: prim, uPrimAt: at, uBoom: K.c, uBig: big, uDustCol: hex(c) }, now);
   }
   const text = K.c >= 0 ? (K.c < 3.2 ? (big > 0.4 ? "BOOM · secondary explosion" : "BOOM · primary only") : "resetting…")
-    : primaryAt !== null ? "PRIMARY · the cloud found the fire"
-    : Math.round(weeks) + " wk · " + mm().toFixed(1) + " mm · " + Math.round(temp) + " °C" + (smoulder > 0.3 ? " · SMOULDERING" : "") + " · JB " + (sealed ? "sealed" : jbFire > 0.3 ? "BURNING" : Math.round(jbFill() * 100) + " %");
+    : primaryAt !== null ? (primSrc === "jb" ? "PRIMARY · the arc lit the dust in the box" : "PRIMARY · the cloud found the smoulder")
+    : Math.round(weeks) + " wk · " + mm().toFixed(1) + " mm · " + Math.round(temp) + " °C" + (smoulder > 0.3 ? " · SMOULDERING" : "") + " · JB " + (sealed ? "sealed" : shortAt !== null ? "SHORT" : Math.round(jbFill() * 100) + " %");
   if (readout.textContent !== text) readout.textContent = text;
   if (boomAt === null && primaryAt === null) {
     const g = Dd();
     const cl = cloudAt !== null && now >= cloudAt;
-    if (cl && now - cloudAt > 1) say("A cloud of " + g.name + " from the bag. Normal for a bag-tip station. Nothing out here is hot enough to light it: the light's at " + Math.round(temp) + " °C and this cloud needs about " + g.cloud + " °C. It settles and adds to the layer.");
-    else if (!cl && jbFire > 0.6) say("A loose terminal is arcing in the dust that got in through the missing plug, and the box is burning inside. No bang on its own. Now imagine the next bag gets tipped.");
+    if (shortAt !== null) {}
+    else if (cl && now - cloudAt > 1) say("A cloud of " + g.name + " from the bag. Normal for a bag-tip station. Nothing out here is hot enough to light it: the light's at " + Math.round(temp) + " °C" + (g.cloud ? " and this cloud needs about " + g.cloud + " °C" : "") + ". It settles and adds to the layer.");
     else if (!cl && smoulder > 0.6) say("Smouldering. " + Math.round(weeks) + " weeks of " + g.name + " (" + mm().toFixed(1) + " mm) is a blanket on the light: " + Math.round(temp) + " °C under it, past the " + Math.round(layerIgn()) + " °C this layer lights at. No flame, no bang. Yet. Now imagine the next bag gets tipped.");
-    else if (!cl && !sealed && jbFill() > 0.15) say("Missing blanking plug. Dust is drifting into the junction box: " + Math.round(jbFill() * 100) + " % full. An Ex t box only works if the dust stays out.");
+    else if (!cl && !sealed && jbFill() > 0.1) say(g.cond
+        ? "Missing blanking plug, and aluminium dust conducts (that's what group IIIC means). It's piling up round the terminals inside the box: " + Math.round(jbFill() * 100) + " % full. When it bridges two of them…"
+        : "Missing blanking plug: the box is " + Math.round(jbFill() * 100) + " % full of " + g.name + ". It's " + g.group + ", non-conductive, so it won't short the terminals, but the box is meant to keep it out. Try a conductive dust.");
+    else if (!cl && mm() > 5 && g.layer === null) say(Math.round(weeks) + " weeks of aluminium dust on the light. It won't smoulder at these temperatures; the danger with this one is that it conducts. Lose a blanking plug.");
     else if (!cl && mm() > 5) say(Math.round(weeks) + " weeks without cleaning: " + mm().toFixed(1) + " mm on the light. Its T135 marking only holds up to 5 mm, and it's " + Math.round(temp) + " °C under there" + (temp > tmax() ? ", past the " + Math.round(tmax()) + " °C limit for this dust." : "."));
     else if (!cl) say(Math.round(weeks) + " weeks since the last clean. " + mm().toFixed(1) + " mm on the light, " + Math.round(temp) + " °C under it. Fine.");
   }
@@ -467,8 +495,8 @@ function draw() {
 const TOUR = [
   { dust: 0, weeks: 4, sealed: true, tip: 2.5, hold: 7 },
   { dust: 0, weeks: 44, sealed: true, tip: 6.5, hold: 12 },
-  { dust: 1, weeks: 8, sealed: false, tip: 3, hold: 7 },
-  { dust: 1, weeks: 14, sealed: false, tip: 5.5, hold: 11 },
+  { dust: 1, weeks: 26, sealed: false, tip: 3.5, hold: 7 },
+  { dust: 2, weeks: 2, sealed: false, age: true, hold: 11 },
 ];
 function tick(t) {
   const dt = last ? Math.min((t - last) / 1000, 1 / 30) : 1 / 60;
@@ -480,8 +508,8 @@ function tick(t) {
     if (tourStep < 0 || tourClock > tourEnd) {
       tourStep = (tourStep + 1) % TOUR.length;
       const s = TOUR[tourStep];
-      dust = s.dust; weeks = s.weeks; sealed = s.sealed; lamp = true; temp = M.bare; smoulder = 0; jbFire = 0; cloudAt = null; tipAt = null; built = "";
-      applyDustColour(); pendingTip = now + s.tip; tourEnd = tourClock + s.hold;
+      dust = s.dust; weeks = s.weeks; sealed = s.sealed; lamp = true; temp = M.bare; smoulder = 0; jbFire = 0; shortAt = null; cloudAt = null; tipAt = null; built = ""; ageing = !!s.age;
+      applyDustColour(); pendingTip = s.tip ? now + s.tip : null; tourEnd = tourClock + s.hold;
     }
     if (pendingTip !== null && now >= pendingTip) { pendingTip = null; tip(); }
   }
@@ -498,7 +526,7 @@ const setDust = guard((i) => { dust = i; smoulder = 0; applyDustColour(); });
 const setWeeks = guard((v) => { weeks = clamp(Math.round(v), 0, M.maxWeeks); });
 const setJb = guard((s) => { sealed = s; });
 const doTip = guard(() => tip());
-const doClean = guard(() => { weeks = 0; smoulder = 0; jbFire = 0; ageing = false; say("Cleaned: vacuumed, not blown down with an air hose (that just makes a cloud). Nothing on the light, nothing on the beams, nothing to feed a secondary."); });
+const doClean = guard(() => { weeks = 0; smoulder = 0; jbFire = 0; shortAt = null; ageing = false; say("Cleaned: vacuumed, not blown down with an air hose (that just makes a cloud). Nothing on the light, nothing on the beams, nothing to feed a secondary."); });
 const toggleAge = guard(() => { ageing = !ageing; });
 const toggleLamp = guard(() => { lamp = !lamp; });
 new IntersectionObserver((es) => { visible = es[es.length - 1].isIntersecting; if (visible) run(); }, { rootMargin: "120px 0px" }).observe(stage);
@@ -574,12 +602,12 @@ body[data-theme="dark"] .fx-gl{mix-blend-mode:screen}
 const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="slider" aria-label="Weeks since cleaning: drag up and down or arrow keys; space tips a bag; C cleans; P toggles the blanking plug" aria-valuemin="0" aria-valuemax="${MODEL.maxWeeks}" aria-valuenow="${START.weeks}">${fig}<canvas class="fx-layer fx-gl" aria-hidden="true"></canvas><div class="fx-flash" aria-hidden="true"></div></div>`;
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
-  <div class="ctl-row"><span class="ctl-label">Dust</span>${DUSTS.map((d, i) => `<button type="button" data-dust="${i}" aria-pressed="${i === START.dust}">${d.btn}<small>layer ${d.layer} · cloud ${d.cloud} °C</small></button>`).join("")}</div>
+  <div class="ctl-row"><span class="ctl-label">Dust</span>${DUSTS.map((d, i) => `<button type="button" data-dust="${i}" aria-pressed="${i === START.dust}">${d.btn}<small>${d.group} · ${d.cond ? "conductive" : "layer " + d.layer + " °C"}</small></button>`).join("")}</div>
   <div class="ctl-row"><span class="ctl-label">Since cleaned</span><div class="slide"><span class="notch" data-label="5 mm on the light" style="left:${((5 / MODEL.mmPerWeek) / MODEL.maxWeeks * 100).toFixed(1)}%"></span><input id="weeks" type="range" min="0" max="${MODEL.maxWeeks}" step="1" value="${START.weeks}" aria-label="Weeks since the area was cleaned"></div><output id="weeks-out">${START.weeks} wk</output></div>
   <div class="ctl-row"><span class="ctl-label">Light °C</span><div class="meter" aria-hidden="true"><span id="temp-fill" class="fill"></span><span id="mark-t135" class="mark" data-label="T135"></span><span id="mark-limit" class="mark" data-label="limit"></span><span id="mark-ign" class="mark" data-label="layer lights"></span></div><output id="temp-out">90 °C</output></div>
-  <div class="ctl-row"><span class="ctl-label">JB</span><button type="button" data-jb="sealed" aria-pressed="true">Sealed</button><button type="button" data-jb="open" aria-pressed="false">Plug missing</button><div class="meter plain" aria-hidden="true"><span id="jb-fill" class="fill"></span><span id="mark-burn" class="mark" style="left:${(MODEL.jbBurn * 100).toFixed(0)}%" data-label="enough to burn"></span></div><output id="jb-out">clean</output></div>
+  <div class="ctl-row"><span class="ctl-label">JB</span><button type="button" data-jb="sealed" aria-pressed="true">Sealed</button><button type="button" data-jb="open" aria-pressed="false">Plug missing</button><div class="meter plain" aria-hidden="true"><span id="jb-fill" class="fill"></span><span id="mark-burn" class="mark" style="left:${(MODEL.jbBurn * 100).toFixed(0)}%" data-label="bridges terminals"></span></div><output id="jb-out">clean</output></div>
   <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="tip">TIP A BAG</button><button type="button" id="clean">CLEAN</button><button type="button" id="age" aria-pressed="false">Let it go</button><button type="button" id="lamp" aria-pressed="true">Light on</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
-  <div id="shot" aria-live="polite">Tip a bag: that cloud is normal. Then let the place go a few months without cleaning, or lose a blanking plug, and tip another.</div>
+  <div id="shot" aria-live="polite">Tip a bag: that cloud is normal. Then let the place go a few months without cleaning, or lose a blanking plug with a conductive dust about.</div>
 </div>`;
 
 const card = k.plateHtml({
@@ -591,12 +619,12 @@ const card = k.plateHtml({
     { mark: "lit", label: "The light, smoulder, fire in the box, the clouds" },
     { mark: "raised", label: "Floodlight, junction box (cut open), hopper, beam and the dust on all of it" },
   ],
-  caption: "Ex t does two jobs: keep dust out of the enclosure, and keep the outside cool enough. The surface marking (T135 °C here) only holds with up to 5 mm of dust on it. In a real plant it fails slowly. Months without cleaning bury a light until the layer under it smoulders, or a missing blanking plug lets dust into a junction box until a loose terminal lights it. Neither goes bang on its own. Then normal work, like tipping a bag, raises a cloud. The cloud finds the burning nest: that's the primary. Its blast throws everything that's settled on beams and ledges into the air, and that's the secondary, the one that takes the building. How big it gets is down to housekeeping.",
+  caption: "Ex t does two jobs, and each piece of kit here shows one failing. The light has to stay cool enough: its T135 °C marking only holds with up to 5 mm of dust on it, so months without cleaning bury it until the layer underneath smoulders, and the next cloud from the bag station finds it. The junction box has to keep dust out: lose a blanking plug and dust gets in, and if it's conductive (group IIIC, like aluminium) it piles up until it bridges two live terminals. The short arcs, blows the dust inside into a cloud and lights it. Either way that's the primary. Its blast throws everything settled on the beams into the air, and that's the secondary, the one that takes the building. How big it gets is down to housekeeping.",
   body: stageHtml,
 });
 
 const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
-const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a certified anything. Real: the IEC 60079-14 dust rule (Tmax = the lower of ⅔ × cloud ignition temperature and 5 mm layer ignition temperature − 75 K, layers up to 5 mm) and the dusts' literature ignition temperatures. Made up: how fast dust settles, how hot the light runs under it, how fast the box fills, and the timings.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/ex-t-dust" style="color:inherit">Source</a></p>`;
+const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a certified anything. Real: dust groups (IIIC = conductive), the IEC 60079-14 dust rule (Tmax = the lower of ⅔ × cloud ignition temperature and 5 mm layer ignition temperature − 75 K, layers up to 5 mm) and the dusts' literature ignition temperatures. Made up: how fast dust settles, how hot the light runs under it, how fast the box fills, and the timings.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/ex-t-dust" style="color:inherit">Source</a></p>`;
 const name = theme === "light" ? "light.html" : "index.html";
 writeFileSync(join(HERE, name), k.pageHtml({ title: "Ex t dust", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + glScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 700 }));
 console.log("wrote", name);
