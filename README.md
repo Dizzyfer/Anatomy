@@ -20,6 +20,7 @@ Interactive engineering toys you can break. Poke them, push them past the limit,
 | [How a lock gets picked](lock/) · [play](https://dizzyfer.github.io/Anatomy/lock/) | A pin tumbler lock cut in half. Tension, binding order, set pins, oversets and spool false sets. Drag the pins up and pick it, rake it, or just use the key. |
 | [Hazardous area zones](zones/) · [play](https://dizzyfer.github.io/Anatomy/zones/) | Release grade, dilution and ventilation availability through the zone table, with the envelope drawn, gas that slumps into pits, and the EPL a nearby light needs. |
 | [Hot water system](hot-water/) · [play](https://dizzyfer.github.io/Anatomy/hot-water/) | Thermostat, cutout and T&PR valve, and why the 99 °C bit matters. Cap the relief valve and the superheated water sends the tank through the roof. |
+| [Grain dust explosion](silo/) · [play](https://dizzyfer.github.io/Anatomy/silo/) | A hot bearing, a primary in the elevator leg, then the secondary through the plant on the dust that settled on the beams. Monitoring, vents, isolation and housekeeping. |
 
 All built with [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22), an open-source kit for interactive isometric figures. The drawing kit, isometric camera and WebGL layer are his work.
 
