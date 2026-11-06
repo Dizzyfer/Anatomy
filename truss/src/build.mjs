@@ -307,7 +307,7 @@ function syncUi() {
   ui.stream.setAttribute("aria-pressed", String(!!stream));
   const u = fallAt !== null ? 0 : worst.util;
   ui.uFill.style.width = (clamp(u / 1.2, 0, 1) * 100).toFixed(1) + "%"; ui.uFill.dataset.state = u > 1 ? "bad" : u > 0.85 ? "warn" : "ok";
-  ui.uOut.textContent = fallAt !== null ? "—" : Math.round(u * 100) + " %";
+  ui.uOut.textContent = fallAt !== null ? "gone" : Math.round(u * 100) + " %";
   const tons = cars.reduce((a, c) => a + onSpanTons(c), 0);
   ui.tFill.style.width = (clamp(tons / 200, 0, 1) * 100).toFixed(1) + "%"; ui.tFill.dataset.state = tons > 130 ? "warn" : "ok";
   ui.tOut.textContent = Math.round(tons) + " t";
