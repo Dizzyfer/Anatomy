@@ -29,7 +29,7 @@ Keyboard: 1 to 5 send a vehicle, J = jam, H = Pratt/Howe, R = new bridge, S = sl
 
 Real: the stiffness method for a pin-jointed truss, tension and compression, Euler buckling, Pratt against Howe, and a determinate truss becoming a mechanism. Typical Australian vehicle masses: B-double 62.5 t, triple road train about 120 t, a big loaded mining haul truck about 620 t.
 
-Made up for the toy: the member sizes, the dead load, the speeds, no impact or lane factors, and the sag drawn 120 times bigger (dead-load sag left out, as if the bridge were cambered). Not a bridge design.
+Made up for the toy: the member sizes, the dead load, the speeds, no impact or lane factors, and the sag drawn 80 times bigger (dead-load sag left out, as if the bridge were cambered). Not a bridge design.
 
 ## How it's built
 
