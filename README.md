@@ -22,6 +22,7 @@ Interactive engineering toys you can break. Poke them, push them past the limit,
 | [Hot water system](hot-water/) · [play](https://dizzyfer.github.io/Anatomy/hot-water/) | Thermostat, cutout and T&PR valve, and why the 99 °C bit matters. Cap the relief valve and the superheated water sends the tank through the roof. |
 | [Grain dust explosion](silo/) · [play](https://dizzyfer.github.io/Anatomy/silo/) | A hot bearing, a primary in the elevator leg, then the secondary through the plant on the dust that settled on the beams. Monitoring, vents, isolation and housekeeping. |
 | [Gas leak in the kitchen](gas-leak/) · [play](https://dizzyfer.github.io/Anatomy/gas-leak/) | Natural gas layering from the ceiling, LPG from the floor, the flammable band between too lean and too rich, and what happens when the light switch, the fridge or the igniter sparks in it. |
+| [Truss bridge](truss/) · [play](https://dizzyfer.github.io/Anatomy/truss/) | Cars, B-doubles, road trains and a mining haul truck on a 48 m steel truss: member forces in tension and compression, Pratt against Howe, buckling, and what happens when you cut one member. |
 
 All built with [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22), an open-source kit for interactive isometric figures. The drawing kit, isometric camera and WebGL layer are his work.
 
