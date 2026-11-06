@@ -1,0 +1,1297 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Overclocking a CPU</title><style>
+.iso{
+  --anatomy-page:#0b0b0b;--anatomy-card:#131313;--anatomy-text:#a3a3a3;--anatomy-strong:#e6e6e6;--anatomy-muted:#6e6e6e;
+  --anatomy-paper:#131313;--anatomy-face:#1b1b1b;--anatomy-top:#1c1c1c;
+  --anatomy-shade-0:#0f0f0f;--anatomy-shade-1:#121212;--anatomy-shade-2:#151515;--anatomy-shade-3:#181818;
+  --anatomy-lit-top:#262626;--anatomy-lit-shade:#1d1d1d;
+  --anatomy-hi:#d4d4d4;--anatomy-mid:#6a6a6a;--anatomy-lo:#3e3e3e;--anatomy-faint:#2a2a2a;--anatomy-lit:#ffffff;
+  --anatomy-halo:#050505;--anatomy-halo-opacity:.9;--anatomy-dot:#e6e6e6;
+  --anatomy-red:#ff6b6b;--anatomy-green:#6be0a0;--anatomy-blue:#6b9bff;
+  --anatomy-weight:.6px;--anatomy-ease:cubic-bezier(.32,.72,0,1);
+  --anatomy-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff0a,inset 0 0 0 1px #ffffff06,0 0 0 1px #00000026,0 1px 1px -.5px #00000014,0 3px 3px -1.5px #00000014,0 6px 6px -3px #00000014,0 12px 12px -6px #00000014;
+}
+.iso[data-theme="light"]{
+  --anatomy-page:#f2f2ef;--anatomy-card:#fbfbfa;--anatomy-text:#57575a;--anatomy-strong:#18181a;--anatomy-muted:#8c8c90;
+  --anatomy-paper:#fbfbfa;--anatomy-face:#ffffff;--anatomy-top:#ffffff;
+  --anatomy-shade-0:#dcdcd9;--anatomy-shade-1:#e5e5e2;--anatomy-shade-2:#ededea;--anatomy-shade-3:#f4f4f1;
+  --anatomy-lit-top:#ffffff;--anatomy-lit-shade:#eeeeeb;
+  --anatomy-hi:#26262a;--anatomy-mid:#8a8a8f;--anatomy-lo:#b4b4b8;--anatomy-faint:#d4d4d6;--anatomy-lit:#000000;
+  --anatomy-halo:#8a8a80;--anatomy-halo-opacity:.32;--anatomy-dot:#3a3a3e;
+  --anatomy-red:#e5484d;--anatomy-green:#30a46c;--anatomy-blue:#3e63dd;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff,0 0 0 1px #0000000f,0 1px 1px -.5px #0000000a,0 3px 3px -1.5px #0000000a,0 6px 6px -3px #0000000a,0 12px 12px -6px #0000000a;
+}
+.iso-svg{display:block;width:100%;height:auto;overflow:visible}
+.iso-svg path,.iso-svg circle{vector-effect:non-scaling-stroke}
+.iso-fill{fill:var(--anatomy-paper);stroke:none}
+.iso-solid[data-lit]>.iso-fill{fill:var(--anatomy-face)}
+.iso-shade,.iso-top{stroke:none}
+.iso-shade[data-shade="0"]{fill:var(--anatomy-shade-0)}
+.iso-shade[data-shade="1"]{fill:var(--anatomy-shade-1)}
+.iso-shade[data-shade="2"]{fill:var(--anatomy-shade-2)}
+.iso-shade[data-shade="3"]{fill:var(--anatomy-shade-3)}
+.iso-top{fill:var(--anatomy-top)}
+.iso-solid[data-lit]>.iso-top{fill:var(--anatomy-lit-top)}
+.iso-solid[data-lit]>.iso-shade{fill:var(--anatomy-lit-shade)}
+.iso-solid[data-seamless]>.iso-shade,.iso-solid[data-seamless]>.iso-top{stroke-width:.4;stroke-linejoin:round}
+.iso-solid[data-seamless]>.iso-shade[data-shade="0"]{stroke:var(--anatomy-shade-0)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="1"]{stroke:var(--anatomy-shade-1)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="2"]{stroke:var(--anatomy-shade-2)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="3"]{stroke:var(--anatomy-shade-3)}
+.iso-solid[data-seamless]>.iso-top{stroke:var(--anatomy-top)}
+.iso-solid[data-seamless][data-lit]>.iso-top{stroke:var(--anatomy-lit-top)}
+.iso-solid[data-seamless][data-lit]>.iso-shade{stroke:var(--anatomy-lit-shade)}
+.iso-solid[data-lit]>.iso-edge{stroke:var(--anatomy-lit)}
+.iso-halo{fill:var(--anatomy-halo);stroke:none;filter:blur(9px);opacity:var(--anatomy-halo-opacity);transform:translateY(3px)}
+.iso-line{fill:none;stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight);stroke-linecap:round;stroke-linejoin:round}
+.iso-line[data-tone="hi"]{stroke:var(--anatomy-hi)}
+.iso-line[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.iso-line[data-tone="lo"]{stroke:var(--anatomy-lo)}
+.iso-line[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.iso-line[data-tone="lit"]{stroke:var(--anatomy-lit)}
+.iso-line[data-tone="red"]{stroke:var(--anatomy-red)}
+.iso-line[data-tone="green"]{stroke:var(--anatomy-green)}
+.iso-line[data-tone="blue"]{stroke:var(--anatomy-blue)}
+.iso-line[data-dotted]{stroke-dasharray:.01 3.5;stroke-width:1}
+.iso-line[data-dashed]{stroke-dasharray:3 3}
+.iso-line[data-flow]{stroke-dasharray:2 6}
+.iso-wire-end{fill:var(--anatomy-paper);stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight)}
+.iso-wire[data-tone="hi"] .iso-wire-end{stroke:var(--anatomy-hi)}
+.iso-wire[data-tone="mid"] .iso-wire-end{stroke:var(--anatomy-mid)}
+.iso-wire[data-tone="faint"] .iso-wire-end{stroke:var(--anatomy-faint)}
+.iso-wire[data-tone="lit"] .iso-wire-end{stroke:var(--anatomy-lit)}
+.iso-dots circle{fill:var(--anatomy-dot);stroke:none;opacity:.32}
+.iso-dots[data-tone="hi"] circle{opacity:.85}
+.iso-dots[data-tone="mid"] circle{opacity:.45}
+.iso-dots[data-tone="lo"] circle{opacity:.22}
+.iso-dots[data-tone="faint"] circle{opacity:.12}
+.iso-face-text{fill:var(--anatomy-mid);font-family:var(--anatomy-mono);letter-spacing:.04em}
+.iso-face-text[data-tone="hi"]{fill:var(--anatomy-hi)}
+.iso-face-text[data-tone="lo"]{fill:var(--anatomy-lo)}
+.iso-face-text[data-tone="faint"]{fill:var(--anatomy-faint)}
+.tb-body{fill:var(--anatomy-shade-2);stroke:none}
+.tb-shine{fill:var(--anatomy-top);stroke:none}
+.tb-shade{fill:var(--anatomy-shade-0);stroke:none}
+.tb-ring{fill:none;stroke:var(--anatomy-lo);stroke-width:.45;stroke-linecap:butt;stroke-linejoin:round}
+.tb-ring[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.tb-ring[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.tb-ring[data-tone="hi"]{stroke:var(--anatomy-hi)}
+@keyframes iso-flow{to{stroke-dashoffset:-32}}
+@keyframes iso-pulse{0%,100%{opacity:.18}12%{opacity:1}40%{opacity:.18}}
+.iso-line[data-flow]{animation:iso-flow 1600ms linear infinite}
+.iso-dots circle[data-pulse]{animation:iso-pulse 1600ms steps(1,end) infinite;animation-delay:var(--pulse-at,0ms)}
+.iso-figure{margin:32px 0 36px}
+.iso-plate{position:relative;padding:52px 24px;border-radius:0;background:var(--anatomy-card);box-shadow:0 0 0 1px var(--anatomy-mid);--anatomy-paper:var(--anatomy-card)}
+.iso-plate-corners{position:absolute;inset:18px 20px;pointer-events:none}
+.iso-plate-corner{position:absolute;color:var(--anatomy-muted);font-family:var(--anatomy-mono);font-size:10.5px;line-height:1;letter-spacing:.04em;white-space:nowrap}
+.iso-plate-corner[data-corner="fig"]{top:0;left:0;color:var(--anatomy-text)}
+.iso-plate-corner[data-corner="title"]{top:0;right:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="hint"]{bottom:0;left:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="readout"]{right:0;bottom:0;color:var(--anatomy-text);font-variant-numeric:tabular-nums}
+.iso-plate .iso-svg{margin:0 auto}
+.iso-legend{display:grid;gap:8px;margin-top:12px;color:var(--anatomy-muted);font-size:13px;line-height:1.55}
+.iso-keys{display:flex;flex-wrap:wrap;gap:6px 18px}
+.iso-key{display:inline-flex;align-items:center;gap:7px}
+.iso-swatch{width:16px;height:10px;flex:none;overflow:visible}
+.iso-swatch path{fill:none;stroke:var(--anatomy-hi);stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+.iso-swatch[data-mark="raised"] path,.iso-swatch[data-mark="flat"] path{stroke:var(--anatomy-mid)}
+.iso-swatch[data-mark="lit"] path{stroke:var(--anatomy-lit)}
+.iso-swatch[data-mark="dim"] path{stroke:var(--anatomy-lo)}
+.iso-swatch[data-mark="dotted"] path{stroke-dasharray:.01 3;stroke-width:1.4}
+.iso-swatch[data-mark="dashed"] path{stroke-dasharray:3 2.5}
+.iso-swatch[data-mark="red"] path{stroke:var(--anatomy-red)}
+.iso-swatch[data-mark="green"] path{stroke:var(--anatomy-green)}
+.iso-swatch[data-mark="blue"] path{stroke:var(--anatomy-blue)}
+.iso-swatch-crease{stroke:var(--anatomy-lo)!important}
+@media (max-width:560px){.iso-plate{padding:48px 12px 70px}.iso-plate-corner[data-corner="hint"]{bottom:18px}}
+@media (prefers-reduced-motion:reduce){.iso-line[data-flow],.iso-dots circle[data-pulse]{animation:none}}
+
+*{box-sizing:border-box}
+html{color-scheme:dark}
+body[data-theme="light"]{color-scheme:light}
+body{margin:0;background:var(--anatomy-page);color:var(--anatomy-text);font:14px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.iso-page{width:min(700px,100% - 32px);margin:64px auto 96px}
+</style></head><body class="iso" data-theme="light"><main class="iso-page"><style>.fx-stage{position:relative;overflow:hidden}
+.fx-stage svg{display:block;position:relative}
+.fx-smoke{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle 46% at var(--fx,30%) var(--fy,38%),#fff6dc 0%,#ffcf8a 40%,rgba(255,160,80,0) 100%)}
+.trace{fill:none;stroke:#3a4a52;stroke-width:.6;opacity:.8}body[data-theme="light"] .trace{stroke:#4a5a63}
+.silk{fill:#c9d2d8;opacity:.55;font-family:var(--anatomy-mono);letter-spacing:1px}
+.cable{fill:none;stroke:#2a2c30;stroke-width:4;stroke-linecap:round}
+.tube{fill:none;stroke:#18191c;stroke-width:6;stroke-linecap:round}.tube-hi{fill:none;stroke:#4a4e55;stroke-width:1.2;stroke-linecap:round;transform:translate(-1px,-1.5px)}
+.qcode{fill:#ff4a3d;font-family:var(--anatomy-mono);font-weight:700;letter-spacing:1px}
+.mon{position:absolute;right:2.5%;top:3%;width:30%;max-width:190px;aspect-ratio:16/10;background:#0c0d0f;border:3px solid #2a2c30;border-radius:4px;box-shadow:0 3px 10px rgba(0,0,0,.35);pointer-events:none}
+.mon::after{content:"";position:absolute;left:42%;right:42%;bottom:-9px;height:7px;background:#2a2c30;border-radius:0 0 3px 3px}
+.mon-scr{position:absolute;inset:0;padding:6% 7%;font-family:var(--anatomy-mono);font-size:9.5px;line-height:1.35;color:#cfd6de;overflow:hidden}
+.mon-scr.bsod{background:#0d6bd2;color:#fff;font-family:system-ui,sans-serif}.mon-scr.bsod .sad{font-size:22px;line-height:1.1;margin-bottom:3px}.mon-scr .code{opacity:.8;margin-top:4px;font-size:8.5px}
+.mon-scr.desk{background:linear-gradient(160deg,#16324a,#0d1a26)}.mon-scr.post{background:#000;color:#9aa4ad}.mon-scr.off{background:#000;color:#666;display:flex;flex-direction:column;justify-content:center;align-items:center}
+.mon-scr .bar{height:6px;background:#26384a;border-radius:3px;margin:4px 0;overflow:hidden}.mon-scr .bar i{display:block;height:100%;background:#3ddc84}
+.mon-scr .big{font-size:15px;margin:3px 0;color:#fff}.mon-scr .dim{opacity:.6;margin-top:3px}
+.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
+.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ctl-row[hidden]{display:none}
+.ctl-label{min-width:72px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
+.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
+.ctl button:hover{border-color:var(--anatomy-mid)}
+.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
+.ctl #safe[aria-pressed="true"]{color:#ff6a3d;border-color:#ff6a3d}
+.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
+.ctl output{min-width:96px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
+.slide{position:relative;flex:1;min-width:120px}.slide input{width:100%;accent-color:var(--anatomy-lit);margin:0}
+.meter{position:relative;flex:1;min-width:110px;height:10px;margin-top:14px;border:1px solid var(--anatomy-lo);border-radius:5px}
+.meter .fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .1s;background:var(--anatomy-mid)}
+.meter .fill[data-state="ok"]{background:#3ddc84}.meter .fill[data-state="warn"]{background:#ffb347}.meter .fill[data-state="bad"]{background:#ff5a2a}.meter .fill[data-state="cold"]{background:#7cc4ff}.meter .fill[data-state="off"]{background:var(--anatomy-lo)}
+.mark{position:absolute;top:-14px;bottom:-3px;width:0;border-left:1px dashed #ff6a3d;pointer-events:none}
+.mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:#ff6a3d}
+.mark.l::after{left:auto;right:4px}
+#stats{font-size:12px;color:var(--anatomy-mid);line-height:1.5}#stats b{color:var(--anatomy-hi,var(--anatomy-mid));font-weight:600}
+#shot{min-height:3.6em;font-size:12px;line-height:1.4}
+@media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:80px}.ctl button small{display:none}.mon-scr{font-size:7.5px}.mon-scr.bsod .sad{font-size:15px}}</style><figure class="iso-figure"><div class="iso-plate"><div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 20</span><span class="iso-plate-corner" data-corner="title">Overclocking a CPU</span><span class="iso-plate-corner" data-corner="hint">Clock up, voltage up, don't cook it</span><span class="iso-plate-corner" data-corner="readout" data-readout></span></div><div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Overclocking bench: up and down change the multiplier, left and right the voltage, 1 to 4 pick the cooler"><svg xmlns="http://www.w3.org/2000/svg" class="iso-svg" viewBox="0 0 640 470" role="img" aria-label="A desktop motherboard on a test bench, cut out of its case: the CPU socket with a cooler on it, the power stages (VRM) beside the socket, memory, slots and a debug display. The cooler can be swapped between a stock cooler, a tower air cooler, a liquid cooler with a radiator, and a liquid nitrogen pot."><path class="iso-halo" d="M17.2 264.1L17.4 262.9L18.2 261.7L19.3 260.6L20.9 259.7L260.5 139.9L262.4 139.1L264.6 138.5L267 138.2L269.4 138L271.9 138.2L274.2 138.5L276.4 139.1L278.3 139.9L619.1 310.3L620.7 311.2L621.8 312.3L622.6 313.5L622.8 314.7L622.8 327.8L622.6 329L621.8 330.2L620.7 331.3L619.1 332.2L379.5 452L377.6 452.8L375.4 453.4L373 453.8L370.6 453.9L368.1 453.8L365.8 453.4L363.6 452.8L361.7 452L20.9 281.6L19.3 280.7L18.2 279.6L17.4 278.4L17.2 277.2Z"/><g class="iso-solid"><path class="iso-fill" d="M260.7 167.5L261.1 166.6L262 165.7L263.2 164.9L264.7 164.3L266.5 163.9L268.4 163.7L270.4 163.7L272.3 163.9L274.1 164.3L275.6 164.9L276.8 165.7L277.7 166.6L278.1 167.5L278.1 168.5L278.1 170.3L277.7 171.2L276.8 172.1L275.6 172.9L274.1 173.5L272.3 173.9L270.4 174.1L268.4 174.1L266.5 173.9L264.7 173.5L263.2 172.9L262 172.1L261.1 171.2L260.7 170.3Z"/><path class="iso-shade" data-shade="0" d="M275.6 172.9L274.1 173.5L274.1 171.8L275.6 171.1ZM278.1 170.3L277.7 171.2L277.7 169.5L278.1 168.5ZM277.7 171.2L276.8 172.1L276.8 170.4L277.7 169.5ZM276.8 172.1L275.6 172.9L275.6 171.1L276.8 170.4Z"/><path class="iso-shade" data-shade="1" d="M274.1 173.5L272.3 173.9L272.3 172.2L274.1 171.8ZM272.3 173.9L270.4 174.1L270.4 172.4L272.3 172.2ZM270.4 174.1L268.4 174.1L268.4 172.4L270.4 172.4Z"/><path class="iso-shade" data-shade="2" d="M268.4 174.1L266.5 173.9L266.5 172.2L268.4 172.4ZM266.5 173.9L264.7 173.5L264.7 171.8L266.5 172.2Z"/><path class="iso-shade" data-shade="3" d="M264.7 173.5L263.2 172.9L263.2 171.1L264.7 171.8ZM263.2 172.9L262 172.1L262 170.4L263.2 171.1ZM262 172.1L261.1 171.2L261.1 169.5L262 170.4ZM261.1 171.2L260.7 170.3L260.7 168.5L261.1 169.5Z"/><path class="iso-top" d="M275.6 171.1L274.1 171.8L272.3 172.2L270.4 172.4L268.4 172.4L266.5 172.2L264.7 171.8L263.2 171.1L262 170.4L261.1 169.5L260.7 168.5L260.7 167.5L261.1 166.6L262 165.7L263.2 164.9L264.7 164.3L266.5 163.9L268.4 163.7L270.4 163.7L272.3 163.9L274.1 164.3L275.6 164.9L276.8 165.7L277.7 166.6L278.1 167.5L278.1 168.5L277.7 169.5L276.8 170.4Z"/><path class="iso-line iso-crease" data-tone="faint" d="M278.1 168.5L277.7 169.5L276.8 170.4L275.6 171.1L274.1 171.8L272.3 172.2L270.4 172.4L268.4 172.4L266.5 172.2L264.7 171.8L263.2 171.1L262 170.4L261.1 169.5L260.7 168.5"/><path class="iso-line iso-edge" data-tone="lo" d="M260.7 168.5L260.7 167.5L261.1 166.6L262 165.7L263.2 164.9L264.7 164.3L266.5 163.9L268.4 163.7L270.4 163.7L272.3 163.9L274.1 164.3L275.6 164.9L276.8 165.7L277.7 166.6L278.1 167.5L278.1 168.5M278.1 170.3L277.7 171.2L276.8 172.1L275.6 172.9L274.1 173.5L272.3 173.9L270.4 174.1L268.4 174.1L266.5 173.9L264.7 173.5L263.2 172.9L262 172.1L261.1 171.2L260.7 170.3M260.7 168.5L260.7 170.3M278.1 168.5L278.1 170.3"/></g><g class="iso-solid"><path class="iso-fill" d="M262.7 164L263 163.2L263.7 162.5L264.6 161.9L265.8 161.5L267.2 161.1L268.6 161L270.2 161L271.6 161.1L273 161.5L274.2 161.9L275.1 162.5L275.8 163.2L276.1 164L276.1 168.4L275.8 169.2L275.1 169.8L274.2 170.4L273 170.9L271.6 171.2L270.2 171.4L268.6 171.4L267.2 171.2L265.8 170.9L264.6 170.4L263.7 169.8L263 169.2L262.7 168.4Z"/><path class="iso-shade" data-shade="0" d="M274.2 170.4L273 170.9L273 167.2L274.2 166.7ZM276.1 168.4L275.8 169.2L275.8 165.5L276.1 164.7ZM275.8 169.2L275.1 169.8L275.1 166.1L275.8 165.5ZM275.1 169.8L274.2 170.4L274.2 166.7L275.1 166.1Z"/><path class="iso-shade" data-shade="1" d="M273 170.9L271.6 171.2L271.6 167.5L273 167.2ZM271.6 171.2L270.2 171.4L270.2 167.7L271.6 167.5Z"/><path class="iso-shade" data-shade="2" d="M270.2 171.4L268.6 171.4L268.6 167.7L270.2 167.7ZM268.6 171.4L267.2 171.2L267.2 167.5L268.6 167.7ZM267.2 171.2L265.8 170.9L265.8 167.2L267.2 167.5Z"/><path class="iso-shade" data-shade="3" d="M265.8 170.9L264.6 170.4L264.6 166.7L265.8 167.2ZM264.6 170.4L263.7 169.8L263.7 166.1L264.6 166.7ZM263.7 169.8L263 169.2L263 165.5L263.7 166.1ZM263 169.2L262.7 168.4L262.7 164.7L263 165.5Z"/><path class="iso-top" d="M274.2 166.7L273 167.2L271.6 167.5L270.2 167.7L268.6 167.7L267.2 167.5L265.8 167.2L264.6 166.7L263.7 166.1L263 165.5L262.7 164.7L262.7 164L263 163.2L263.7 162.5L264.6 161.9L265.8 161.5L267.2 161.1L268.6 161L270.2 161L271.6 161.1L273 161.5L274.2 161.9L275.1 162.5L275.8 163.2L276.1 164L276.1 164.7L275.8 165.5L275.1 166.1Z"/><path class="iso-line iso-crease" data-tone="faint" d="M276.1 164.7L275.8 165.5L275.1 166.1L274.2 166.7L273 167.2L271.6 167.5L270.2 167.7L268.6 167.7L267.2 167.5L265.8 167.2L264.6 166.7L263.7 166.1L263 165.5L262.7 164.7"/><path class="iso-line iso-edge" data-tone="mid" d="M262.7 164.7L262.7 164L263 163.2L263.7 162.5L264.6 161.9L265.8 161.5L267.2 161.1L268.6 161L270.2 161L271.6 161.1L273 161.5L274.2 161.9L275.1 162.5L275.8 163.2L276.1 164L276.1 164.7M276.1 168.4L275.8 169.2L275.1 169.8L274.2 170.4L273 170.9L271.6 171.2L270.2 171.4L268.6 171.4L267.2 171.2L265.8 170.9L264.6 170.4L263.7 169.8L263 169.2L262.7 168.4M262.7 164.7L262.7 168.4M276.1 164.7L276.1 168.4"/></g><g class="iso-solid"><path class="iso-fill" d="M45.9 275.9L45.9 274.9L46.3 274L47.2 273.1L48.4 272.3L49.9 271.7L51.7 271.3L53.6 271.1L55.6 271.1L57.5 271.3L59.3 271.7L60.8 272.3L62 273.1L62.9 274L63.3 274.9L63.3 277.7L62.9 278.6L62 279.5L60.8 280.3L59.3 280.9L57.5 281.3L55.6 281.5L53.6 281.5L51.7 281.3L49.9 280.9L48.4 280.3L47.2 279.5L46.3 278.6L45.9 277.7Z"/><path class="iso-shade" data-shade="0" d="M60.8 280.3L59.3 280.9L59.3 279.2L60.8 278.5ZM63.3 277.7L62.9 278.6L62.9 276.9L63.3 275.9ZM62.9 278.6L62 279.5L62 277.8L62.9 276.9ZM62 279.5L60.8 280.3L60.8 278.5L62 277.8Z"/><path class="iso-shade" data-shade="1" d="M59.3 280.9L57.5 281.3L57.5 279.6L59.3 279.2ZM57.5 281.3L55.6 281.5L55.6 279.8L57.5 279.6ZM55.6 281.5L53.6 281.5L53.6 279.8L55.6 279.8Z"/><path class="iso-shade" data-shade="2" d="M53.6 281.5L51.7 281.3L51.7 279.6L53.6 279.8ZM51.7 281.3L49.9 280.9L49.9 279.2L51.7 279.6Z"/><path class="iso-shade" data-shade="3" d="M49.9 280.9L48.4 280.3L48.4 278.5L49.9 279.2ZM48.4 280.3L47.2 279.5L47.2 277.8L48.4 278.5ZM47.2 279.5L46.3 278.6L46.3 276.9L47.2 277.8ZM46.3 278.6L45.9 277.7L45.9 275.9L46.3 276.9Z"/><path class="iso-top" d="M60.8 278.5L59.3 279.2L57.5 279.6L55.6 279.8L53.6 279.8L51.7 279.6L49.9 279.2L48.4 278.5L47.2 277.8L46.3 276.9L45.9 275.9L45.9 274.9L46.3 274L47.2 273.1L48.4 272.3L49.9 271.7L51.7 271.3L53.6 271.1L55.6 271.1L57.5 271.3L59.3 271.7L60.8 272.3L62 273.1L62.9 274L63.3 274.9L63.3 275.9L62.9 276.9L62 277.8Z"/><path class="iso-line iso-crease" data-tone="faint" d="M63.3 275.9L62.9 276.9L62 277.8L60.8 278.5L59.3 279.2L57.5 279.6L55.6 279.8L53.6 279.8L51.7 279.6L49.9 279.2L48.4 278.5L47.2 277.8L46.3 276.9L45.9 275.9"/><path class="iso-line iso-edge" data-tone="lo" d="M45.9 275.9L45.9 274.9L46.3 274L47.2 273.1L48.4 272.3L49.9 271.7L51.7 271.3L53.6 271.1L55.6 271.1L57.5 271.3L59.3 271.7L60.8 272.3L62 273.1L62.9 274L63.3 274.9L63.3 275.9M63.3 277.7L62.9 278.6L62 279.5L60.8 280.3L59.3 280.9L57.5 281.3L55.6 281.5L53.6 281.5L51.7 281.3L49.9 280.9L48.4 280.3L47.2 279.5L46.3 278.6L45.9 277.7M45.9 275.9L45.9 277.7M63.3 275.9L63.3 277.7"/></g><g class="iso-solid"><path class="iso-fill" d="M47.9 271.4L48.2 270.6L48.9 269.9L49.8 269.3L51 268.9L52.4 268.5L53.8 268.4L55.4 268.4L56.8 268.5L58.2 268.9L59.4 269.3L60.3 269.9L61 270.6L61.3 271.4L61.3 275.1L61.3 275.8L61 276.6L60.3 277.2L59.4 277.8L58.2 278.3L56.8 278.6L55.4 278.8L53.8 278.8L52.4 278.6L51 278.3L49.8 277.8L48.9 277.2L48.2 276.6L47.9 275.8Z"/><path class="iso-shade" data-shade="0" d="M59.4 277.8L58.2 278.3L58.2 274.6L59.4 274.1ZM61.3 275.8L61 276.6L61 272.9L61.3 272.1ZM61 276.6L60.3 277.2L60.3 273.5L61 272.9ZM60.3 277.2L59.4 277.8L59.4 274.1L60.3 273.5Z"/><path class="iso-shade" data-shade="1" d="M58.2 278.3L56.8 278.6L56.8 274.9L58.2 274.6ZM56.8 278.6L55.4 278.8L55.4 275.1L56.8 274.9Z"/><path class="iso-shade" data-shade="2" d="M55.4 278.8L53.8 278.8L53.8 275.1L55.4 275.1ZM53.8 278.8L52.4 278.6L52.4 274.9L53.8 275.1ZM52.4 278.6L51 278.3L51 274.6L52.4 274.9Z"/><path class="iso-shade" data-shade="3" d="M51 278.3L49.8 277.8L49.8 274.1L51 274.6ZM49.8 277.8L48.9 277.2L48.9 273.5L49.8 274.1ZM48.9 277.2L48.2 276.6L48.2 272.9L48.9 273.5ZM48.2 276.6L47.9 275.8L47.9 272.1L48.2 272.9Z"/><path class="iso-top" d="M59.4 274.1L58.2 274.6L56.8 274.9L55.4 275.1L53.8 275.1L52.4 274.9L51 274.6L49.8 274.1L48.9 273.5L48.2 272.9L47.9 272.1L47.9 271.4L48.2 270.6L48.9 269.9L49.8 269.3L51 268.9L52.4 268.5L53.8 268.4L55.4 268.4L56.8 268.5L58.2 268.9L59.4 269.3L60.3 269.9L61 270.6L61.3 271.4L61.3 272.1L61 272.9L60.3 273.5Z"/><path class="iso-line iso-crease" data-tone="faint" d="M61.3 272.1L61 272.9L60.3 273.5L59.4 274.1L58.2 274.6L56.8 274.9L55.4 275.1L53.8 275.1L52.4 274.9L51 274.6L49.8 274.1L48.9 273.5L48.2 272.9L47.9 272.1"/><path class="iso-line iso-edge" data-tone="mid" d="M47.9 272.1L47.9 271.4L48.2 270.6L48.9 269.9L49.8 269.3L51 268.9L52.4 268.5L53.8 268.4L55.4 268.4L56.8 268.5L58.2 268.9L59.4 269.3L60.3 269.9L61 270.6L61.3 271.4L61.3 272.1M61.3 275.8L61 276.6L60.3 277.2L59.4 277.8L58.2 278.3L56.8 278.6L55.4 278.8L53.8 278.8L52.4 278.6L51 278.3L49.8 277.8L48.9 277.2L48.2 276.6L47.9 275.8M47.9 272.1L47.9 275.8M61.3 272.1L61.3 275.8"/></g><g class="iso-solid"><path class="iso-fill" d="M576.7 325.5L577.1 324.6L578 323.7L579.2 322.9L580.7 322.3L582.5 321.9L584.4 321.7L586.4 321.7L588.3 321.9L590.1 322.3L591.6 322.9L592.8 323.7L593.7 324.6L594.1 325.5L594.1 328.3L593.7 329.2L592.8 330.1L591.6 330.9L590.1 331.5L588.3 331.9L586.4 332.1L584.4 332.1L582.5 331.9L580.7 331.5L579.2 330.9L578 330.1L577.1 329.2L576.7 328.3Z"/><path class="iso-shade" data-shade="0" d="M591.6 330.9L590.1 331.5L590.1 329.8L591.6 329.1ZM594.1 328.3L593.7 329.2L593.7 327.5L594.1 326.5ZM593.7 329.2L592.8 330.1L592.8 328.4L593.7 327.5ZM592.8 330.1L591.6 330.9L591.6 329.1L592.8 328.4Z"/><path class="iso-shade" data-shade="1" d="M590.1 331.5L588.3 331.9L588.3 330.2L590.1 329.8ZM588.3 331.9L586.4 332.1L586.4 330.4L588.3 330.2ZM586.4 332.1L584.4 332.1L584.4 330.4L586.4 330.4Z"/><path class="iso-shade" data-shade="2" d="M584.4 332.1L582.5 331.9L582.5 330.2L584.4 330.4ZM582.5 331.9L580.7 331.5L580.7 329.8L582.5 330.2Z"/><path class="iso-shade" data-shade="3" d="M580.7 331.5L579.2 330.9L579.2 329.1L580.7 329.8ZM579.2 330.9L578 330.1L578 328.4L579.2 329.1ZM578 330.1L577.1 329.2L577.1 327.5L578 328.4ZM577.1 329.2L576.7 328.3L576.7 326.5L577.1 327.5Z"/><path class="iso-top" d="M591.6 329.1L590.1 329.8L588.3 330.2L586.4 330.4L584.4 330.4L582.5 330.2L580.7 329.8L579.2 329.1L578 328.4L577.1 327.5L576.7 326.5L576.7 325.5L577.1 324.6L578 323.7L579.2 322.9L580.7 322.3L582.5 321.9L584.4 321.7L586.4 321.7L588.3 321.9L590.1 322.3L591.6 322.9L592.8 323.7L593.7 324.6L594.1 325.5L594.1 326.5L593.7 327.5L592.8 328.4Z"/><path class="iso-line iso-crease" data-tone="faint" d="M594.1 326.5L593.7 327.5L592.8 328.4L591.6 329.1L590.1 329.8L588.3 330.2L586.4 330.4L584.4 330.4L582.5 330.2L580.7 329.8L579.2 329.1L578 328.4L577.1 327.5L576.7 326.5"/><path class="iso-line iso-edge" data-tone="lo" d="M576.7 326.5L576.7 325.5L577.1 324.6L578 323.7L579.2 322.9L580.7 322.3L582.5 321.9L584.4 321.7L586.4 321.7L588.3 321.9L590.1 322.3L591.6 322.9L592.8 323.7L593.7 324.6L594.1 325.5L594.1 326.5M594.1 328.3L593.7 329.2L592.8 330.1L591.6 330.9L590.1 331.5L588.3 331.9L586.4 332.1L584.4 332.1L582.5 331.9L580.7 331.5L579.2 330.9L578 330.1L577.1 329.2L576.7 328.3M576.7 326.5L576.7 328.3M594.1 326.5L594.1 328.3"/></g><g class="iso-solid"><path class="iso-fill" d="M578.7 322L579 321.2L579.7 320.5L580.6 319.9L581.8 319.5L583.2 319.1L584.6 319L586.2 319L587.6 319.1L589 319.5L590.2 319.9L591.1 320.5L591.8 321.2L592.1 322L592.1 326.4L591.8 327.2L591.1 327.8L590.2 328.4L589 328.9L587.6 329.2L586.2 329.4L584.6 329.4L583.2 329.2L581.8 328.9L580.6 328.4L579.7 327.8L579 327.2L578.7 326.4Z"/><path class="iso-shade" data-shade="0" d="M590.2 328.4L589 328.9L589 325.2L590.2 324.7ZM592.1 326.4L591.8 327.2L591.8 323.5L592.1 322.7ZM591.8 327.2L591.1 327.8L591.1 324.1L591.8 323.5ZM591.1 327.8L590.2 328.4L590.2 324.7L591.1 324.1Z"/><path class="iso-shade" data-shade="1" d="M589 328.9L587.6 329.2L587.6 325.5L589 325.2ZM587.6 329.2L586.2 329.4L586.2 325.7L587.6 325.5Z"/><path class="iso-shade" data-shade="2" d="M586.2 329.4L584.6 329.4L584.6 325.7L586.2 325.7ZM584.6 329.4L583.2 329.2L583.2 325.5L584.6 325.7ZM583.2 329.2L581.8 328.9L581.8 325.2L583.2 325.5Z"/><path class="iso-shade" data-shade="3" d="M581.8 328.9L580.6 328.4L580.6 324.7L581.8 325.2ZM580.6 328.4L579.7 327.8L579.7 324.1L580.6 324.7ZM579.7 327.8L579 327.2L579 323.5L579.7 324.1ZM579 327.2L578.7 326.4L578.7 322.7L579 323.5Z"/><path class="iso-top" d="M590.2 324.7L589 325.2L587.6 325.5L586.2 325.7L584.6 325.7L583.2 325.5L581.8 325.2L580.6 324.7L579.7 324.1L579 323.5L578.7 322.7L578.7 322L579 321.2L579.7 320.5L580.6 319.9L581.8 319.5L583.2 319.1L584.6 319L586.2 319L587.6 319.1L589 319.5L590.2 319.9L591.1 320.5L591.8 321.2L592.1 322L592.1 322.7L591.8 323.5L591.1 324.1Z"/><path class="iso-line iso-crease" data-tone="faint" d="M592.1 322.7L591.8 323.5L591.1 324.1L590.2 324.7L589 325.2L587.6 325.5L586.2 325.7L584.6 325.7L583.2 325.5L581.8 325.2L580.6 324.7L579.7 324.1L579 323.5L578.7 322.7"/><path class="iso-line iso-edge" data-tone="mid" d="M578.7 322.7L578.7 322L579 321.2L579.7 320.5L580.6 319.9L581.8 319.5L583.2 319.1L584.6 319L586.2 319L587.6 319.1L589 319.5L590.2 319.9L591.1 320.5L591.8 321.2L592.1 322L592.1 322.7M592.1 326.4L591.8 327.2L591.1 327.8L590.2 328.4L589 328.9L587.6 329.2L586.2 329.4L584.6 329.4L583.2 329.2L581.8 328.9L580.6 328.4L579.7 327.8L579 327.2L578.7 326.4M578.7 322.7L578.7 326.4M592.1 322.7L592.1 326.4"/></g><g class="iso-solid"><path class="iso-fill" d="M361.9 432.9L362.3 432L363.2 431.1L364.4 430.3L365.9 429.7L367.7 429.3L369.6 429.1L371.6 429.1L373.5 429.3L375.3 429.7L376.8 430.3L378 431.1L378.9 432L379.3 432.9L379.3 435.7L378.9 436.6L378 437.5L376.8 438.3L375.3 438.9L373.5 439.3L371.6 439.5L369.6 439.5L367.7 439.3L365.9 438.9L364.4 438.3L363.2 437.5L362.3 436.6L361.9 435.7Z"/><path class="iso-shade" data-shade="0" d="M376.8 438.3L375.3 438.9L375.3 437.2L376.8 436.5ZM379.3 435.7L378.9 436.6L378.9 434.9L379.3 433.9ZM378.9 436.6L378 437.5L378 435.8L378.9 434.9ZM378 437.5L376.8 438.3L376.8 436.5L378 435.8Z"/><path class="iso-shade" data-shade="1" d="M375.3 438.9L373.5 439.3L373.5 437.6L375.3 437.2ZM373.5 439.3L371.6 439.5L371.6 437.8L373.5 437.6ZM371.6 439.5L369.6 439.5L369.6 437.8L371.6 437.8Z"/><path class="iso-shade" data-shade="2" d="M369.6 439.5L367.7 439.3L367.7 437.6L369.6 437.8ZM367.7 439.3L365.9 438.9L365.9 437.2L367.7 437.6Z"/><path class="iso-shade" data-shade="3" d="M365.9 438.9L364.4 438.3L364.4 436.5L365.9 437.2ZM364.4 438.3L363.2 437.5L363.2 435.8L364.4 436.5ZM363.2 437.5L362.3 436.6L362.3 434.9L363.2 435.8ZM362.3 436.6L361.9 435.7L361.9 433.9L362.3 434.9Z"/><path class="iso-top" d="M376.8 436.5L375.3 437.2L373.5 437.6L371.6 437.8L369.6 437.8L367.7 437.6L365.9 437.2L364.4 436.5L363.2 435.8L362.3 434.9L361.9 433.9L361.9 432.9L362.3 432L363.2 431.1L364.4 430.3L365.9 429.7L367.7 429.3L369.6 429.1L371.6 429.1L373.5 429.3L375.3 429.7L376.8 430.3L378 431.1L378.9 432L379.3 432.9L379.3 433.9L378.9 434.9L378 435.8Z"/><path class="iso-line iso-crease" data-tone="faint" d="M379.3 433.9L378.9 434.9L378 435.8L376.8 436.5L375.3 437.2L373.5 437.6L371.6 437.8L369.6 437.8L367.7 437.6L365.9 437.2L364.4 436.5L363.2 435.8L362.3 434.9L361.9 433.9"/><path class="iso-line iso-edge" data-tone="lo" d="M361.9 433.9L361.9 432.9L362.3 432L363.2 431.1L364.4 430.3L365.9 429.7L367.7 429.3L369.6 429.1L371.6 429.1L373.5 429.3L375.3 429.7L376.8 430.3L378 431.1L378.9 432L379.3 432.9L379.3 433.9M379.3 435.7L378.9 436.6L378 437.5L376.8 438.3L375.3 438.9L373.5 439.3L371.6 439.5L369.6 439.5L367.7 439.3L365.9 438.9L364.4 438.3L363.2 437.5L362.3 436.6L361.9 435.7M361.9 433.9L361.9 435.7M379.3 433.9L379.3 435.7"/></g><g class="iso-solid"><path class="iso-fill" d="M363.9 429.4L364.2 428.6L364.9 427.9L365.8 427.3L367 426.9L368.4 426.5L369.8 426.4L371.4 426.4L372.8 426.5L374.2 426.9L375.4 427.3L376.3 427.9L377 428.6L377.3 429.4L377.3 433.8L377 434.6L376.3 435.2L375.4 435.8L374.2 436.3L372.8 436.6L371.4 436.8L369.8 436.8L368.4 436.6L367 436.3L365.8 435.8L364.9 435.2L364.2 434.6L363.9 433.8Z"/><path class="iso-shade" data-shade="0" d="M375.4 435.8L374.2 436.3L374.2 432.6L375.4 432.1ZM377.3 433.8L377 434.6L377 430.9L377.3 430.1ZM377 434.6L376.3 435.2L376.3 431.5L377 430.9ZM376.3 435.2L375.4 435.8L375.4 432.1L376.3 431.5Z"/><path class="iso-shade" data-shade="1" d="M374.2 436.3L372.8 436.6L372.8 432.9L374.2 432.6ZM372.8 436.6L371.4 436.8L371.4 433.1L372.8 432.9Z"/><path class="iso-shade" data-shade="2" d="M371.4 436.8L369.8 436.8L369.8 433.1L371.4 433.1ZM369.8 436.8L368.4 436.6L368.4 432.9L369.8 433.1ZM368.4 436.6L367 436.3L367 432.6L368.4 432.9Z"/><path class="iso-shade" data-shade="3" d="M367 436.3L365.8 435.8L365.8 432.1L367 432.6ZM365.8 435.8L364.9 435.2L364.9 431.5L365.8 432.1ZM364.9 435.2L364.2 434.6L364.2 430.9L364.9 431.5ZM364.2 434.6L363.9 433.8L363.9 430.1L364.2 430.9Z"/><path class="iso-top" d="M375.4 432.1L374.2 432.6L372.8 432.9L371.4 433.1L369.8 433.1L368.4 432.9L367 432.6L365.8 432.1L364.9 431.5L364.2 430.9L363.9 430.1L363.9 429.4L364.2 428.6L364.9 427.9L365.8 427.3L367 426.9L368.4 426.5L369.8 426.4L371.4 426.4L372.8 426.5L374.2 426.9L375.4 427.3L376.3 427.9L377 428.6L377.3 429.4L377.3 430.1L377 430.9L376.3 431.5Z"/><path class="iso-line iso-crease" data-tone="faint" d="M377.3 430.1L377 430.9L376.3 431.5L375.4 432.1L374.2 432.6L372.8 432.9L371.4 433.1L369.8 433.1L368.4 432.9L367 432.6L365.8 432.1L364.9 431.5L364.2 430.9L363.9 430.1"/><path class="iso-line iso-edge" data-tone="mid" d="M363.9 430.1L363.9 429.4L364.2 428.6L364.9 427.9L365.8 427.3L367 426.9L368.4 426.5L369.8 426.4L371.4 426.4L372.8 426.5L374.2 426.9L375.4 427.3L376.3 427.9L377 428.6L377.3 429.4L377.3 430.1M377.3 433.8L377 434.6L376.3 435.2L375.4 435.8L374.2 436.3L372.8 436.6L371.4 436.8L369.8 436.8L368.4 436.6L367 436.3L365.8 435.8L364.9 435.2L364.2 434.6L363.9 433.8M363.9 430.1L363.9 433.8M377.3 430.1L377.3 433.8"/></g><g class="iso-solid"><path class="iso-fill" d="M17.2 258.7L17.4 257.5L18.2 256.3L19.3 255.2L20.9 254.3L260.5 134.4L262.4 133.7L264.6 133.1L267 132.7L269.4 132.6L271.9 132.7L274.2 133.1L276.4 133.7L278.3 134.4L619.1 304.9L620.7 305.8L621.8 306.9L622.6 308.1L622.8 309.3L622.8 322.3L622.6 323.6L621.8 324.7L620.7 325.8L619.1 326.8L379.5 446.6L377.6 447.4L375.4 448L373 448.3L370.6 448.4L368.1 448.3L365.8 448L363.6 447.4L361.7 446.6L20.9 276.2L19.3 275.2L18.2 274.1L17.4 273L17.2 271.7Z"/><path class="iso-shade" data-shade="0" d="M622.8 322.3L622.6 323.6L622.6 310.5L622.8 309.3ZM622.6 323.6L621.8 324.7L621.8 311.7L622.6 310.5ZM621.8 324.7L620.7 325.8L620.7 312.8L621.8 311.7ZM620.7 325.8L619.1 326.8L619.1 313.7L620.7 312.8ZM619.1 326.8L379.5 446.6L379.5 433.6L619.1 313.7ZM379.5 446.6L377.6 447.4L377.6 434.3L379.5 433.6Z"/><path class="iso-shade" data-shade="1" d="M377.6 447.4L375.4 448L375.4 434.9L377.6 434.3ZM375.4 448L373 448.3L373 435.3L375.4 434.9ZM373 448.3L370.6 448.4L370.6 435.4L373 435.3Z"/><path class="iso-shade" data-shade="2" d="M370.6 448.4L368.1 448.3L368.1 435.3L370.6 435.4ZM368.1 448.3L365.8 448L365.8 434.9L368.1 435.3ZM365.8 448L363.6 447.4L363.6 434.3L365.8 434.9Z"/><path class="iso-shade" data-shade="3" d="M363.6 447.4L361.7 446.6L361.7 433.6L363.6 434.3ZM361.7 446.6L20.9 276.2L20.9 263.1L361.7 433.6ZM20.9 276.2L19.3 275.2L19.3 262.2L20.9 263.1ZM19.3 275.2L18.2 274.1L18.2 261.1L19.3 262.2ZM18.2 274.1L17.4 273L17.4 259.9L18.2 261.1ZM17.4 273L17.2 271.7L17.2 258.7L17.4 259.9Z"/><path class="iso-top" d="M619.1 304.9L620.7 305.8L621.8 306.9L622.6 308.1L622.8 309.3L622.6 310.5L621.8 311.7L620.7 312.8L619.1 313.7L379.5 433.6L377.6 434.3L375.4 434.9L373 435.3L370.6 435.4L368.1 435.3L365.8 434.9L363.6 434.3L361.7 433.6L20.9 263.1L19.3 262.2L18.2 261.1L17.4 259.9L17.2 258.7L17.4 257.5L18.2 256.3L19.3 255.2L20.9 254.3L260.5 134.4L262.4 133.7L264.6 133.1L267 132.7L269.4 132.6L271.9 132.7L274.2 133.1L276.4 133.7L278.3 134.4Z"/><path class="iso-line iso-crease" data-tone="faint" d="M622.8 309.3L622.6 310.5L621.8 311.7L620.7 312.8L619.1 313.7L379.5 433.6L377.6 434.3L375.4 434.9L373 435.3L370.6 435.4L368.1 435.3L365.8 434.9L363.6 434.3L361.7 433.6L20.9 263.1L19.3 262.2L18.2 261.1L17.4 259.9L17.2 258.7"/><path class="iso-line iso-bevel" data-tone="faint" d="M622.8 309.3L620.6 310.3L620 311.3L619 312.2L617.6 313.1L378.1 432.8L376.5 433.5L374.6 434L372.7 434.3L370.6 434.4L368.5 434.3L366.6 434L364.7 433.5L363.1 432.8L22.4 262.5L21 261.6L20 260.7L19.4 259.7L17.2 258.7"/><path class="iso-line" data-tone="faint" d="M622.8 315.8L622.6 317L621.8 318.2L620.7 319.3L619.1 320.3L379.5 440.1L377.6 440.9L375.4 441.4L373 441.8L370.6 441.9L368.1 441.8L365.8 441.4L363.6 440.9L361.7 440.1L20.9 269.7L19.3 268.7L18.2 267.6L17.4 266.4L17.2 265.2"/><path class="iso-line iso-edge" data-tone="mid" d="M17.2 258.7L17.4 257.5L18.2 256.3L19.3 255.2L20.9 254.3L260.5 134.4L262.4 133.7L264.6 133.1L267 132.7L269.4 132.6L271.9 132.7L274.2 133.1L276.4 133.7L278.3 134.4L619.1 304.9L620.7 305.8L621.8 306.9L622.6 308.1L622.8 309.3M622.8 322.3L622.6 323.6L621.8 324.7L620.7 325.8L619.1 326.8L379.5 446.6L377.6 447.4L375.4 448L373 448.3L370.6 448.4L368.1 448.3L365.8 448L363.6 447.4L361.7 446.6L20.9 276.2L19.3 275.2L18.2 274.1L17.4 273L17.2 271.7M622.8 309.3L622.8 322.3M17.2 258.7L17.2 271.7"/></g><path class="cable" d="M328.9 182.6L343.1 177.7L359.1 177.3"/><g data-part="back"></g><g data-part="board"></g><g data-part="front"></g><text class="qcode" data-part="qcode" transform="matrix(0.888 0.444 -0.888 0.444 362.605 385.742)" font-size="13" x="2" y="13">--</text></svg><canvas class="fx-smoke" aria-hidden="true"></canvas><div class="mon" aria-hidden="true"><div class="mon-scr desk"></div></div><div class="fx-flash" aria-hidden="true"></div></div></div><div class="ctl" role="group" aria-label="Controls">
+  <div class="ctl-row"><span class="ctl-label">Clock</span><div class="slide"><input id="mult" type="range" min="30" max="95" step="1" value="45" aria-label="CPU multiplier, times 100 MHz"></div><output id="mult-out">×45</output></div>
+  <div class="ctl-row"><span class="ctl-label">Vcore</span><div class="slide"><input id="volt" type="range" min="0.9" max="2" step="0.005" value="1.25" aria-label="Core voltage"></div><output id="volt-out">1.250 V</output></div>
+  <div class="ctl-row"><span class="ctl-label">Cooler</span><button type="button" data-cool="stock">Stock<small>box cooler</small></button><button type="button" data-cool="tower" aria-pressed="true">Tower<small>big air</small></button><button type="button" data-cool="aio">240 AIO<small>liquid</small></button><button type="button" data-cool="ln2">LN2 pot<small>-196 °C</small></button></div>
+  <div class="ctl-row" id="pot-row" hidden><span class="ctl-label">Pot</span><div class="slide"><input id="pot" type="range" min="-190" max="-30" step="5" value="-185" aria-label="Pot temperature to hold"></div><output id="pot-out">-185 °C</output></div>
+  <div class="ctl-row"><span class="ctl-label">Load</span><button type="button" data-load="idle">Idle</button><button type="button" data-load="game">Gaming</button><button type="button" data-load="render" aria-pressed="true">Render<small>scores</small></button><button type="button" data-load="avx">AVX stress<small>hottest</small></button></div>
+  <div class="ctl-row"><span class="ctl-label">Temp</span><div class="meter"><span id="t-fill" class="fill"></span><span class="mark" style="left:77.6%" data-label="95 throttle"></span><span class="mark l" style="left:1.1%" data-label=""></span></div><output id="t-out">40 °C</output></div>
+  <div class="ctl-row"><span class="ctl-label">Power</span><div class="meter"><span id="p-fill" class="fill"></span><span class="mark l" style="left:75%" data-label="300 A limit"></span></div><output id="p-out">0 W</output></div>
+  <div class="ctl-row"><span class="ctl-label">Margin</span><div class="meter"><span id="m-fill" class="fill"></span><span class="mark" style="left:50%" data-label="crash"></span></div><output id="m-out">-</output></div>
+  <div class="ctl-row"><span class="ctl-label">Health</span><div class="meter"><span id="h-fill" class="fill"></span></div><output id="h-out">100 %</output></div>
+  <div class="ctl-row"><span class="ctl-label">Chip</span><span id="stats"></span></div>
+  <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="safe" aria-pressed="false">Safeties on</button><button type="button" id="chip">New chip<small>silicon lottery</small></button><button type="button" id="stock">Back to stock</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
+  <div id="shot" aria-live="polite"></div>
+</div><figcaption class="iso-legend"><span class="iso-keys"><span class="iso-key"><svg class="iso-swatch" data-mark="lit" viewBox="0 0 16 10" aria-hidden="true"><path d="M2 4.5 8 1.5 14 4.5 14 6 8 9 2 6Z"/><path class="iso-swatch-crease" d="M2 4.5 8 7.5 14 4.5"/></svg>Live: clock, voltage, temperature, power, the debug display and the monitor</span><span class="iso-key"><svg class="iso-swatch" data-mark="raised" viewBox="0 0 16 10" aria-hidden="true"><path d="M2 4.5 8 1.5 14 4.5 14 6 8 9 2 6Z"/><path class="iso-swatch-crease" d="M2 4.5 8 7.5 14 4.5"/></svg>Desktop board on a test bench, with four coolers to swap: stock, tower, liquid, LN2 pot</span></span><span class="iso-caption">A CPU runs at a multiplier times a 100 MHz base clock. Push the multiplier and each transistor has less time to switch, so it needs more voltage to switch faster; give it too little and it makes errors, which on Windows means a blue screen. Power goes up with the clock and with the square of the voltage, and a hot chip leaks more, so heat makes more heat. Past a point every chip hits a wall where the voltage it needs shoots up. Cold pushes that wall out, which is why the record runs are done on liquid nitrogen. Every chip is a bit different, and high voltage plus heat slowly wears them out.</span></figcaption></figure><p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a tuning guide. Real: power going with voltage squared times clock, leakage rising with temperature, the voltage wall, cold pushing it out, liquid nitrogen at -196 °C, the silicon lottery, the cold bug, throttling and a thermal trip at the top end, over-current protection on the VRM, voltage droop under load, CLOCK_WATCHDOG_TIMEOUT and WHEA blue screens, and high voltage plus heat wearing a chip out. The real frequency record is about 9.2 GHz, set in 2026 on liquid helium. Made up: the chip, every number in the model, the score, and the time scale (temperatures settle in seconds, a render takes eight). Don't put 1.65 V through your own CPU.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="index.html" style="color:inherit">Dark version</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/overclock" style="color:inherit">Source</a></p></main><script type="module">const AZIMUTH = 45;
+const ELEVATION = 30;
+const SHADES = 4;
+const RADIANS = Math.PI / 180;
+const UNIT = Math.sqrt(1.6);
+function cameraOf({ scale, azimuth = AZIMUTH, elevation = ELEVATION }) {
+    const a = azimuth * RADIANS;
+    const e = elevation * RADIANS;
+    return { sinA: Math.sin(a), cosA: Math.cos(a), sinE: Math.sin(e), cosE: Math.cos(e), k: scale * UNIT };
+}
+function iso([x, y, z], projection) {
+    const { origin } = projection;
+    const { sinA, cosA, sinE, cosE, k } = cameraOf(projection);
+    return [origin[0] + (x * sinA - y * cosA) * k, origin[1] + ((x * cosA + y * sinA) * sinE - z * cosE) * k];
+}
+function towardViewer(projection) {
+    const { sinA, cosA } = cameraOf(projection);
+    return [cosA, sinA];
+}
+function depthOf([x, y, z], projection) {
+    const { sinA, cosA, sinE, cosE } = cameraOf(projection);
+    return (x * cosA + y * sinA) * cosE + z * sinE;
+}
+const tenth = (value) => {
+    const text = (Math.round(value * 10) / 10).toFixed(1).replace(/\.0$/, "");
+    return text === "-0" ? "0" : text;
+};
+function pathOf(points, closed = false) {
+    if (!points.length)
+        return "";
+    return points.map(([x, y], at) => `${at ? "L" : "M"}${tenth(x)} ${tenth(y)}`).join("") + (closed ? "Z" : "");
+}
+const joinPaths = (paths) => paths.filter(Boolean).join("");
+function roundedPlan({ x, y, w, d, r }, steps = 8) {
+    const radius = Math.max(0, Math.min(r, w / 2, d / 2));
+    const corners = [
+        [x + w - radius, y + radius, -90],
+        [x + w - radius, y + d - radius, 0],
+        [x + radius, y + d - radius, 90],
+        [x + radius, y + radius, 180],
+    ];
+    const out = [];
+    for (const [cx, cy, start] of corners) {
+        const count = radius > 0 ? steps : 0;
+        for (let step = 0; step <= count; step++) {
+            const angle = (start + (count ? (90 * step) / count : 45)) * RADIANS;
+            out.push([cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)]);
+        }
+    }
+    return out;
+}
+function signedArea(points) {
+    let area = 0;
+    for (let index = 0; index < points.length; index++) {
+        const [ax, ay] = points[index];
+        const [bx, by] = points[(index + 1) % points.length];
+        area += ax * by - bx * ay;
+    }
+    return area / 2;
+}
+const oriented = (points) => (signedArea(points) < 0 ? [...points].reverse() : points);
+function convexHull(points) {
+    const sorted = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    if (sorted.length < 3)
+        return sorted;
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lower = [];
+    for (const point of sorted) {
+        while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], point) <= 0)
+            lower.pop();
+        lower.push(point);
+    }
+    const upper = [];
+    for (let index = sorted.length - 1; index >= 0; index--) {
+        const point = sorted[index];
+        while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], point) <= 0)
+            upper.pop();
+        upper.push(point);
+    }
+    return [...lower.slice(0, -1), ...upper.slice(0, -1)];
+}
+function runsOf(flags, want) {
+    const count = flags.length;
+    const runs = [];
+    const start = flags.findIndex((flag, index) => flag !== flags[(index + count - 1) % count]);
+    if (start < 0)
+        return flags[0] === want ? [Array.from({ length: count + 1 }, (_, index) => index % count)] : [];
+    let run = null;
+    for (let step = 0; step < count; step++) {
+        const index = (start + step) % count;
+        if (flags[index] === want) {
+            if (!run)
+                run = [index];
+            run.push((index + 1) % count);
+        }
+        else if (run) {
+            runs.push(run);
+            run = null;
+        }
+    }
+    if (run)
+        runs.push(run);
+    return runs;
+}
+function extrude(ring, z, height, projection, options = {}) {
+    const convex = options.convex ?? true;
+    const count = ring.length;
+    const counter = signedArea(ring) > 0;
+    const [vx, vy] = towardViewer(projection);
+    const { sinA, cosA } = cameraOf(projection);
+    const normals = ring.map(([ax, ay], index) => {
+        const [bx, by] = ring[(index + 1) % count];
+        const dx = bx - ax;
+        const dy = by - ay;
+        const length = Math.hypot(dx, dy) || 1;
+        return (counter ? [dy / length, -dx / length] : [-dy / length, dx / length]);
+    });
+    const facing = normals.map(([nx, ny]) => nx * vx + ny * vy > 1e-9);
+    const top = ring.map(([x, y]) => iso([x, y, z + height], projection));
+    const bottom = ring.map(([x, y]) => iso([x, y, z], projection));
+    const outline = [];
+    const crease = [];
+    for (const run of runsOf(facing, false))
+        outline.push(pathOf(run.map((index) => top[index])));
+    for (const run of runsOf(facing, true)) {
+        crease.push(pathOf(run.map((index) => top[index])));
+        if (height > 0)
+            outline.push(pathOf(run.map((index) => bottom[index])));
+    }
+    if (height > 0) {
+        for (let index = 0; index < count; index++) {
+            if (facing[(index + count - 1) % count] !== facing[index])
+                outline.push(pathOf([top[index], bottom[index]]));
+        }
+    }
+    let fill;
+    if (convex) {
+        fill = pathOf(convexHull([...top, ...bottom]), true);
+    }
+    else {
+        const parts = [pathOf(oriented(top), true), pathOf(oriented(bottom), true)];
+        for (let index = 0; index < count; index++) {
+            if (!facing[index])
+                continue;
+            const next = (index + 1) % count;
+            parts.push(pathOf(oriented([top[index], top[next], bottom[next], bottom[index]]), true));
+        }
+        fill = parts.join("");
+    }
+    const buckets = Array.from({ length: SHADES }, () => []);
+    if (height > 0) {
+        const [lx, ly] = [-sinA, cosA];
+        for (let index = 0; index < count; index++) {
+            if (!facing[index])
+                continue;
+            const [nx, ny] = normals[index];
+            const lit = (nx * lx + ny * ly + 1) / 2;
+            const shade = Math.min(SHADES - 1, Math.max(0, Math.floor(lit * SHADES)));
+            const next = (index + 1) % count;
+            buckets[shade].push(pathOf(oriented([top[index], top[next], bottom[next], bottom[index]]), true));
+        }
+    }
+    let bevel;
+    if (options.bevel && options.bevel > 0) {
+        const by = options.bevel;
+        const inset = ring.map(([x, y], index) => {
+            const [ax, ay] = normals[(index + count - 1) % count];
+            const [bx, by2] = normals[index];
+            const mx = ax + bx;
+            const my = ay + by2;
+            const length = Math.hypot(mx, my) || 1;
+            return [x - (mx / length) * by, y - (my / length) * by];
+        });
+        const insetTop = inset.map(([x, y]) => iso([x, y, z + height], projection));
+        bevel = runsOf(facing, true)
+            .map((run) => pathOf([top[run[0]], ...run.slice(1, -1).map((index) => insetTop[index]), top[run[run.length - 1]]]))
+            .join("");
+    }
+    return {
+        fill,
+        outline: outline.join(""),
+        crease: crease.join(""),
+        top: pathOf(oriented(top), true),
+        shades: buckets.map((paths) => paths.join("")),
+        bevel,
+    };
+}
+const ringOf = (plan, steps = 8) => roundedPlan(plan, steps);
+function slabOf(plan, z, height, projection, steps = 8, bevel = 0) {
+    return extrude(ringOf(plan, steps), z, height, projection, { convex: true, bevel });
+}
+function circleRing(cx, cy, radius, steps = 40) {
+    return Array.from({ length: steps }, (_, step) => {
+        const angle = (step / steps) * Math.PI * 2;
+        return [cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)];
+    });
+}
+function cylinder(cx, cy, radius, z, height, projection, steps = 32, bevel = 0) {
+    return extrude(circleRing(cx, cy, radius, steps), z, height, projection, { convex: true, bevel });
+}
+const insetPlan = ({ x, y, w, d, r }, by) => ({ x: x + by, y: y + by, w: w - by * 2, d: d - by * 2, r: Math.max(0, r - by) });
+function onTop(points, z, projection, closed = false) {
+    return pathOf(points.map(([x, y]) => iso([x, y, z], projection)), closed);
+}
+const planOutline = (plan, z, projection, steps = 8) => onTop(ringOf(plan, steps), z, projection, true);
+const lineOnTop = (from, to, z, projection) => onTop([from, to], z, projection);
+const segment = (from, to, projection) => pathOf([iso(from, projection), iso(to, projection)]);
+const rise = (at, from, to, projection) => segment([at[0], at[1], from], [at[0], at[1], to], projection);
+const ring = (cx, cy, radius, z, projection, steps = 40) => onTop(circleRing(cx, cy, radius, steps), z, projection, true);
+const pointsAt = (points, projection) => points.map((point) => iso(point, projection));
+function dotGrid(x, y, columns, rows, gap, z, projection) {
+    const dots = [];
+    for (let row = 0; row < rows; row++) {
+        for (let column = 0; column < columns; column++)
+            dots.push(iso([x + column * gap, y + row * gap, z], projection));
+    }
+    return dots;
+}
+function corners({ x, y, w, d }, inset = 0) {
+    return [
+        [x + inset, y + inset],
+        [x + w - inset, y + inset],
+        [x + inset, y + d - inset],
+        [x + w - inset, y + d - inset],
+    ];
+}
+function boxCorners({ x, y, w, d }, z0, z1) {
+    const out = [];
+    for (const px of [x, x + w])
+        for (const py of [y, y + d])
+            for (const z of [z0, z1])
+                out.push([px, py, z]);
+    return out;
+}
+function knurl(cx, cy, radius, z0, z1, count, projection, inset = 0.4) {
+    const [vx, vy] = towardViewer(projection);
+    const lines = [];
+    for (let index = 0; index < count; index++) {
+        const angle = (index / count) * Math.PI * 2;
+        const nx = Math.cos(angle);
+        const ny = Math.sin(angle);
+        if (nx * vx + ny * vy < 0.15)
+            continue;
+        lines.push(segment([cx + radius * nx, cy + radius * ny, z0 + inset], [cx + radius * nx, cy + radius * ny, z1 - inset], projection));
+    }
+    return lines.join("");
+}
+function sideArc(cx, cy, radius, z, projection, steps = 24) {
+    const [vx, vy] = towardViewer(projection);
+    const facing = Math.atan2(vy, vx);
+    const points = [];
+    for (let step = 0; step <= steps; step++) {
+        const angle = facing - Math.PI / 2 + (step / steps) * Math.PI;
+        points.push(iso([cx + radius * Math.cos(angle), cy + radius * Math.sin(angle), z], projection));
+    }
+    return pathOf(points);
+}
+function ringSeam(ring, z, projection) {
+    const count = ring.length;
+    const counter = signedArea(ring) > 0;
+    const [vx, vy] = towardViewer(projection);
+    const facing = ring.map(([ax, ay], index) => {
+        const [bx, by] = ring[(index + 1) % count];
+        const dx = bx - ax;
+        const dy = by - ay;
+        const [nx, ny] = counter ? [dy, -dx] : [-dy, dx];
+        return nx * vx + ny * vy > 1e-9;
+    });
+    return runsOf(facing, true).map((run) => pathOf(run.map((index) => iso([ring[index][0], ring[index][1], z], projection)))).join("");
+}
+const sideSeam = (plan, z, projection, steps = 8) => ringSeam(ringOf(plan, steps), z, projection);
+function sideRing(center, radius, axis, projection, steps = 20) {
+    const [px, py, pz] = center;
+    const points = [];
+    for (let step = 0; step < steps; step++) {
+        const angle = (step / steps) * Math.PI * 2;
+        const u = radius * Math.cos(angle);
+        const v = radius * Math.sin(angle);
+        points.push(iso(axis === "x" ? [px, py + u, pz + v] : [px + u, py, pz + v], projection));
+    }
+    return pathOf(points, true);
+}
+function coil(from, to, center, radius, turns, axis, projection, perTurn = 16) {
+    const count = Math.max(1, Math.round(turns * perTurn));
+    const back = [];
+    const front = [];
+    let run = [];
+    let near = null;
+    for (let index = 0; index <= count; index++) {
+        const share = index / count;
+        const angle = share * turns * Math.PI * 2;
+        const u = radius * Math.cos(angle);
+        const v = radius * Math.sin(angle);
+        const along = from + (to - from) * share;
+        const point = axis === "x" ? [along, center[0] + u, center[1] + v] : [center[0] + u, along, center[1] + v];
+        const normal = axis === "x" ? [0, Math.cos(angle), Math.sin(angle)] : [Math.cos(angle), 0, Math.sin(angle)];
+        const facing = depthOf(normal, projection) > 0;
+        const flat = iso(point, projection);
+        if (near === null)
+            near = facing;
+        if (facing !== near) {
+            run.push(flat);
+            (near ? front : back).push(pathOf(run));
+            run = [flat];
+            near = facing;
+            continue;
+        }
+        run.push(flat);
+    }
+    if (run.length > 1)
+        (near ? front : back).push(pathOf(run));
+    return { back: back.join(""), front: front.join("") };
+}
+function topTicks(from, to, step, every, edge, z, lengths, projection, axis = "x") {
+    const minor = [];
+    const major = [];
+    const first = Math.ceil(from / step) * step;
+    for (let at = first, index = Math.round(first / step); at <= to + 1e-9; at += step, index++) {
+        const big = index % every === 0;
+        const length = big ? lengths[1] : lengths[0];
+        const a = axis === "x" ? [at, edge] : [edge, at];
+        const b = axis === "x" ? [at, edge + length] : [edge + length, at];
+        (big ? major : minor).push(lineOnTop(a, b, z, projection));
+    }
+    return { minor: minor.join(""), major: major.join("") };
+}
+function sideTicks(from, to, step, every, face, top, lengths, projection, axis = "x") {
+    const minor = [];
+    const major = [];
+    const first = Math.ceil(from / step) * step;
+    for (let at = first, index = Math.round(first / step); at <= to + 1e-9; at += step, index++) {
+        const big = index % every === 0;
+        const length = big ? lengths[1] : lengths[0];
+        const a = axis === "x" ? [at, face, top] : [face, at, top];
+        const b = axis === "x" ? [at, face, top - length] : [face, at, top - length];
+        (big ? major : minor).push(segment(a, b, projection));
+    }
+    return { minor: minor.join(""), major: major.join("") };
+}
+function radialTicks(cx, cy, radius, count, every, z, lengths, projection, from = 0, span = Math.PI * 2) {
+    const minor = [];
+    const major = [];
+    const closed = Math.abs(span - Math.PI * 2) < 1e-9;
+    const steps = closed ? count : count + 1;
+    for (let index = 0; index < steps; index++) {
+        const angle = from + (index / count) * span;
+        const big = index % every === 0;
+        const inner = radius - (big ? lengths[1] : lengths[0]);
+        const sx = Math.sin(angle);
+        const sy = -Math.cos(angle);
+        (big ? major : minor).push(lineOnTop([cx + sx * inner, cy + sy * inner], [cx + sx * radius, cy + sy * radius], z, projection));
+    }
+    return { minor: minor.join(""), major: major.join("") };
+}
+const haloOf = (plan, z, height, projection) => slabOf(plan, z, height, projection).fill;
+function axisVector(projection, [dx, dy, dz]) {
+    const origin = iso([0, 0, 0], projection);
+    const moved = iso([dx, dy, dz], projection);
+    return [moved[0] - origin[0], moved[1] - origin[1]];
+}
+const fine = (value) => Math.round(value * 100) / 100;
+function translateAlong(projection, by) {
+    const [x, y] = axisVector(projection, by);
+    return `translate(${fine(x)} ${fine(y)})`;
+}
+const thousandth = (value) => Math.round(value * 1000) / 1000;
+function axesAt(at, z, projection) {
+    const origin = iso([at[0], at[1], z], projection);
+    const along = (point) => {
+        const [px, py] = iso(point, projection);
+        return [px - origin[0], py - origin[1]];
+    };
+    return { origin, x: along([at[0] + 1, at[1], z]), y: along([at[0], at[1] + 1, z]), z: along([at[0], at[1], z + 1]) };
+}
+const matrixOf = (u, v, origin) => `matrix(${thousandth(u[0])} ${thousandth(u[1])} ${thousandth(v[0])} ${thousandth(v[1])} ${thousandth(origin[0])} ${thousandth(origin[1])})`;
+function holdStill(element, [dx, dy]) {
+    const text = dx || dy ? `translate(${-dx} ${-dy})` : "";
+    element.querySelectorAll("[data-hold]").forEach((node) => (text ? node.setAttribute("transform", text) : node.removeAttribute("transform")));
+}
+function topMatrix(at, z, projection, along = "x") {
+    const { origin, x, y } = axesAt(at, z, projection);
+    return along === "x" ? matrixOf(x, y, origin) : matrixOf([-y[0], -y[1]], x, origin);
+}
+function sideMatrix(at, z, projection, face) {
+    const { origin, x, y, z: up } = axesAt(at, z, projection);
+    const down = [-up[0], -up[1]];
+    return face === "left" ? matrixOf(x, down, origin) : matrixOf([-y[0], -y[1]], down, origin);
+}
+function screenRise(height, projection) {
+    const { cosE, k } = cameraOf(projection);
+    return height * cosE * k;
+}
+function fitProjection(points, width, height, { pad = 24, headroom = 0, azimuth = AZIMUTH, elevation = ELEVATION } = {}) {
+    const unit = { origin: [0, 0], scale: 1, azimuth, elevation };
+    const flat = points.map((point) => iso(point, unit));
+    const xs = flat.map(([x]) => x);
+    const ys = flat.map(([, y]) => y);
+    const left = Math.min(...xs);
+    const right = Math.max(...xs);
+    const up = Math.min(...ys);
+    const down = Math.max(...ys);
+    const scale = Math.min((width - pad * 2) / (right - left), (height - pad * 2 - headroom) / (down - up));
+    return {
+        origin: [width / 2 - ((left + right) / 2) * scale, headroom + (height - headroom) / 2 - ((up + down) / 2) * scale],
+        scale,
+        azimuth,
+        elevation,
+    };
+}
+const escape = (text) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const attrs = (pairs) => Object.entries(pairs)
+    .filter(([, value]) => value !== undefined && value !== false)
+    .map(([key, value]) => ` ${key}="${escape(String(value))}"`)
+    .join("");
+function solidSvg(paths, { tone = "hi", crease = "faint", halo = false, lit = false, flat = false, className, inner = "" } = {}) {
+    const parts = [];
+    if (halo)
+        parts.push(`<path class="iso-halo" d="${paths.fill}"/>`);
+    parts.push(`<path class="iso-fill" d="${paths.fill}"/>`);
+    if (!flat) {
+        paths.shades.forEach((d, shade) => {
+            if (d)
+                parts.push(`<path class="iso-shade" data-shade="${shade}" d="${d}"/>`);
+        });
+        parts.push(`<path class="iso-top" d="${paths.top}"/>`);
+    }
+    if (crease !== "none" && paths.crease)
+        parts.push(`<path class="iso-line iso-crease" data-tone="${crease}" d="${paths.crease}"/>`);
+    if (crease !== "none" && paths.bevel)
+        parts.push(`<path class="iso-line iso-bevel" data-tone="${crease}" d="${paths.bevel}"/>`);
+    if (inner)
+        parts.push(inner);
+    parts.push(`<path class="iso-line iso-edge" data-tone="${tone}" d="${paths.outline}"/>`);
+    return `<g${attrs({ class: className ? `iso-solid ${className}` : "iso-solid", "data-lit": lit ? "" : undefined, "data-seamless": paths.seamless ? "" : undefined })}>${parts.join("")}</g>`;
+}
+function lineSvg(d, { tone = "lo", dotted = false, dashed = false, flow = false, className, free } = {}) {
+    if (!d)
+        return "";
+    return `<path${attrs({
+        class: className ? `iso-line ${className}` : "iso-line",
+        "data-tone": tone,
+        "data-free": free === true ? "" : free || undefined,
+        "data-dotted": dotted ? "" : undefined,
+        "data-dashed": dashed ? "" : undefined,
+        "data-flow": flow ? "" : undefined,
+        d,
+    })}/>`;
+}
+function dotsSvg(points, { size = 0.5, tone = "mid", pulse = false } = {}) {
+    const dots = points
+        .map(([x, y, alpha], index) => `<circle cx="${tenth(x)}" cy="${tenth(y)}" r="${size}"${alpha !== undefined && alpha < 1 ? ` fill-opacity="${Math.max(0, alpha).toFixed(2)}"` : ""}${pulse ? ` data-pulse="" style="--pulse-at:${(index * 137) % 1600}ms"` : ""}/>`)
+        .join("");
+    return `<g class="iso-dots" data-tone="${tone}">${dots}</g>`;
+}
+function fadedSvg(list, style = {}) {
+    const groups = new Map();
+    for (const entry of list) {
+        const [d, alpha] = Array.isArray(entry) ? entry : [entry.d, entry.alpha];
+        if (!d || !(alpha > 0.02))
+            continue;
+        const level = Math.min(1, Math.round(alpha * 20) / 20);
+        groups.set(level, (groups.get(level) ?? "") + d);
+    }
+    return [...groups].map(([alpha, d]) => (alpha >= 1 ? lineSvg(d, style) : `<g opacity="${alpha.toFixed(2)}">${lineSvg(d, style)}</g>`)).join("");
+}
+function fadeLineSvg(points, { fade = [0, 0], tone = "lo", className, stops = 6 } = {}) {
+    if (points.length < 2)
+        return "";
+    const ease = (t) => t * t * (3 - 2 * t);
+    const hashOf = (text) => {
+        let hash = 2166136261;
+        for (let index = 0; index < text.length; index++)
+            hash = Math.imul(hash ^ text.charCodeAt(index), 16777619);
+        return (hash >>> 0).toString(36);
+    };
+    const lengths = [0];
+    for (let index = 1; index < points.length; index++)
+        lengths.push(lengths[index - 1] + Math.hypot(points[index][0] - points[index - 1][0], points[index][1] - points[index - 1][1]));
+    const at = (length) => {
+        let index = 1;
+        while (index < points.length - 1 && lengths[index] < length)
+            index++;
+        const span = lengths[index] - lengths[index - 1] || 1;
+        const t = Math.max(0, Math.min(1, (length - lengths[index - 1]) / span));
+        return [points[index - 1][0] + (points[index][0] - points[index - 1][0]) * t, points[index - 1][1] + (points[index][1] - points[index - 1][1]) * t];
+    };
+    const pieceOf = (from, to) => [at(from), ...points.filter((_, index) => lengths[index] > from + 1e-6 && lengths[index] < to - 1e-6), at(to)];
+    const total = lengths[lengths.length - 1];
+    if (total < 1e-6)
+        return "";
+    let [start, end] = Array.isArray(fade) ? fade : [fade, fade];
+    if (start + end > total) {
+        const share = total / (start + end);
+        start *= share;
+        end *= share;
+    }
+    const paint = `var(--anatomy-${tone})`;
+    const ramp = (piece, rising) => {
+        const d = pathOf(piece);
+        const [x1, y1] = piece[0];
+        const [x2, y2] = piece[piece.length - 1];
+        const id = `iso-fade-${hashOf(`${d}|${tone}|${rising}`)}`;
+        const marks = Array.from({ length: stops + 1 }, (_, index) => {
+            const t = index / stops;
+            const alpha = ease(rising ? t : 1 - t);
+            return `<stop offset="${t.toFixed(3)}" stop-opacity="${alpha.toFixed(3)}" style="stop-color:${paint}"/>`;
+        }).join("");
+        const gradient = `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${tenth(x1)}" y1="${tenth(y1)}" x2="${tenth(x2)}" y2="${tenth(y2)}">${marks}</linearGradient>`;
+        return `<defs>${gradient}</defs><path${attrs({ class: className ? `iso-line ${className}` : "iso-line", "data-tone": tone, "data-free": rising ? "start" : "end", d, style: `stroke:url(#${id})` })}/>`;
+    };
+    const parts = [];
+    if (start > 0.05)
+        parts.push(ramp(pieceOf(0, start), true));
+    if (total - end - start > 0.05)
+        parts.push(lineSvg(pathOf(pieceOf(start, total - end)), { tone, className }));
+    if (end > 0.05)
+        parts.push(ramp(pieceOf(total - end, total), false));
+    return `<g class="iso-fade">${parts.join("")}</g>`;
+}
+function wireSvg(from, to, { via = [], tone = "lo", dotted = false, dashed = false, flow = false, ends = "both", size = 1.2 } = {}) {
+    const d = pathOf([from, ...via, to]);
+    const end = ([x, y]) => `<circle class="iso-wire-end" cx="${tenth(x)}" cy="${tenth(y)}" r="${size}"/>`;
+    return `<g class="iso-wire" data-tone="${tone}">${lineSvg(d, { tone, dotted, dashed, flow })}${ends === "both" || ends === "from" ? end(from) : ""}${ends === "both" || ends === "to" ? end(to) : ""}</g>`;
+}
+function faceTextSvg(transform, text, { size = 3, tone = "mid", anchor = "start" } = {}) {
+    return `<text class="iso-face-text" data-tone="${tone}" transform="${transform}" font-size="${size}" text-anchor="${anchor}">${escape(text)}</text>`;
+}
+function groupSvg(children, extra = {}) {
+    return `<g${attrs(extra)}>${Array.isArray(children) ? children.join("") : children}</g>`;
+}
+function figureSvg({ width, height, label, body, standalone = false, className }) {
+    const style = standalone ? `<style>${ISO_CSS}</style>` : "";
+    return `<svg${attrs({
+        xmlns: "http://www.w3.org/2000/svg",
+        class: `iso-svg${standalone ? " iso" : ""}${className ? ` ${className}` : ""}`,
+        "data-theme": standalone || undefined,
+        viewBox: `0 0 ${width} ${height}`,
+        role: "img",
+        "aria-label": label,
+    })}>${style}${Array.isArray(body) ? body.join("") : body}</svg>`;
+}
+function swatchSvg(mark) {
+    if (mark === "raised" || mark === "flat" || mark === "lit") {
+        const body = mark === "flat" ? "M2 6.5 8 3.5 14 6.5 8 9.5Z" : "M2 4.5 8 1.5 14 4.5 14 6 8 9 2 6Z";
+        const crease = mark === "flat" ? "" : `<path class="iso-swatch-crease" d="M2 4.5 8 7.5 14 4.5"/>`;
+        return `<svg class="iso-swatch" data-mark="${mark}" viewBox="0 0 16 10" aria-hidden="true"><path d="${body}"/>${crease}</svg>`;
+    }
+    return `<svg class="iso-swatch" data-mark="${mark}" viewBox="0 0 16 10" aria-hidden="true"><path d="M1.5 5h13"/></svg>`;
+}
+function plateHtml({ fig, title, hint, readout = "", keys = [], caption, body }) {
+    const corner = (name, text, extra = "") => `<span class="iso-plate-corner" data-corner="${name}"${extra}>${escape(text)}</span>`;
+    const legend = keys.length || caption
+        ? `<figcaption class="iso-legend">${keys.length ? `<span class="iso-keys">${keys.map((key) => `<span class="iso-key">${swatchSvg(key.mark)}${escape(key.label)}</span>`).join("")}</span>` : ""}${caption ? `<span class="iso-caption">${escape(caption)}</span>` : ""}</figcaption>`
+        : "";
+    return `<figure class="iso-figure"><div class="iso-plate"><div class="iso-plate-corners" aria-hidden="true">${corner("fig", fig)}${title ? corner("title", title) : ""}${hint ? corner("hint", hint) : ""}${corner("readout", readout, " data-readout")}</div>${body}</div>${legend}</figure>`;
+}
+function pageHtml({ title, theme = "dark", body, script = "", width = 650 }) {
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(title)}</title><style>${ISO_CSS}${PAGE_CSS.replace("__WIDTH__", String(width))}</style></head><body class="iso" data-theme="${theme}"><main class="iso-page">${body}</main>${script ? `<script type="module">${script.replace(/<\/(script)/gi, "<\\/$1")}<\/script>` : ""}</body></html>`;
+}
+const PAGE_CSS = `
+*{box-sizing:border-box}
+html{color-scheme:dark}
+body[data-theme="light"]{color-scheme:light}
+body{margin:0;background:var(--anatomy-page);color:var(--anatomy-text);font:14px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.iso-page{width:min(__WIDTH__px,100% - 32px);margin:64px auto 96px}
+`;
+const ISO_CSS = `
+.iso{
+  --anatomy-page:#0b0b0b;--anatomy-card:#131313;--anatomy-text:#a3a3a3;--anatomy-strong:#e6e6e6;--anatomy-muted:#6e6e6e;
+  --anatomy-paper:#131313;--anatomy-face:#1b1b1b;--anatomy-top:#1c1c1c;
+  --anatomy-shade-0:#0f0f0f;--anatomy-shade-1:#121212;--anatomy-shade-2:#151515;--anatomy-shade-3:#181818;
+  --anatomy-lit-top:#262626;--anatomy-lit-shade:#1d1d1d;
+  --anatomy-hi:#d4d4d4;--anatomy-mid:#6a6a6a;--anatomy-lo:#3e3e3e;--anatomy-faint:#2a2a2a;--anatomy-lit:#ffffff;
+  --anatomy-halo:#050505;--anatomy-halo-opacity:.9;--anatomy-dot:#e6e6e6;
+  --anatomy-red:#ff6b6b;--anatomy-green:#6be0a0;--anatomy-blue:#6b9bff;
+  --anatomy-weight:.6px;--anatomy-ease:cubic-bezier(.32,.72,0,1);
+  --anatomy-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff0a,inset 0 0 0 1px #ffffff06,0 0 0 1px #00000026,0 1px 1px -.5px #00000014,0 3px 3px -1.5px #00000014,0 6px 6px -3px #00000014,0 12px 12px -6px #00000014;
+}
+.iso[data-theme="light"]{
+  --anatomy-page:#f2f2ef;--anatomy-card:#fbfbfa;--anatomy-text:#57575a;--anatomy-strong:#18181a;--anatomy-muted:#8c8c90;
+  --anatomy-paper:#fbfbfa;--anatomy-face:#ffffff;--anatomy-top:#ffffff;
+  --anatomy-shade-0:#dcdcd9;--anatomy-shade-1:#e5e5e2;--anatomy-shade-2:#ededea;--anatomy-shade-3:#f4f4f1;
+  --anatomy-lit-top:#ffffff;--anatomy-lit-shade:#eeeeeb;
+  --anatomy-hi:#26262a;--anatomy-mid:#8a8a8f;--anatomy-lo:#b4b4b8;--anatomy-faint:#d4d4d6;--anatomy-lit:#000000;
+  --anatomy-halo:#8a8a80;--anatomy-halo-opacity:.32;--anatomy-dot:#3a3a3e;
+  --anatomy-red:#e5484d;--anatomy-green:#30a46c;--anatomy-blue:#3e63dd;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff,0 0 0 1px #0000000f,0 1px 1px -.5px #0000000a,0 3px 3px -1.5px #0000000a,0 6px 6px -3px #0000000a,0 12px 12px -6px #0000000a;
+}
+.iso-svg{display:block;width:100%;height:auto;overflow:visible}
+.iso-svg path,.iso-svg circle{vector-effect:non-scaling-stroke}
+.iso-fill{fill:var(--anatomy-paper);stroke:none}
+.iso-solid[data-lit]>.iso-fill{fill:var(--anatomy-face)}
+.iso-shade,.iso-top{stroke:none}
+.iso-shade[data-shade="0"]{fill:var(--anatomy-shade-0)}
+.iso-shade[data-shade="1"]{fill:var(--anatomy-shade-1)}
+.iso-shade[data-shade="2"]{fill:var(--anatomy-shade-2)}
+.iso-shade[data-shade="3"]{fill:var(--anatomy-shade-3)}
+.iso-top{fill:var(--anatomy-top)}
+.iso-solid[data-lit]>.iso-top{fill:var(--anatomy-lit-top)}
+.iso-solid[data-lit]>.iso-shade{fill:var(--anatomy-lit-shade)}
+.iso-solid[data-seamless]>.iso-shade,.iso-solid[data-seamless]>.iso-top{stroke-width:.4;stroke-linejoin:round}
+.iso-solid[data-seamless]>.iso-shade[data-shade="0"]{stroke:var(--anatomy-shade-0)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="1"]{stroke:var(--anatomy-shade-1)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="2"]{stroke:var(--anatomy-shade-2)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="3"]{stroke:var(--anatomy-shade-3)}
+.iso-solid[data-seamless]>.iso-top{stroke:var(--anatomy-top)}
+.iso-solid[data-seamless][data-lit]>.iso-top{stroke:var(--anatomy-lit-top)}
+.iso-solid[data-seamless][data-lit]>.iso-shade{stroke:var(--anatomy-lit-shade)}
+.iso-solid[data-lit]>.iso-edge{stroke:var(--anatomy-lit)}
+.iso-halo{fill:var(--anatomy-halo);stroke:none;filter:blur(9px);opacity:var(--anatomy-halo-opacity);transform:translateY(3px)}
+.iso-line{fill:none;stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight);stroke-linecap:round;stroke-linejoin:round}
+.iso-line[data-tone="hi"]{stroke:var(--anatomy-hi)}
+.iso-line[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.iso-line[data-tone="lo"]{stroke:var(--anatomy-lo)}
+.iso-line[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.iso-line[data-tone="lit"]{stroke:var(--anatomy-lit)}
+.iso-line[data-tone="red"]{stroke:var(--anatomy-red)}
+.iso-line[data-tone="green"]{stroke:var(--anatomy-green)}
+.iso-line[data-tone="blue"]{stroke:var(--anatomy-blue)}
+.iso-line[data-dotted]{stroke-dasharray:.01 3.5;stroke-width:1}
+.iso-line[data-dashed]{stroke-dasharray:3 3}
+.iso-line[data-flow]{stroke-dasharray:2 6}
+.iso-wire-end{fill:var(--anatomy-paper);stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight)}
+.iso-wire[data-tone="hi"] .iso-wire-end{stroke:var(--anatomy-hi)}
+.iso-wire[data-tone="mid"] .iso-wire-end{stroke:var(--anatomy-mid)}
+.iso-wire[data-tone="faint"] .iso-wire-end{stroke:var(--anatomy-faint)}
+.iso-wire[data-tone="lit"] .iso-wire-end{stroke:var(--anatomy-lit)}
+.iso-dots circle{fill:var(--anatomy-dot);stroke:none;opacity:.32}
+.iso-dots[data-tone="hi"] circle{opacity:.85}
+.iso-dots[data-tone="mid"] circle{opacity:.45}
+.iso-dots[data-tone="lo"] circle{opacity:.22}
+.iso-dots[data-tone="faint"] circle{opacity:.12}
+.iso-face-text{fill:var(--anatomy-mid);font-family:var(--anatomy-mono);letter-spacing:.04em}
+.iso-face-text[data-tone="hi"]{fill:var(--anatomy-hi)}
+.iso-face-text[data-tone="lo"]{fill:var(--anatomy-lo)}
+.iso-face-text[data-tone="faint"]{fill:var(--anatomy-faint)}
+.tb-body{fill:var(--anatomy-shade-2);stroke:none}
+.tb-shine{fill:var(--anatomy-top);stroke:none}
+.tb-shade{fill:var(--anatomy-shade-0);stroke:none}
+.tb-ring{fill:none;stroke:var(--anatomy-lo);stroke-width:.45;stroke-linecap:butt;stroke-linejoin:round}
+.tb-ring[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.tb-ring[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.tb-ring[data-tone="hi"]{stroke:var(--anatomy-hi)}
+@keyframes iso-flow{to{stroke-dashoffset:-32}}
+@keyframes iso-pulse{0%,100%{opacity:.18}12%{opacity:1}40%{opacity:.18}}
+.iso-line[data-flow]{animation:iso-flow 1600ms linear infinite}
+.iso-dots circle[data-pulse]{animation:iso-pulse 1600ms steps(1,end) infinite;animation-delay:var(--pulse-at,0ms)}
+.iso-figure{margin:32px 0 36px}
+.iso-plate{position:relative;padding:52px 24px;border-radius:0;background:var(--anatomy-card);box-shadow:0 0 0 1px var(--anatomy-mid);--anatomy-paper:var(--anatomy-card)}
+.iso-plate-corners{position:absolute;inset:18px 20px;pointer-events:none}
+.iso-plate-corner{position:absolute;color:var(--anatomy-muted);font-family:var(--anatomy-mono);font-size:10.5px;line-height:1;letter-spacing:.04em;white-space:nowrap}
+.iso-plate-corner[data-corner="fig"]{top:0;left:0;color:var(--anatomy-text)}
+.iso-plate-corner[data-corner="title"]{top:0;right:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="hint"]{bottom:0;left:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="readout"]{right:0;bottom:0;color:var(--anatomy-text);font-variant-numeric:tabular-nums}
+.iso-plate .iso-svg{margin:0 auto}
+.iso-legend{display:grid;gap:8px;margin-top:12px;color:var(--anatomy-muted);font-size:13px;line-height:1.55}
+.iso-keys{display:flex;flex-wrap:wrap;gap:6px 18px}
+.iso-key{display:inline-flex;align-items:center;gap:7px}
+.iso-swatch{width:16px;height:10px;flex:none;overflow:visible}
+.iso-swatch path{fill:none;stroke:var(--anatomy-hi);stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+.iso-swatch[data-mark="raised"] path,.iso-swatch[data-mark="flat"] path{stroke:var(--anatomy-mid)}
+.iso-swatch[data-mark="lit"] path{stroke:var(--anatomy-lit)}
+.iso-swatch[data-mark="dim"] path{stroke:var(--anatomy-lo)}
+.iso-swatch[data-mark="dotted"] path{stroke-dasharray:.01 3;stroke-width:1.4}
+.iso-swatch[data-mark="dashed"] path{stroke-dasharray:3 2.5}
+.iso-swatch[data-mark="red"] path{stroke:var(--anatomy-red)}
+.iso-swatch[data-mark="green"] path{stroke:var(--anatomy-green)}
+.iso-swatch[data-mark="blue"] path{stroke:var(--anatomy-blue)}
+.iso-swatch-crease{stroke:var(--anatomy-lo)!important}
+@media (max-width:560px){.iso-plate{padding:48px 12px 70px}.iso-plate-corner[data-corner="hint"]{bottom:18px}}
+@media (prefers-reduced-motion:reduce){.iso-line[data-flow],.iso-dots circle[data-pulse]{animation:none}}
+`;
+
+// Tiny solid renderer: prisms (a 2D ring pushed out along one axis), shaded by face normal, painter-sorted.
+// Shared by the build (static parts) and the page (anything that moves or changes colour).
+function solids(project, depthOf) {
+  const o = depthOf([0, 0, 0]);
+  const VIEW = [depthOf([1, 0, 0]) - o, depthOf([0, 1, 0]) - o, depthOf([0, 0, 1]) - o];
+  const LIGHT = (() => { const v = [0.35, 0.7, 1]; const n = Math.hypot(...v); return v.map((a) => a / n); })();
+  const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const fx = (v) => (Math.round(v * 10) / 10).toString();
+  // ring in its own 2D plane, axis is the direction it is pushed out along
+  const toXYZ = (axis, u, v, w) => (axis === "z" ? [u, v, w] : axis === "y" ? [u, w, v] : [w, u, v]);
+  function prism(ring, axis, w0, w1, col, opts = {}) {
+    return { ring, axis, w0, w1, col, ...opts };
+  }
+  const box = (x0, x1, y0, y1, z0, z1, col, opts) => prism([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], "z", z0, z1, col, opts);
+  const circle = (cu, cv, r, n = 24, a0 = 0) => Array.from({ length: n }, (_, i) => [cu + r * Math.cos(a0 + (i / n) * Math.PI * 2), cv + r * Math.sin(a0 + (i / n) * Math.PI * 2)]);
+  const cyl = (cx, cy, r, z0, z1, col, n = 24, opts) => prism(circle(cx, cy, r, n), "z", z0, z1, col, opts);
+  function faces(part, xf) {
+    const n = part.ring.length;
+    const A = part.ring.map(([u, v]) => xf(toXYZ(part.axis, u, v, part.w0))), B = part.ring.map(([u, v]) => xf(toXYZ(part.axis, u, v, part.w1)));
+    const c = [0, 1, 2].map((k) => (A.reduce((s, p) => s + p[k], 0) + B.reduce((s, p) => s + p[k], 0)) / (2 * n));
+    const out = [];
+    const add = (pts, cap) => {
+      const cf = [0, 1, 2].map((k) => pts.reduce((s, p) => s + p[k], 0) / pts.length);
+      let nn = [0, 0, 0];
+      for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; nn[0] += (p[1] - q[1]) * (p[2] + q[2]); nn[1] += (p[2] - q[2]) * (p[0] + q[0]); nn[2] += (p[0] - q[0]) * (p[1] + q[1]); }
+      const len = Math.hypot(...nn); if (len < 1e-9) return;
+      nn = nn.map((v) => v / len);
+      if (dot(nn, [cf[0] - c[0], cf[1] - c[1], cf[2] - c[2]]) < 0) nn = nn.map((v) => -v);
+      if (dot(nn, VIEW) <= 1e-4) return;
+      out.push({ pts, n: nn, depth: dot(cf, VIEW), cap });
+    };
+    add(A, true); add(B, true);
+    if (part.w1 !== part.w0) for (let i = 0; i < n; i++) { const j = (i + 1) % n; add([A[i], A[j], B[j], B[i]], false); }
+    return out;
+  }
+  function shade(part, f) {
+    let base = rgb(f.cap && part.cap ? part.cap : part.col);
+    if (part.glow) base = mix(base, rgb(part.glow[0]), part.glow[1]);
+    const d = Math.max(0, dot(f.n, LIGHT)), k = part.flat ? 1 : 0.48 + 0.62 * d;
+    let c = base.map((v) => v * k);
+    if (part.emit) c = mix(c, rgb(part.emit[0]), part.emit[1]);
+    return "rgb(" + c.map((v) => Math.round(Math.min(255, Math.max(0, v)))).join(",") + ")";
+  }
+  // objects: { parts, xf?, key? } — sorted back to front by key (default: depth of the first part's centre)
+  function render(objects, { stroke = "rgba(0,0,0,.35)", width = 0.35 } = {}) {
+    const items = objects.map((ob) => {
+      const xf = ob.xf || ((p) => p);
+      let key = ob.key;
+      if (key === undefined) { const p = ob.parts[0]; const r = p.ring; const cu = r.reduce((s, q) => s + q[0], 0) / r.length, cv = r.reduce((s, q) => s + q[1], 0) / r.length; key = dot(xf(toXYZ(p.axis, cu, cv, (p.w0 + p.w1) / 2)), VIEW); }
+      return { ob, xf, key };
+    }).sort((a, b) => a.key - b.key);
+    let s = "";
+    for (const { ob, xf } of items) {
+      if (ob.svg !== undefined) { s += ob.svg; continue; }
+      const fs = [];
+      ob.parts.forEach((part, pi) => { for (const f of faces(part, xf)) fs.push({ f, part, layer: part.layer || 0, pi }); });
+      fs.sort((a, b) => a.layer - b.layer || a.f.depth - b.f.depth);
+      let g = "";
+      for (const { f, part } of fs) g += '<path d="M' + f.pts.map((p) => { const q = project(p); return fx(q[0]) + " " + fx(q[1]); }).join("L") + 'Z" fill="' + shade(part, f) + '"' + (part.opacity !== undefined ? ' fill-opacity="' + part.opacity + '"' : "") + "/>";
+      s += ob.cls ? '<g class="' + ob.cls + '">' + g + "</g>" : g;
+    }
+    return '<g stroke="' + stroke + '" stroke-width="' + width + '" stroke-linejoin="round">' + s + "</g>";
+  }
+  return { prism, box, cyl, circle, render, VIEW, rgb };
+}
+
+const D = {"W":640,"H":470,"P":{"origin":[345.7406340057637,301.3026232044854],"scale":0.992375990014316,"azimuth":45,"elevation":30},"S":[-30,-45],"silk":"matrix(0.888 0.444 -0.888 0.444 152.242 291.031)"};
+const PR = D.P, S = D.S;
+const stage = document.querySelector(".fx-stage");
+const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const readout = document.querySelector("[data-readout]");
+const still = matchMedia("(prefers-reduced-motion: reduce)");
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const R = solids((p) => iso(p, PR), (p) => depthOf(p, PR));
+const { box, cyl, prism, circle } = R;
+const backG = q("back"), boardG = q("board"), frontG = q("front"), qcode = q("qcode");
+const svgEl = stage.querySelector("svg"), flashEl = stage.querySelector(".fx-flash"), cv = stage.querySelector(".fx-smoke"), ctx = cv.getContext("2d");
+const mon = { el: stage.querySelector(".mon"), scr: stage.querySelector(".mon-scr") };
+
+// ---------------- the chip ----------------
+let seed = 7;
+const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+function newChip(fixed) {
+  const g1 = fixed !== undefined ? fixed : clamp((rnd() + rnd() + rnd() - 1.5) * 2, -2, 2);
+  const cold = fixed !== undefined ? -260 : rnd() < 0.45 ? -105 - 70 * rnd() : -260;
+  return { q: g1, v0: 1.18 - 0.025 * g1, wall: 5.55 + 0.15 * g1, coldBug: cold, grade: g1 > 0.9 ? "golden" : g1 < -0.9 ? "a dud" : "about average", health: 1 };
+}
+let chip = newChip(0.6);
+// what the chip needs to run a clock without errors, colder is better
+function vmin(f, T) {
+  const t = clamp(T, -196, 110), wall = chip.wall + 0.0085 * (70 - t);
+  return chip.v0 + 0.085 * (f - 4.5) + 0.03 * Math.exp((f - wall) / 0.3);
+}
+const LOADS = { idle: { k: 0.06, name: "idle" }, game: { k: 0.45, name: "gaming" }, render: { k: 1.0, name: "rendering" }, avx: { k: 1.35, name: "an AVX stress test" } };
+const COOLERS = { stock: { Rth: 0.42, name: "the stock cooler" }, tower: { Rth: 0.26, name: "a big tower cooler" }, aio: { Rth: 0.2, name: "a 240 mm liquid cooler" }, ln2: { Rth: 0.07, name: "a liquid nitrogen pot" } };
+
+// ---------------- settings and state ----------------
+let mult = 45, vset = 1.25, cooler = "tower", load = "render", safe = true, potSet = -185;
+let T = 40, Tv = 35, potT = 25, throttle = 0, P = 0, I = 0, veff = 1.25, fEff = 4.5;
+let mode = "run", modeAt = 0, why = "", stop = "", runProg = 0, runF = 0, runT = 0, lastScore = 0, best = 0, overI = 0;
+let now = 0, last = 0, frame = 0, visible = false, touring = true, slow = false, tourClock = 0, tourStep = -1, actions = [];
+let boomAt = null, debris = [], fanA = 0, hue = 0, lastShot = "", lastEvent = "", lastEventAt = -10, pour = 0;
+const event = (t) => { lastEvent = t; lastEventAt = now; };
+const setMode = (m, w = "", code = "") => { mode = m; modeAt = now; why = w; stop = code; if (m !== "run") runProg = 0; };
+
+// ---------------- the board ----------------
+const PCB = "#1d2329", BLK = "#24272c", ALU = "#b3b9c0", CU = "#c8794a", GREY = "#5d636b", SLOT = "#2a2d32";
+function staticBoard() {
+  const o = [];
+  o.push({ parts: [box(-150, 150, -120, 120, 0, 2, PCB, { cap: "#202a2f" })], key: -1e9 });
+  let tr = "";
+  const seg = (pts) => { tr += "M" + pts.map((p) => iso([p[0], p[1], 2.05], PR).map((v) => v.toFixed(1)).join(" ")).join("L"); };
+  for (let i = 0; i < 10; i++) seg([[S[0] + 26, S[1] - 20 + 4 * i], [10 + 2 * i, S[1] - 20 + 4 * i], [26 + 2 * i, S[1] - 36 + 4 * i], [26 + 2 * i, -112]]);
+  for (let i = 0; i < 8; i++) seg([[S[0] - 20 + 5 * i, S[1] + 30], [S[0] - 20 + 5 * i, 18 + i * 0.5], [S[0] - 30 + 5 * i, 22]]);
+  for (let i = 0; i < 6; i++) seg([[-30 + 8 * i, 64], [-30 + 8 * i, 92], [10 + 8 * i, 112]]);
+  for (let i = 0; i < 5; i++) seg([[75, 30 + 6 * i], [125, 30 + 6 * i], [130, 34 + 6 * i]]);
+  for (let i = 0; i < 6; i++) seg([[-118, 30 + 7 * i], [-140, 52 + 7 * i]]);
+  o.push({ svg: '<path class="trace" d="' + tr + '"/><text class="silk" transform="' + D.silk + '" font-size="9">TEST BENCH 01</text>', key: -9e8 });
+  o.push({ parts: [box(-150, -124, -120, 20, 2, 42, "#3b4047", { cap: "#4a5058" }), box(-150, -148, -118, 18, 6, 40, "#8b9199")] });
+  for (const y of [25, 75]) o.push({ parts: [box(-122, -32, y, y + 7, 2, 13, SLOT), box(-122, -32, y + 0.5, y + 6.5, 13, 13.4, "#9aa1a9")] });
+  o.push({ parts: [box(-112, -22, 46, 60, 2, 8, "#33383e", { cap: "#41474e" })] });
+  o.push({ parts: [box(18, 70, 58, 110, 2, 13, "#3b4047", { cap: "#4c535b" })] });
+  o.push({ parts: [box(132, 142, -84, -24, 2, 17, "#2b2e33")] });
+  o.push({ parts: [box(132, 142, 28, 62, 2, 10, "#2b2e33")] });
+  o.push({ parts: [cyl(92, 22, 10, 2, 4.5, "#c3c8ce", 20)] });
+  o.push({ parts: [box(-140, -122, -118, -104, 2, 14, "#2b2e33")] });
+  o.push({ parts: [box(108, 136, 88, 104, 2, 5, "#111214")] });
+  for (let i = 0; i < 4; i++) { const x = 30 + 14 * i; o.push({ parts: [box(x, x + 7, -110, 23, 2, 9, SLOT)] }); }
+  o.push({ parts: [box(S[0] - 24, S[0] + 24, S[1] - 28, S[1] + 28, 2, 6, "#6d737b"), box(S[0] - 16, S[0] + 16, S[1] - 18, S[1] + 18, 6, 9, "#c9ced3")] });
+  return o;
+}
+let VRM = null;
+function makeVrm() {
+  const hs = [{ parts: [box(-114, -92, -108, 10, 2, 34, "#3e444c", { cap: "#555c65" }), ...[-90, -60, -30, 0].map((y) => box(-114.3, -91.7, y, y + 3, 30, 34.4, "#2b2f35"))], hot: true },
+    { parts: [box(-88, 22, -120, -100, 2, 34, "#3e444c", { cap: "#555c65" }), ...[-70, -40, -10, 15].map((x) => box(x, x + 3, -120.3, -99.7, 30, 34.4, "#2b2f35"))], hot: true }];
+  const chokes = [];
+  for (let i = 0; i < 9; i++) chokes.push({ parts: [box(-88, -78, -101 + 12 * i, -91 + 12 * i, 2, 10, "#4f555d", { cap: "#7a8088" })] });
+  for (let i = 0; i < 8; i++) chokes.push({ parts: [box(-74 + 12 * i, -64 + 12 * i, -96, -86, 2, 10, "#4f555d", { cap: "#7a8088" })] });
+  const caps = [-106, -96, -86, -76].map((x) => ({ parts: [cyl(x, 22, 4, 2, 13, "#2c2236", 16), cyl(x, 22, 4.05, 12.2, 13.2, "#b9bfc6", 16)] }));
+  VRM = { hs, chokes, caps };
+}
+makeVrm();
+function ram(t) {
+  const out = [];
+  for (let i = 0; i < 4; i++) {
+    const x = 31.5 + 14 * i, h = (hue + i * 25 + t) % 360;
+    const col = "hsl(" + h + ",90%,60%)";
+    out.push({ parts: [box(x, x + 4, -108, 21, 9, 42, "#2d3036", { cap: "#3a3e45" }), box(x - 0.3, x + 4.3, -108, 21, 42, 45, "#dfe5ec", { emit: [hslHex(h), 0.85] })] });
+  }
+  return out;
+}
+function hslHex(h) { const f = (n) => { const k2 = (n + h / 30) % 12, a = 0.9 * Math.min(0.6, 0.4); const c = 0.6 - a * Math.max(-1, Math.min(k2 - 3, 9 - k2, 1)); return Math.round(c * 255).toString(16).padStart(2, "0"); }; return "#" + f(0) + f(8) + f(4); }
+
+// fans: blades drawn as thin prisms, spun in their plane
+function blades(axis, cu, cv2, w0, w1, rh, rt, ang, col, n = 7) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const a = ang + (i / n) * Math.PI * 2, pt = (r, b) => [cu + r * Math.cos(b), cv2 + r * Math.sin(b)];
+    out.push(prism([pt(rh, a - 0.22), pt(rt, a + 0.05), pt(rt, a + 0.55), pt(rh, a + 0.25)], axis, w0, w1, col));
+  }
+  return out;
+}
+const HOT = "#ff5a1f", FROST = "#f2f7ff";
+function coolerObjs() {
+  const [sx, sy] = S, out = [], heat = clamp((T - 65) / 60, 0, 0.8), K = (d) => R.VIEW[0] * sx + R.VIEW[1] * sy + d;
+  if (cooler === "stock") {
+    out.push({ parts: [cyl(sx, sy, 44, 9, 36, "#a7adb5", 28, { glow: [HOT, heat * 0.6] })], key: K(10) });
+    out.push({ parts: [cyl(sx, sy, 46, 36, 44, "#202226", 28), cyl(sx, sy, 46.5, 39, 41, "#202226", 28, { emit: [hslHex(hue % 360), 0.9] })], key: K(11) });
+    out.push({ parts: [...blades("z", sx, sy, 44.2, 45, 13, 42, fanA, "#3a3e44"), cyl(sx, sy, 13, 44, 46.5, "#141518", 20)], key: K(12) });
+  } else if (cooler === "tower") {
+    out.push({ parts: [box(sx - 20, sx + 20, sy - 20, sy + 20, 9, 17, CU, { glow: [HOT, heat] })], key: K(10) });
+    out.push({ parts: [-15, -5, 5, 15].map((d) => cyl(sx + d, sy, 3.2, 17, 46, CU, 12, { glow: [HOT, heat * 0.7] })), key: K(11) });
+    out.push({ parts: [box(sx - 55, sx + 55, sy - 22, sy + 22, 46, 150, ALU, { cap: "#c7ccd2" }), ...[60, 76, 92, 108, 124, 140].map((z) => box(sx - 55.3, sx + 55.3, sy - 22.3, sy + 22.3, z, z + 0.8, "#8c939b"))], key: K(12) });
+    out.push({ parts: [box(sx - 55, sx + 55, sy - 22, sy + 22, 150, 155, "#26292e")], key: K(13) });
+    const fy0 = sy + 22, fy1 = sy + 47;
+    out.push({ parts: [...blades("y", sx, 98, fy0 + 10, fy0 + 12, 15, 48, -fanA, "#4a4f56"), prism(circle(sx, 98, 15, 18), "y", fy0 + 8, fy0 + 14, "#1d1f23"),
+      box(sx - 55, sx - 50, fy0, fy1, 43, 153, "#202226"), box(sx + 50, sx + 55, fy0, fy1, 43, 153, "#202226"), box(sx - 50, sx + 50, fy0, fy1, 148, 153, "#202226"), box(sx - 50, sx + 50, fy0, fy1, 43, 48, "#202226")], key: K(14) });
+  } else if (cooler === "aio") {
+    out.push({ parts: [box(sx - 30, sx + 30, sy - 30, sy + 30, 9, 30, "#1d1f22", { cap: "#2a2d31" }), cyl(sx, sy, 19, 30, 31.5, "#333", 24, { emit: [hslHex(hue % 360), 0.95] }), cyl(sx, sy, 13, 31.5, 32, "#1a1b1e", 20)], key: K(10) });
+    // tubes from the pump to the radiator
+    const tube = (dy) => { const pts = []; for (let i = 0; i <= 12; i++) { const t = i / 12; pts.push([sx - 30 + (-189 - sx + 30) * t, sy + dy + (dy * 3 - sy - dy) * t * t, 22 + 95 * Math.sin(t * Math.PI / 2) ** 1.4]); } return pts.map((p) => iso(p, PR).map((v) => v.toFixed(1)).join(" ")).join("L"); };
+    out.push({ svg: '<path class="tube" d="M' + tube(-12) + '"/><path class="tube" d="M' + tube(12) + '"/><path class="tube-hi" d="M' + tube(-12) + '"/><path class="tube-hi" d="M' + tube(12) + '"/>', key: K(9) });
+  } else if (cooler === "ln2") {
+    const fr = clamp((-20 - potT) / 140, 0, 0.85);
+    out.push({ parts: [box(sx - 58, sx + 58, sy - 58, sy + 58, 2, 13, "#131416", { glow: [FROST, fr * 0.7] })], key: K(8) });
+    out.push({ parts: [cyl(sx, sy, 22, 9, 36, CU, 28, { glow: [FROST, fr * 0.8] })], key: K(10) });
+    out.push({ parts: [cyl(sx, sy, 34, 36, 172, "#aeb5bd", 32, { glow: [FROST, fr], cap: "#22272d" }), cyl(sx, sy, 36, 170, 176, "#c2c8cf", 32, { glow: [FROST, fr], cap: "#1a2026", emit: pour > 0.2 ? ["#cfe6ff", 0.25] : undefined })], key: K(11) });
+  }
+  return out;
+}
+function radiatorObjs() {
+  if (cooler !== "aio") return [];
+  const out = [{ parts: [box(-216, -190, -112, 112, 0, 126, "#2b2e33", { cap: "#3a3e44" }), box(-216, -190, -112, -104, 0, 126, "#1d1f22"), box(-216, -190, 104, 112, 0, 126, "#1d1f22")], key: -5e5 }];
+  for (const yc of [-52, 52]) out.push({ parts: [...blades("x", yc, 63, -189, -187.5, 14, 52, fanA * 0.9, "#454a51"), prism(circle(yc, 63, 14, 18), "x", -190, -184, "#16171a"),
+    box(-190, -165, yc - 56, yc - 51, 5, 121, "#1d1f22"), box(-190, -165, yc + 51, yc + 56, 5, 121, "#1d1f22"), box(-190, -165, yc - 51, yc + 51, 5, 10, "#1d1f22"), box(-190, -165, yc - 51, yc + 51, 116, 121, "#1d1f22")], key: -5e5 + 1 + yc * 0.001 });
+  return out;
+}
+function vrmObjs() {
+  const vh = clamp((Tv - 80) / 60, 0, 0.9);
+  const out = [];
+  if (!VRM) return out;
+  VRM.hs.forEach((o) => { if (!o.gone) out.push({ parts: o.parts.map((p, i) => (i === 0 ? { ...p, glow: [HOT, vh] } : p)) }); });
+  VRM.chokes.forEach((o) => { if (!o.gone) out.push({ parts: o.parts.map((p) => ({ ...p, glow: [HOT, vh * 0.6] })) }); });
+  VRM.caps.forEach((o) => { if (!o.gone) out.push(o); });
+  return out;
+}
+let staticHtml = "";
+function buildStatic() { boardG.innerHTML = R.render(staticBoard()); }
+buildStatic();
+
+// ---------------- the boom ----------------
+function boom() {
+  boomAt = now; setMode("dead", "boom", "");
+  const fc = iso([-95, -60, 30], PR); flashEl.style.setProperty("--fx", (fc[0] / D.W * 100).toFixed(1) + "%"); flashEl.style.setProperty("--fy", (fc[1] / D.H * 100).toFixed(1) + "%");
+  chip.health = 0;
+  debris = [];
+  const fling = (o, sp) => {
+    o.gone = true;
+    const p = o.parts[0], r = p.ring, cu = r.reduce((s2, q2) => s2 + q2[0], 0) / r.length, cv3 = r.reduce((s2, q2) => s2 + q2[1], 0) / r.length;
+    const c = p.axis === "z" ? [cu, cv3, (p.w0 + p.w1) / 2] : [0, 0, 0];
+    const a = rnd() * Math.PI * 2;
+    debris.push({ parts: o.parts, c, v: [Math.cos(a) * sp * (0.4 + rnd()), Math.sin(a) * sp * (0.4 + rnd()) - 60, 380 + 420 * rnd()], w: [rnd() * 14 - 7, rnd() * 14 - 7, rnd() * 10 - 5], off: [0, 0, 0], rot: [0, 0, 0], rest: false });
+  };
+  VRM.hs.forEach((o) => fling(o, 120));
+  VRM.chokes.forEach((o, i) => { if (i % 2 === 0 || i > 12) fling(o, 260); });
+  VRM.caps.forEach((o) => fling(o, 300));
+  for (let i = 0; i < 70; i++) spark(-90 + rnd() * 100, -100 + rnd() * 90, 20, 1);
+  for (let i = 0; i < 26; i++) smoke(-95 + rnd() * 90, -110 + rnd() * 110, 20 + rnd() * 20, 1.4);
+}
+function rotate(p, r) {
+  let [x, y, z] = p;
+  let c = Math.cos(r[0]), s = Math.sin(r[0]); [y, z] = [y * c - z * s, y * s + z * c];
+  c = Math.cos(r[1]); s = Math.sin(r[1]); [x, z] = [x * c + z * s, -x * s + z * c];
+  c = Math.cos(r[2]); s = Math.sin(r[2]); [x, y] = [x * c - y * s, x * s + y * c];
+  return [x, y, z];
+}
+function debrisObjs(dt) {
+  return debris.map((d) => {
+    if (!d.rest) {
+      d.v[2] -= 1300 * dt;
+      for (let i = 0; i < 3; i++) { d.off[i] += d.v[i] * dt; d.rot[i] += d.w[i] * dt; }
+      if (d.c[2] + d.off[2] < 4 && d.v[2] < 0) { d.v[2] *= -0.3; d.v[0] *= 0.6; d.v[1] *= 0.6; d.w = d.w.map((w) => w * 0.5); if (Math.abs(d.v[2]) < 40) { d.rest = true; } }
+    }
+    return { parts: d.parts, xf: (p) => { const r2 = rotate([p[0] - d.c[0], p[1] - d.c[1], p[2] - d.c[2]], d.rot); return [r2[0] + d.c[0] + d.off[0], r2[1] + d.c[1] + d.off[1], r2[2] + d.c[2] + d.off[2]]; } };
+  });
+}
+
+// ---------------- particles ----------------
+let parts = [];
+function puff(kind, x, y, z, s = 1) { parts.push({ kind, p: iso([x, y, z], PR), v: [0, 0], life: 0, max: 1, s }); return parts[parts.length - 1]; }
+function smoke(x, y, z, s = 1) { const p = puff("smoke", x, y, z, s); p.v = [(rnd() - 0.5) * 10, -18 - rnd() * 16]; p.max = 2.5 + rnd() * 1.5; }
+function spark(x, y, z, s = 1) { const p = puff("spark", x, y, z, s); const a = rnd() * Math.PI * 2, sp = 60 + rnd() * 160; p.v = [Math.cos(a) * sp, -Math.abs(Math.sin(a)) * sp - 40]; p.max = 0.6 + rnd() * 0.7; }
+function fog(x, y, z) { const p = puff("fog", x, y, z, 1); p.v = [(rnd() - 0.5) * 30, 4 + rnd() * 8]; p.max = 1.6 + rnd(); }
+function haze(x, y, z) { const p = puff("haze", x, y, z, 1); p.v = [(rnd() - 0.5) * 4, -14 - rnd() * 8]; p.max = 1.4 + rnd(); }
+function sizeCanvas() { const r = svgEl.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1); const w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr)); if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; } }
+function drawParticles(dt) {
+  sizeCanvas();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(cv.width / D.W, 0, 0, cv.height / D.H, 0, 0);
+  parts = parts.filter((p) => (p.life += dt) < p.max);
+  for (const p of parts) {
+    const t = p.life / p.max;
+    if (p.kind === "spark") p.v[1] += 260 * dt;
+    if (p.kind === "fog") { p.v[0] *= 0.98; p.v[1] += 6 * dt; }
+    p.p[0] += p.v[0] * dt; p.p[1] += p.v[1] * dt;
+    const soft = (r, rgb, a) => { const g = ctx.createRadialGradient(p.p[0], p.p[1], 0, p.p[0], p.p[1], r); g.addColorStop(0, "rgba(" + rgb + "," + a.toFixed(3) + ")"); g.addColorStop(1, "rgba(" + rgb + ",0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.p[0], p.p[1], r, 0, 7); ctx.fill(); };
+    if (p.kind === "smoke") soft((7 + 28 * t) * p.s, "70,70,74", 0.6 * (1 - t));
+    if (p.kind === "spark") { ctx.fillStyle = "rgba(255," + Math.round(200 - 120 * t) + ",80," + (1 - t).toFixed(3) + ")"; ctx.fillRect(p.p[0] - 1, p.p[1] - 1, 2.2, 2.2); }
+    if (p.kind === "fog") soft(9 + 22 * t, "236,244,255", 0.42 * Math.sin(Math.PI * t));
+    if (p.kind === "haze") { ctx.strokeStyle = "rgba(255,170,120," + (0.22 * Math.sin(Math.PI * t)).toFixed(3) + ")"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(p.p[0] - 5, p.p[1]); ctx.quadraticCurveTo(p.p[0], p.p[1] - 4, p.p[0] + 5, p.p[1]); ctx.stroke(); }
+  }
+  // the pour: a thin stream of LN2 into the pot
+  if (cooler === "ln2" && pour > 0.05 && mode !== "dead") {
+    const a = iso([S[0] + 8, S[1] + 4, 176], PR), b = iso([S[0] + 8, S[1] + 4, 250], PR);
+    ctx.strokeStyle = "rgba(225,240,255," + clamp(pour, 0, 0.8).toFixed(2) + ")"; ctx.lineWidth = 1 + 2 * clamp(pour, 0, 1); ctx.beginPath(); ctx.moveTo(b[0], b[1]); ctx.lineTo(a[0], a[1]); ctx.stroke();
+  }
+}
+
+// ---------------- physics ----------------
+function physics(dt) {
+  const f = mult / 10;
+  const running = mode === "run";
+  const L0 = running ? LOADS[load].k : mode === "bsod" || mode === "post" ? 0.05 : 0;
+  // cooler temperature: everything sinks into the room, except the pot, which you keep topping up
+  let Tc = 25, Rth = COOLERS[cooler].Rth;
+  if (cooler === "ln2") { const target = potSet + P * 0.012; potT += (target - potT) * Math.min(1, dt / 1.8); Tc = potT; pour = clamp(0.15 + P / 450 + Math.max(0, potT - potSet) / 40, 0, 1); } else { potT += (25 - potT) * Math.min(1, dt / 3); pour = 0; }
+  if (safe && T > 95) throttle = Math.min(f - 0.8, throttle + 0.6 * dt); else if (T < 92) throttle = Math.max(0, throttle - 0.4 * dt);
+  if (!safe) throttle = 0;
+  fEff = Math.max(0.8, f - throttle);
+  veff = vset - 0.0002 * I;
+  const on = mode !== "off" && mode !== "dead";
+  const leak = on ? 12 * vset * Math.exp((clamp(T, -200, 250) - 50) / 45) : 0;
+  P = on ? 8 * (L0 > 0 ? 1 : 0) + L0 * 17.8 * veff * veff * fEff + leak : 0;
+  I = P / Math.max(0.5, veff);
+  T += (Tc + P * Rth - T) * Math.min(1, dt / 1.6);
+  Tv += (30 + I * 0.18 - Tv) * Math.min(1, dt / 3);
+  // wear: high voltage plus heat
+  if (on && chip.health > 0) {
+    const cold = T < -40 ? 0.05 : 1;
+    chip.health -= dt * 0.00012 * Math.exp((vset - 1.45) / 0.05) * Math.exp((clamp(T, -100, 140) - 70) / 20) * cold;
+    if (T > 175) chip.health -= dt * 0.3;
+    if (chip.health <= 0) { chip.health = 0; setMode("dead", "cooked"); event("Magic smoke. Too much voltage and heat for too long and the chip's wiring wore through. It's dead."); for (let i = 0; i < 18; i++) smoke(S[0] + rnd() * 30 - 15, S[1] + rnd() * 30 - 15, 40, 1); }
+  }
+  if (!running) return;
+  // the safeties
+  if (safe && T > 115) { setMode("off", "thermtrip", "THERMTRIP"); event("THERMTRIP: the chip hit 115 °C and pulled the plug on itself. That's the last line of defence."); return; }
+  if (safe && I > 300) { setMode("off", "ocp", "OCP"); event("Over-current: the VRM saw " + Math.round(I) + " A and shut down before anything melted."); return; }
+  if (!safe) { if (I > 280) overI += dt; else overI = Math.max(0, overI - dt); if (overI > 0.4) { event("The VRM was pushing " + Math.round(I) + " A with no over-current limit. Something had to give."); boom(); return; } }
+  if (T < chip.coldBug) { setMode("off", "coldbug", "COLD BUG"); event("Cold bug: this chip just stops working below about " + Math.round(chip.coldBug) + " °C. Let the pot warm up a bit."); return; }
+  // stability: short on voltage and it errors, sooner or later
+  const d = vmin(fEff, T) - veff;
+  const rate = (0.15 + LOADS[load].k) * 0.05 * Math.exp(d / 0.01);
+  if (d > 0.15 || rnd() < rate * dt) { setMode("bsod", "crash", rnd() < 0.5 ? "CLOCK_WATCHDOG_TIMEOUT" : "WHEA_UNCORRECTABLE_ERROR"); event("Blue screen. At " + fEff.toFixed(2) + " GHz this chip wanted about " + vmin(fEff, T).toFixed(2) + " V and got " + veff.toFixed(2) + " V under load."); return; }
+  // the render benchmark
+  if (load === "render") {
+    runProg += dt * fEff / (4.5 * 8); runF += fEff * dt; runT += dt;
+    if (runProg >= 1) { lastScore = Math.round((runF / runT) * 2950); best = Math.max(best, lastScore); runProg = 0; runF = 0; runT = 0; event("Render done: " + lastScore.toLocaleString("en-AU") + " points" + (lastScore >= best ? ", a new best." : ".")); }
+  } else { runProg = 0; runF = 0; runT = 0; }
+}
+function modes() {
+  const t = now - modeAt;
+  if (mode === "bsod" && t > 3) setMode("post");
+  if (mode === "post" && t > 1.2) { const d = vmin(mult / 10, T) - vset; if (d > 0.15) { setMode("off", "nopost", "NO POST"); event("It won't even boot at " + (mult / 10).toFixed(1) + " GHz on " + vset.toFixed(2) + " V. Back off the clock or add voltage."); } else setMode("run"); }
+  if (mode === "off" && t > 3 && why !== "nopost") { if (why === "thermtrip" && T > 60) return; setMode("post"); }
+  if (mode === "off" && why === "nopost" && vmin(mult / 10, T) - vset <= 0.15) setMode("post");
+  if (boomAt !== null && now - boomAt > 6) { boomAt = null; debris = []; makeVrm(); buildStatic(); chip = newChip(touring ? 0.6 : undefined); safe = true; T = 30; Tv = 30; overI = 0; mult = 45; vset = 1.25; load = "render"; if (cooler === "ln2") cooler = "tower"; actions = []; setMode("post"); event("New board, new chip, BIOS back to defaults. Safeties on."); }
+  if (mode === "dead" && why === "cooked" && t > 4 && boomAt === null) { chip = newChip(touring ? 0.6 : undefined); setMode("post"); event("New chip. This one's " + chip.grade + "."); }
+}
+
+// ---------------- drawing ----------------
+let shotFrame = 0;
+function draw(dt) {
+  fanA += dt * (4 + clamp((T - 30) / 50, 0, 1) * 9) * (mode === "off" || mode === "dead" ? 0 : 1);
+  hue = (hue + dt * 40) % 360;
+  backG.innerHTML = R.render(radiatorObjs());
+  const objs = [...vrmObjs(), ...ram(0), ...coolerObjs(), ...debrisObjs(dt)];
+  frontG.innerHTML = R.render(objs);
+  // effects
+  if (cooler === "ln2" && mode !== "dead" && rnd() < dt * (8 + 30 * pour)) { const a = rnd() * Math.PI * 2; fog(S[0] + Math.cos(a) * 34, S[1] + Math.sin(a) * 34, 176); }
+  if (cooler === "ln2" && potT < -60 && rnd() < dt * 6) { const a = rnd() * Math.PI * 2; fog(S[0] + Math.cos(a) * 60, S[1] + Math.sin(a) * 60, 12); }
+  if (cooler !== "ln2" && T > 75 && rnd() < dt * (T - 70) * 0.25) haze(S[0] + (rnd() - 0.5) * 60, S[1] + (rnd() - 0.5) * 40, cooler === "tower" ? 158 : 48);
+  if (Tv > 110 && rnd() < dt * 3) smoke(-100 + rnd() * 20, -100 + rnd() * 100, 36, 0.6);
+  if ((mode === "dead" && why === "cooked") && rnd() < dt * 5) smoke(S[0] + rnd() * 20 - 10, S[1] + rnd() * 20 - 10, 40, 0.8);
+  drawParticles(dt);
+  // shake and flash
+  const bt = boomAt === null ? 9 : now - boomAt;
+  svgEl.style.transform = bt < 0.6 ? "translate(" + ((rnd() - 0.5) * 14 * (1 - bt / 0.6)).toFixed(1) + "px," + ((rnd() - 0.5) * 14 * (1 - bt / 0.6)).toFixed(1) + "px)" : "";
+  flashEl.style.opacity = bt < 0.5 ? String((1 - bt / 0.5) * 0.9) : "0";
+  // debug display: CPU temp when it's running, a code when it isn't
+  const code = mode === "run" ? (T < 0 ? "-" + Math.min(99, Math.round(-T)) : String(Math.min(99, Math.round(T)))) : mode === "bsod" ? "8d" : mode === "post" ? "19" : mode === "dead" ? "00" : why === "coldbug" ? "C0" : why === "nopost" ? "00" : "FF";
+  if (qcode.textContent !== code) qcode.textContent = code;
+  monitor();
+  const text = mode === "run" ? fEff.toFixed(2) + " GHz · " + veff.toFixed(3) + " V · " + Math.round(T) + " °C · " + Math.round(P) + " W" : mode === "bsod" ? "BLUE SCREEN" : mode === "post" ? "REBOOTING" : mode === "dead" ? (why === "boom" ? "VRM GONE" : "DEAD") : "SHUT DOWN: " + stop;
+  if (readout.textContent !== text) readout.textContent = text;
+}
+function monitor() {
+  let html, cls;
+  if (mode === "bsod") { cls = "bsod"; html = '<div class="sad">:(</div><div>Your PC ran into a problem and needs to restart.</div><div class="code">Stop code: ' + stop + "</div>"; }
+  else if (mode === "post") { cls = "post"; html = "<div>BIOS</div><div>" + (mult / 10).toFixed(1) + " GHz · " + vset.toFixed(2) + " V</div><div>booting</div>"; }
+  else if (mode === "off" || mode === "dead") { cls = "off"; html = "<div>No signal</div>" + (mode === "dead" ? "<div class=code>" + (why === "boom" ? "smells like a burnt VRM" : "smells like a dead CPU") + "</div>" : ""); }
+  else {
+    cls = "desk";
+    const job = load === "render" ? '<div>render.exe</div><div class="bar"><i style="width:' + (runProg * 100).toFixed(1) + '%"></i></div><div>last ' + (lastScore ? lastScore.toLocaleString("en-AU") : "-") + " · best " + (best ? best.toLocaleString("en-AU") : "-") + "</div>" : load === "game" ? "<div>game.exe</div><div class=big>" + Math.round(fEff * 31) + " fps</div>" : load === "avx" ? "<div>stress.exe (AVX)</div><div class=big>hammering it</div>" : "<div>desktop</div><div class=big>idle</div>";
+    html = job + '<div class="dim">' + fEff.toFixed(2) + " GHz · " + Math.round(T) + " °C</div>";
+  }
+  const key = cls + html;
+  if (mon.key !== key) { mon.key = key; mon.scr.className = "mon-scr " + cls; mon.scr.innerHTML = html; }
+}
+
+// ---------------- UI ----------------
+const ui = {
+  mult: document.querySelector("#mult"), multOut: document.querySelector("#mult-out"), volt: document.querySelector("#volt"), voltOut: document.querySelector("#volt-out"),
+  pot: document.querySelector("#pot"), potOut: document.querySelector("#pot-out"), potRow: document.querySelector("#pot-row"),
+  cool: [...document.querySelectorAll("[data-cool]")], load: [...document.querySelectorAll("[data-load]")], safe: document.querySelector("#safe"),
+  chipB: document.querySelector("#chip"), stock: document.querySelector("#stock"), slow: document.querySelector("#slow"), tour: document.querySelector("#tour"), shot: document.querySelector("#shot"),
+  tFill: document.querySelector("#t-fill"), tOut: document.querySelector("#t-out"), pFill: document.querySelector("#p-fill"), pOut: document.querySelector("#p-out"),
+  mFill: document.querySelector("#m-fill"), mOut: document.querySelector("#m-out"), hFill: document.querySelector("#h-fill"), hOut: document.querySelector("#h-out"), stats: document.querySelector("#stats"),
+};
+const say = (t) => { if (t !== lastShot) { ui.shot.textContent = t; lastShot = t; } };
+function syncUi() {
+  ui.mult.value = String(mult); ui.volt.value = vset.toFixed(3); ui.pot.value = String(potSet);
+  ui.multOut.textContent = "×" + mult + " · " + (mult / 10).toFixed(1) + " GHz"; ui.voltOut.textContent = vset.toFixed(3) + " V"; ui.potOut.textContent = potSet + " °C";
+  ui.potRow.hidden = cooler !== "ln2";
+  ui.cool.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.cool === cooler)));
+  ui.load.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.load === load)));
+  ui.safe.setAttribute("aria-pressed", String(!safe)); ui.safe.textContent = safe ? "Safeties on" : "Safeties OFF";
+  ui.tFill.style.left = "0"; ui.tFill.style.width = (clamp((T + 200) / 380, 0, 1) * 100).toFixed(1) + "%"; ui.tFill.dataset.state = T > 95 ? "bad" : T > 80 ? "warn" : T < -20 ? "cold" : "ok";
+  ui.tOut.textContent = Math.round(T) + " °C";
+  ui.pFill.style.width = (clamp(I / 400, 0, 1) * 100).toFixed(1) + "%"; ui.pFill.dataset.state = I > 300 ? "bad" : I > 220 ? "warn" : "ok";
+  ui.pOut.textContent = Math.round(P) + " W · " + Math.round(I) + " A";
+  const m = veff - vmin(fEff, T), on = mode === "run";
+  ui.mFill.style.width = (clamp((m + 0.1) / 0.2, 0, 1) * 100).toFixed(1) + "%"; ui.mFill.dataset.state = !on ? "off" : m < 0 ? "bad" : m < 0.03 ? "warn" : "ok";
+  ui.mOut.textContent = on ? (m >= 0 ? "+" : "") + Math.round(m * 1000) + " mV" : "-";
+  ui.hFill.style.width = (chip.health * 100).toFixed(1) + "%"; ui.hFill.dataset.state = chip.health < 0.3 ? "bad" : chip.health < 0.7 ? "warn" : "ok";
+  ui.hOut.textContent = Math.round(chip.health * 100) + " %";
+  ui.stats.innerHTML = "This chip is <b>" + chip.grade + "</b> · " + (throttle > 0.05 ? "<b>throttling</b> to " + fEff.toFixed(2) + " GHz · " : "") + "score last <b>" + (lastScore ? lastScore.toLocaleString("en-AU") : "-") + "</b>, best <b>" + (best ? best.toLocaleString("en-AU") : "-") + "</b>";
+  ui.slow.setAttribute("aria-pressed", String(slow)); ui.tour.setAttribute("aria-pressed", String(touring));
+}
+function story() {
+  if (now - lastEventAt < 5.5 && lastEvent) return say(lastEvent);
+  if (touring && tourStep >= 0 && TOUR[tourStep].say) return say(TOUR[tourStep].say);
+  if (mode !== "run") return;
+  const m = veff - vmin(fEff, T);
+  if (throttle > 0.05) return say("It's hit 95 °C and is pulling its own clock down to stay there. More clock on this cooler just means more heat, not more speed.");
+  if (cooler === "ln2" && T < -100) return say("At " + Math.round(T) + " °C the silicon switches faster and leaks less, so the voltage it needs for each step of clock drops off. That's the whole point of the pot.");
+  if (m < 0) return say("Short on voltage by about " + Math.round(-m * 1000) + " mV under this load. It'll fall over any second now.");
+  if (vset > 1.45 && T > 60 && chip.health < 1) return say("High voltage plus heat wears the chip out. Watch the health bar: that's electromigration, and it doesn't grow back.");
+  if (m < 0.03) return say("Right on the edge: stable for now, maybe not for an hour of rendering.");
+  return say(mult === 45 && Math.abs(vset - 1.25) < 0.01 ? "Stock: 4.5 GHz on 1.25 V. Bump the clock, add voltage when it blue-screens, and chase the score. Every chip is different." : "Stable with " + Math.round(m * 1000) + " mV to spare. Power goes up with voltage squared, so that spare voltage is costing you heat.");
+}
+const TOUR = [
+  { say: "Stock: 4.5 GHz on 1.25 V on a tower cooler, running a render. Note the score.", acts: [[0, () => { chip = newChip(0.6); cooler = "tower"; mult = 45; vset = 1.25; load = "render"; safe = true; potSet = -185; setMode("run"); }], [11, null]] },
+  { say: "Clock up to 5.3 GHz, same voltage. It doesn't have enough juice for that.", acts: [[0, () => { mult = 53; }], [9, null]] },
+  { say: "Add voltage: 1.37 V. Stable again, faster, and a lot hotter.", acts: [[0, () => { vset = 1.37; setMode("post"); }], [12, null]] },
+  { say: "Now 5.8 GHz on 1.50 V. The tower can't move the heat fast enough.", acts: [[0, () => { mult = 58; vset = 1.5; }], [11, null]] },
+  { say: "Liquid nitrogen. Pot at -185 °C, 7.8 GHz on 1.62 V. Keep pouring.", acts: [[0, () => { cooler = "ln2"; potT = -60; T = -40; mult = 78; vset = 1.62; setMode("post"); }], [15, null]] },
+  { say: "Safeties off, back on the stock cooler, 5.8 GHz on 1.75 V, AVX stress test. Don't do this at home.", acts: [[0, () => { cooler = "stock"; potT = 25; T = 45; mult = 58; vset = 1.75; load = "avx"; safe = false; setMode("run"); }], [14, null]] },
+];
+function tourTick() {
+  if (tourStep < 0 || !actions.length) {
+    if (boomAt !== null) return;
+    tourStep = (tourStep + 1) % TOUR.length;
+    actions = TOUR[tourStep].acts.map(([w, fn]) => [tourClock + w, fn]);
+  }
+  while (actions.length && tourClock >= actions[0][0]) { const fn = actions.shift()[1]; if (fn) fn(); else actions = []; }
+}
+function tick(t) {
+  const dt = last ? Math.min((t - last) / 1000, 1 / 30) : 1 / 60;
+  last = t;
+  const sdt = dt * (slow ? 0.2 : 1);
+  now += sdt;
+  if (touring) { tourClock += sdt; tourTick(); }
+  physics(sdt); modes(); draw(sdt); syncUi(); story();
+  frame = visible ? requestAnimationFrame(tick) : 0;
+}
+const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
+const takeOver = () => { if (touring) { touring = false; actions = []; tourStep = -1; } };
+const act = (fn) => (...a) => { takeOver(); fn(...a); syncUi(); run(); };
+ui.mult.addEventListener("input", act(() => { mult = +ui.mult.value; if (mode === "off" && why === "nopost") setMode("post"); }));
+ui.volt.addEventListener("input", act(() => { vset = +ui.volt.value; }));
+ui.pot.addEventListener("input", act(() => { potSet = +ui.pot.value; }));
+ui.cool.forEach((b) => b.addEventListener("click", act(() => { cooler = b.dataset.cool; if (cooler === "ln2") potT = Math.min(potT, 0); })));
+ui.load.forEach((b) => b.addEventListener("click", act(() => { load = b.dataset.load; runProg = 0; })));
+ui.safe.addEventListener("click", act(() => { safe = !safe; overI = 0; }));
+ui.chipB.addEventListener("click", act(() => { if (boomAt !== null) return; chip = newChip(); best = 0; lastScore = 0; setMode("post"); event("New chip from the box. This one's " + chip.grade + ". Same settings might not work now."); }));
+ui.stock.addEventListener("click", act(() => { mult = 45; vset = 1.25; safe = true; load = "render"; if (mode !== "dead") setMode("post"); }));
+ui.slow.addEventListener("click", () => { slow = !slow; run(); });
+ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; actions = []; } syncUi(); run(); });
+stage.addEventListener("keydown", (ev) => {
+  const map = { ArrowUp: () => { mult = Math.min(95, mult + 1); }, ArrowDown: () => { mult = Math.max(30, mult - 1); }, ArrowRight: () => { vset = Math.min(2, vset + 0.01); }, ArrowLeft: () => { vset = Math.max(0.9, vset - 0.01); },
+    "1": () => { cooler = "stock"; }, "2": () => { cooler = "tower"; }, "3": () => { cooler = "aio"; }, "4": () => { cooler = "ln2"; potT = Math.min(potT, 0); } };
+  if (map[ev.key]) { ev.preventDefault(); act(map[ev.key])(); }
+  if (ev.key === "s") { slow = !slow; run(); }
+});
+new IntersectionObserver((es) => { visible = es[es.length - 1].isIntersecting; if (visible) run(); }, { rootMargin: "120px 0px" }).observe(stage);
+if (still.matches) touring = false;
+window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+draw(0); syncUi(); story();
+</script></body></html>
