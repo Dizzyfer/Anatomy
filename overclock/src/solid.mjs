@@ -43,7 +43,7 @@ export function solids(project, depthOf) {
     if (part.emit) c = mix(c, rgb(part.emit[0]), part.emit[1]);
     return "rgb(" + c.map((v) => Math.round(Math.min(255, Math.max(0, v)))).join(",") + ")";
   }
-  // objects: { parts, xf?, key? } — sorted back to front by key (default: depth of the first part's centre)
+  // objects: { parts, xf?, key? }, sorted back to front by key (default: depth of the first part's centre)
   function render(objects, { stroke = "rgba(0,0,0,.35)", width = 0.35 } = {}) {
     const items = objects.map((ob) => {
       const xf = ob.xf || ((p) => p);
