@@ -24,6 +24,7 @@ Interactive engineering toys you can break. Poke them, push them past the limit,
 | [Gas leak in the kitchen](gas-leak/) · [play](https://dizzyfer.github.io/Anatomy/gas-leak/) | Natural gas layering from the ceiling, LPG from the floor, the flammable band between too lean and too rich, and what happens when the light switch, the fridge or the igniter sparks in it. |
 | [Truss bridge](truss/) · [play](https://dizzyfer.github.io/Anatomy/truss/) | Cars, B-doubles, road trains and a mining haul truck on a 48 m steel truss: member forces in tension and compression, Pratt against Howe, buckling, and what happens when you cut one member. |
 | [Overclocking a CPU](overclock/) · [play](https://dizzyfer.github.io/Anatomy/overclock/) | Clock, voltage and four coolers up to an LN2 pot: power with voltage squared, thermal runaway, the voltage wall, blue screens, the silicon lottery, the cold bug, and a VRM letting go with the safeties off. |
+| [Jet engine](jet/) · [play](https://dizzyfer.github.io/Anatomy/jet/) | A GE9X-sized turbofan cut in half: bypass vs core, throttle to the 597 kN record, a goose, a flock and surges, the fan blade-off containment test, and an HP turbine burst with the FADEC off. |
 
 All built with [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22), an open-source kit for interactive isometric figures. The drawing kit, isometric camera and WebGL layer are his work.
 
