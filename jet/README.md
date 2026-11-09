@@ -16,6 +16,7 @@ A GE9X-sized turbofan, the biggest airliner engine built, cut in half on a test 
 ## What you can do
 
 - **Throttle** from idle to take-off (about 445 kN), or the **record run** (597 kN).
+- **Afterburner:** fuel sprayed into the exhaust and lit, with shock diamonds. No airliner engine has one (Concorde aside), so this one's pure toy: about half as much thrust again for three to four times the fuel.
 - **FADEC off / Firewall it:** take the limits away and push past the EGT limit until the HP turbine lets go.
 - **Goose:** one bird at take-off power. Feathers out the bypass, a nick in the fan, it keeps running.
 - **Flock:** six geese. Surges with flames out both ends, then it gets shut down.
@@ -23,13 +24,13 @@ A GE9X-sized turbofan, the biggest airliner engine built, cut in half on a test 
 - **Blade-off:** the containment test. A fan blade released at full power hits the case, the case holds, the engine's scrap.
 - Meters for N1, EGT, thrust and vibration; thrust in lbf, tonnes and Hiluxes. Labels, New engine, Slow-mo and Demo tour.
 
-Keyboard: up/down = throttle, G = goose, F = flock, B = blade-off, S = slow-mo.
+Keyboard: up/down = throttle, A = afterburner, G = goose, F = flock, B = blade-off, S = slow-mo.
 
 ## The numbers
 
 Real (GE9X, from [GE Aerospace](https://www.geaerospace.com/commercial/aircraft-engines/ge9x) and [Key Aero](https://key.aero/es/node/5576)): 3.4 m (134 in) fan, 16 carbon-fibre composite blades, 3-stage booster, 11-stage HPC at 27:1, CMC combustor liners, 2-stage HPT, 6-stage TiAl LPT, bypass about 10:1, overall pressure ratio 60:1, about 100,000 lbf (445 kN) take-off, and the 134,300 lbf (597 kN) record. Also real: the blade-off containment test and bird ingestion requirements.
 
-Made up for the toy: spool times, EGT numbers and the limit, the thrust curve, how the failures play out, the stand, and simplified internal proportions.
+Made up for the toy: the afterburner (not a thing on this engine), spool times, EGT numbers and the limit, the thrust curve, how the failures play out, the stand, and simplified internal proportions.
 
 ## How it's built
 

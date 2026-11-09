@@ -140,7 +140,7 @@ function buildStatic() {
 buildStatic();
 
 // ---------------- the engine model (toy, scaled to a GE9X-class engine) ----------------
-let thr = 0.0, fadec = true, n1 = 0.2, n2 = 0.62, egt = 480, egtSpike = 0, F = 0, vib = 0.03, dmgFan = 0, hpt = 0;
+let ab = false, abLit = 0, abBang = -9, thr = 0.0, fadec = true, n1 = 0.2, n2 = 0.62, egt = 480, egtSpike = 0, F = 0, vib = 0.03, dmgFan = 0, hpt = 0;
 let state = "run", stateAt = 0, lastShot = "", lastEvent = "", lastEventAt = -10, fanA = 0, coreA = 0, lpA = 0;
 let now = 0, last = 0, frame = 0, visible = false, touring = true, slow = false, tourClock = 0, tourStep = -1, actions = [];
 let birds = [], bladeOff = null, burst = null, surges = [], dent = null, tips = new Array(16).fill(1), shake = 0, flashT = -9, fireT = -9;
@@ -159,7 +159,10 @@ function step(dt) {
   if (fadec && egtT > 1060) egtT = 1060;
   egt += (egtT + egtSpike - egt) * Math.min(1, dt / 1.4);
   egtSpike *= Math.exp(-dt * 1.2);
-  F = running ? 445 * (0.03 + 0.97 * Math.pow(k, 1.8)) * (1 - dmgFan * 0.25) : 0;
+  const abOn = ab && running && n1 > 0.85 ? 1 : 0;
+  if (abOn && abLit < 0.05 && now - abBang > 1) { abBang = now; flashT = now; shake = Math.max(shake, 0.35); }
+  abLit += (abOn - abLit) * Math.min(1, dt / 0.35);
+  F = running ? 445 * (0.03 + 0.97 * Math.pow(k, 1.8)) * (1 - dmgFan * 0.25) * (1 + 0.5 * abLit) : 0;
   vib += ((0.03 + dmgFan * 1.6 * n1 + (bladeOff ? 6 * n1 : 0)) - vib) * Math.min(1, dt / 0.4);
   // too hot for too long with the FADEC switched off: the HP turbine lets go
   if (running && !fadec && egt > 1090) { hpt += dt * (egt - 1090) / 45; if (hpt > 1) turbineBurst(); }
@@ -168,7 +171,7 @@ function step(dt) {
   if (state === "surging" && now - stateAt > 0.9) setState("run");
   if ((state === "shutdown" || state === "seized") && now - stateAt > (state === "seized" ? 8.5 : 6.5)) newEngine();
 }
-function newEngine() { setState("run"); dmgFan = 0; hpt = 0; bladeOff = null; burst = null; dent = null; tips = new Array(16).fill(1); egtSpike = 0; vib = 0.03; fadec = true; thr = Math.min(thr, 1); n1 = 0.2; n2 = 0.62; egt = 480; event("Fresh engine on the stand. FADEC back on."); }
+function newEngine() { ab = false; abLit = 0; setState("run"); dmgFan = 0; hpt = 0; bladeOff = null; burst = null; dent = null; tips = new Array(16).fill(1); egtSpike = 0; vib = 0.03; fadec = true; thr = Math.min(thr, 1); n1 = 0.2; n2 = 0.62; egt = 480; event("Fresh engine on the stand. FADEC back on."); }
 function surge() {
   if (state !== "run" && state !== "surging") return;
   setState("surging"); egtSpike += 260; n1 *= 0.86; flashT = now; shake = Math.max(shake, 0.5);
@@ -273,6 +276,25 @@ function drawParticles(dt) {
     ctx.beginPath(); ctx.ellipse(P2[0], P2[1], 7, 3, -0.45, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.moveTo(P2[0] - 4, P2[1]); ctx.lineTo(P2[0] - 2, P2[1] - 8 - fl); ctx.moveTo(P2[0] + 2, P2[1] - 1); ctx.lineTo(P2[0] + 6, P2[1] - 9 - fl); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(P2[0] - 6, P2[1] + 3); ctx.lineTo(P2[0] - 11, P2[1] + 6); ctx.stroke();
+  }
+  // the afterburner: a long flame out the back with shock diamonds in it
+  if (abLit > 0.02) {
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    const len = 420 * abLit, x0 = -200, fl = 1 + Math.sin(now * 37) * 0.04 + Math.sin(now * 23) * 0.03;
+    const rad = (x) => { const u = (x0 - x) / len; return (58 - 30 * u) * (u < 0.85 ? 1 : (1 - u) / 0.15) * fl; };
+    const top = [], bot = [];
+    for (let i = 0; i <= 24; i++) { const x = x0 - (len * i) / 24; top.push(pr2([x, 0, ZC + rad(x)])); bot.push(pr2([x, 0, ZC - rad(x)])); }
+    const A = pr2([x0, 0, ZC]), B = pr2([x0 - len, 0, ZC]);
+    const g = ctx.createLinearGradient(A[0], A[1], B[0], B[1]);
+    g.addColorStop(0, "rgba(255,245,215," + (0.75 * abLit).toFixed(2) + ")"); g.addColorStop(0.25, "rgba(255,170,70," + (0.6 * abLit).toFixed(2) + ")"); g.addColorStop(0.7, "rgba(255,90,40," + (0.35 * abLit).toFixed(2) + ")"); g.addColorStop(1, "rgba(120,60,200,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(top[0][0], top[0][1]); top.forEach((p2) => ctx.lineTo(p2[0], p2[1])); bot.reverse().forEach((p2) => ctx.lineTo(p2[0], p2[1])); ctx.closePath(); ctx.fill();
+    for (let i = 0; i < 5; i++) {
+      const x = x0 - 40 - i * 62 * (0.6 + 0.4 * abLit); if (x0 - x > len * 0.85) break;
+      const C = pr2([x, 0, ZC]), R = (16 - i * 2.2) * abLit, gg = ctx.createRadialGradient(C[0], C[1], 0, C[0], C[1], R);
+      gg.addColorStop(0, "rgba(255,255,235," + (0.9 - i * 0.14).toFixed(2) + ")"); gg.addColorStop(1, "rgba(255,200,120,0)");
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.ellipse(C[0], C[1], R * 1.3, R, -0.5, 0, 7); ctx.fill();
+    }
+    ctx.restore();
   }
   // exhaust heat shimmer
   if (n1 > 0.4 && (state === "run" || state === "surging")) { ctx.strokeStyle = "rgba(255,170,110," + (0.12 * n1).toFixed(3) + ")"; ctx.lineWidth = 1; for (let i = 0; i < 6; i++) { const x = -230 - ((now * 300 + i * 60) % 260), P2 = pr2([x, 0, ZC + Math.sin(i * 2.1 + now * 3) * 30]); ctx.beginPath(); ctx.moveTo(P2[0] - 6, P2[1]); ctx.quadraticCurveTo(P2[0], P2[1] - 4, P2[0] + 6, P2[1]); ctx.stroke(); } }
@@ -397,26 +419,29 @@ function goose(flock) {
 const ui = {
   thr: document.querySelector("#thr"), thrOut: document.querySelector("#thr-out"), presets: [...document.querySelectorAll("[data-thr]")], fadec: document.querySelector("#fadec"),
   goose: document.querySelector("#goose"), flock: document.querySelector("#flock"), blade: document.querySelector("#blade"), surgeB: document.querySelector("#surge"), fresh: document.querySelector("#fresh"),
-  slow: document.querySelector("#slow"), tour: document.querySelector("#tour"), labels: document.querySelector("#labels"), shot: document.querySelector("#shot"),
+  slow: document.querySelector("#slow"), tour: document.querySelector("#tour"), labels: document.querySelector("#labels"), ab: document.querySelector("#ab"), shot: document.querySelector("#shot"),
   n1F: document.querySelector("#n1-fill"), n1O: document.querySelector("#n1-out"), eF: document.querySelector("#egt-fill"), eO: document.querySelector("#egt-out"), fF: document.querySelector("#f-fill"), fO: document.querySelector("#f-out"), vF: document.querySelector("#v-fill"), vO: document.querySelector("#v-out"), stats: document.querySelector("#stats"),
 };
 const say = (t) => { if (t !== lastShot) { ui.shot.textContent = t; lastShot = t; } };
 function syncUi() {
   ui.thr.max = fadec ? "114" : "130";
   ui.thr.value = String(Math.round(thr * 100)); ui.thrOut.textContent = Math.round(thr * 100) + " %";
+  ui.ab.setAttribute("aria-pressed", String(ab));
   ui.fadec.setAttribute("aria-pressed", String(!fadec)); ui.fadec.textContent = fadec ? "FADEC on" : "FADEC OFF";
   ui.n1F.style.width = clamp(n1 / 1.3 * 100, 0, 100).toFixed(1) + "%"; ui.n1O.textContent = Math.round(n1 * 100) + " % · N2 " + Math.round(n2 * 100);
   ui.eF.style.width = clamp((egt - 0) / 1300 * 100, 0, 100).toFixed(1) + "%"; ui.eF.dataset.state = egt > 1090 ? "bad" : egt > 1000 ? "warn" : "ok"; ui.eO.textContent = Math.round(egt) + " °C";
   ui.fF.style.width = clamp(F / 650 * 100, 0, 100).toFixed(1) + "%"; ui.fO.textContent = Math.round(F) + " kN";
   ui.vF.style.width = clamp(vib / 4 * 100, 0, 100).toFixed(1) + "%"; ui.vF.dataset.state = vib > 1.5 ? "bad" : vib > 0.5 ? "warn" : "ok"; ui.vO.textContent = vib.toFixed(1);
   const lbf = F * 224.8, t = F / 9.81;
-  ui.stats.innerHTML = "<b>" + Math.round(lbf / 100) * 100 + " lbf</b>, enough to hold up <b>" + Math.round(t) + " t</b>" + (t > 4 ? ", or about <b>" + Math.round(t / 2.1) + " Hiluxes</b>" : "") + (dmgFan > 0 ? " · fan damage <b>" + Math.round(dmgFan * 100) + " %</b>" : "") + (hpt > 0.05 && !burst ? " · HPT life used <b>" + Math.round(hpt * 100) + " %</b>" : "");
+  ui.stats.innerHTML = (abLit > 0.5 ? "<b>reheat lit</b>, fuel burn about <b>4×</b> · " : "") + "<b>" + Math.round(lbf / 100) * 100 + " lbf</b>, enough to hold up <b>" + Math.round(t) + " t</b>" + (t > 4 ? ", or about <b>" + Math.round(t / 2.1) + " Hiluxes</b>" : "") + (dmgFan > 0 ? " · fan damage <b>" + Math.round(dmgFan * 100) + " %</b>" : "") + (hpt > 0.05 && !burst ? " · HPT life used <b>" + Math.round(hpt * 100) + " %</b>" : "");
   ui.slow.setAttribute("aria-pressed", String(slow)); ui.tour.setAttribute("aria-pressed", String(touring));
 }
 function story() {
   if (now - lastEventAt < 6 && lastEvent) return say(lastEvent);
   if (touring && tourStep >= 0 && TOUR[tourStep].say) return say(TOUR[tourStep].say);
   if (state !== "run") return;
+  if (abLit > 0.5) return say("Afterburner: fuel sprayed into the exhaust behind the turbine and lit. No airliner engine has one (Concorde aside): it burns three to four times the fuel for about half as much thrust again. Pure toy here.");
+  if (ab && n1 < 0.85) return say("Afterburner armed. It only lights near full power: throttle up.");
   if (!fadec && egt > 1000) return say("FADEC off: nothing is holding the EGT back now. Past about 1,090 °C the HP turbine blades start to creep. Watch the HPT life.");
   if (n1 > 1.05) return say("Record territory. The certified engine did 134,300 lbf (597 kN) in a test cell, the most thrust any commercial jet engine has made.");
   if (n1 > 0.85) return say("Take-off power. Around 90 % of the air goes round the core through the bypass duct, and that cold, slow, huge flow makes most of the thrust.");
@@ -427,6 +452,7 @@ const TOUR = [
   { say: "Idle. The biggest fan on any airliner engine: 3.4 m across, 16 carbon-fibre blades. The near half's cut away so you can see in.", acts: [[0, () => { newEngine(); thr = 0; }], [5, null]] },
   { say: "Take-off power: about 445 kN, 100,000 lbf. Most of it comes from the fan's bypass air, not the hot core.", acts: [[0, () => { thr = 1; }], [8, null]] },
   { say: "Record run: 134,300 lbf in a test cell, more than any commercial jet engine has ever made.", acts: [[0, () => { thr = 1.14; }], [7, null]] },
+  { say: "The afterburner. Not a thing on any airliner engine, but you asked. Fuel straight into the exhaust, lit.", acts: [[0, () => { thr = 1; ab = true; }], [7, () => { ab = false; }], [8.5, null]] },
   { say: "One goose at take-off power. Most of it goes out the bypass. The fan gets a nick and keeps running, which is what certification asks.", acts: [[0, () => { thr = 1; goose(false); }], [6, null]] },
   { say: "A flock of geese.", acts: [[0, () => { goose(true); }], [9.5, null]] },
   { say: "Blade-off test: an explosive bolt releases a fan blade at full power. The case has to hold it.", acts: [[0, () => { newEngine(); thr = 1; }], [3.5, () => bladeRelease()], [12, null]] },
@@ -451,6 +477,7 @@ const act = (fn) => (...a) => { takeOver(); fn(...a); syncUi(); run(); };
 const alive = () => state === "run" || state === "surging";
 ui.thr.addEventListener("input", act(() => { thr = +ui.thr.value / 100; }));
 ui.presets.forEach((b) => b.addEventListener("click", act(() => { thr = +b.dataset.thr; if (thr > 1.14) fadec = false; })));
+ui.ab.addEventListener("click", act(() => { ab = !ab; if (ab && thr < 1) thr = 1; }));
 ui.fadec.addEventListener("click", act(() => { fadec = !fadec; if (fadec) thr = Math.min(thr, 1.14); }));
 ui.goose.addEventListener("click", act(() => { if (alive()) goose(false); }));
 ui.flock.addEventListener("click", act(() => { if (alive()) goose(true); }));
@@ -464,7 +491,7 @@ let pendingBlade = false;
 const _step = step;
 step = function (dt) { _step(dt); if (pendingBlade && n1 > 0.95) { pendingBlade = false; bladeRelease(); } };
 stage.addEventListener("keydown", (ev) => {
-  const map = { ArrowUp: () => { thr = Math.min(fadec ? 1.14 : 1.3, thr + 0.05); }, ArrowDown: () => { thr = Math.max(0, thr - 0.05); }, g: () => alive() && goose(false), f: () => alive() && goose(true), b: () => alive() && bladeRelease() };
+  const map = { ArrowUp: () => { thr = Math.min(fadec ? 1.14 : 1.3, thr + 0.05); }, ArrowDown: () => { thr = Math.max(0, thr - 0.05); }, g: () => alive() && goose(false), f: () => alive() && goose(true), b: () => alive() && bladeRelease(), a: () => { ab = !ab; if (ab && thr < 1) thr = 1; } };
   if (map[ev.key]) { ev.preventDefault(); act(map[ev.key])(); }
   if (ev.key === "s") { slow = !slow; run(); }
 });
@@ -508,11 +535,11 @@ const CSS = `.fx-stage{position:relative;overflow:hidden}
 #shot{min-height:3.6em;font-size:12px;line-height:1.4}
 @media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:80px}.ctl button small{display:none}}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Jet engine: up and down for throttle, G throws a goose, F a flock, B releases a fan blade">${svg}<canvas class="fx-smoke" aria-hidden="true"></canvas><div class="fx-flash" aria-hidden="true"></div></div>`;
+const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Jet engine: up and down for throttle, A for the afterburner, G throws a goose, F a flock, B releases a fan blade">${svg}<canvas class="fx-smoke" aria-hidden="true"></canvas><div class="fx-flash" aria-hidden="true"></div></div>`;
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Controls">
   <div class="ctl-row"><span class="ctl-label">Throttle</span><div class="slide"><input id="thr" type="range" min="0" max="114" step="1" value="0" aria-label="Throttle, percent of take-off"></div><output id="thr-out">0 %</output></div>
-  <div class="ctl-row"><span class="ctl-label">Set</span><button type="button" data-thr="0">Idle</button><button type="button" data-thr="1">Take-off<small>445 kN</small></button><button type="button" data-thr="1.14">Record run<small>597 kN</small></button><button type="button" data-thr="1.3">Firewall it<small>FADEC off</small></button><button type="button" id="fadec" aria-pressed="false">FADEC on</button></div>
+  <div class="ctl-row"><span class="ctl-label">Set</span><button type="button" data-thr="0">Idle</button><button type="button" data-thr="1">Take-off<small>445 kN</small></button><button type="button" data-thr="1.14">Record run<small>597 kN</small></button><button type="button" id="ab" aria-pressed="false">Afterburner<small>not on a 777</small></button><button type="button" data-thr="1.3">Firewall it<small>FADEC off</small></button><button type="button" id="fadec" aria-pressed="false">FADEC on</button></div>
   <div class="ctl-row"><span class="ctl-label">Test</span><button type="button" id="goose">Goose<small>one bird</small></button><button type="button" id="flock">Flock<small>six geese</small></button><button type="button" id="surge">Surge<small>compressor stall</small></button><button type="button" id="blade">Blade-off<small>containment test</small></button></div>
   <div class="ctl-row"><span class="ctl-label">N1</span><div class="meter"><span id="n1-fill" class="fill"></span><span class="mark" style="left:${(100 / 130 * 100).toFixed(1)}%" data-label="100"></span></div><output id="n1-out">20 %</output></div>
   <div class="ctl-row"><span class="ctl-label">EGT</span><div class="meter"><span id="egt-fill" class="fill"></span><span class="mark" style="left:${(1090 / 1300 * 100).toFixed(1)}%" data-label="limit"></span></div><output id="egt-out">480 °C</output></div>
@@ -537,7 +564,7 @@ const card = k.plateHtml({
 });
 
 const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
-const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not an engine model. Real (GE9X, from GE Aerospace and Key Aero): 3.4 m fan, 16 carbon-fibre composite blades, a 3-stage booster, an 11-stage high-pressure compressor at 27:1, CMC combustor liners, a 2-stage HP turbine, a 6-stage low-pressure turbine, bypass about 10:1, overall pressure ratio 60:1, about 100,000 lbf (445 kN) take-off, and the 134,300 lbf (597 kN) record. Also real: certification needs a fan blade released at full power to stay inside the case, and the engine has to take bird strikes. Made up: the spool times, EGT numbers and limit, the thrust curve, how the failures play out, the stand, and the proportions inside are simplified.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/jet" style="color:inherit">Source</a></p>`;
+const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not an engine model. Real (GE9X, from GE Aerospace and Key Aero): 3.4 m fan, 16 carbon-fibre composite blades, a 3-stage booster, an 11-stage high-pressure compressor at 27:1, CMC combustor liners, a 2-stage HP turbine, a 6-stage low-pressure turbine, bypass about 10:1, overall pressure ratio 60:1, about 100,000 lbf (445 kN) take-off, and the 134,300 lbf (597 kN) record. Also real: certification needs a fan blade released at full power to stay inside the case, and the engine has to take bird strikes. The afterburner is not real for this engine: no airliner engine has one, Concorde aside. Made up: the afterburner, the spool times, EGT numbers and limit, the thrust curve, how the failures play out, the stand, and the proportions inside are simplified.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/jet" style="color:inherit">Source</a></p>`;
 const name = theme === "light" ? "light.html" : "index.html";
 writeFileSync(join(HERE, name), k.pageHtml({ title: "Jet engine", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 720 }));
 console.log("wrote", name);
