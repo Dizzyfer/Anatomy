@@ -1,0 +1,1272 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Nuclear reactor</title><style>
+.iso{
+  --anatomy-page:#0b0b0b;--anatomy-card:#131313;--anatomy-text:#a3a3a3;--anatomy-strong:#e6e6e6;--anatomy-muted:#6e6e6e;
+  --anatomy-paper:#131313;--anatomy-face:#1b1b1b;--anatomy-top:#1c1c1c;
+  --anatomy-shade-0:#0f0f0f;--anatomy-shade-1:#121212;--anatomy-shade-2:#151515;--anatomy-shade-3:#181818;
+  --anatomy-lit-top:#262626;--anatomy-lit-shade:#1d1d1d;
+  --anatomy-hi:#d4d4d4;--anatomy-mid:#6a6a6a;--anatomy-lo:#3e3e3e;--anatomy-faint:#2a2a2a;--anatomy-lit:#ffffff;
+  --anatomy-halo:#050505;--anatomy-halo-opacity:.9;--anatomy-dot:#e6e6e6;
+  --anatomy-red:#ff6b6b;--anatomy-green:#6be0a0;--anatomy-blue:#6b9bff;
+  --anatomy-weight:.6px;--anatomy-ease:cubic-bezier(.32,.72,0,1);
+  --anatomy-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff0a,inset 0 0 0 1px #ffffff06,0 0 0 1px #00000026,0 1px 1px -.5px #00000014,0 3px 3px -1.5px #00000014,0 6px 6px -3px #00000014,0 12px 12px -6px #00000014;
+}
+.iso[data-theme="light"]{
+  --anatomy-page:#f2f2ef;--anatomy-card:#fbfbfa;--anatomy-text:#57575a;--anatomy-strong:#18181a;--anatomy-muted:#8c8c90;
+  --anatomy-paper:#fbfbfa;--anatomy-face:#ffffff;--anatomy-top:#ffffff;
+  --anatomy-shade-0:#dcdcd9;--anatomy-shade-1:#e5e5e2;--anatomy-shade-2:#ededea;--anatomy-shade-3:#f4f4f1;
+  --anatomy-lit-top:#ffffff;--anatomy-lit-shade:#eeeeeb;
+  --anatomy-hi:#26262a;--anatomy-mid:#8a8a8f;--anatomy-lo:#b4b4b8;--anatomy-faint:#d4d4d6;--anatomy-lit:#000000;
+  --anatomy-halo:#8a8a80;--anatomy-halo-opacity:.32;--anatomy-dot:#3a3a3e;
+  --anatomy-red:#e5484d;--anatomy-green:#30a46c;--anatomy-blue:#3e63dd;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff,0 0 0 1px #0000000f,0 1px 1px -.5px #0000000a,0 3px 3px -1.5px #0000000a,0 6px 6px -3px #0000000a,0 12px 12px -6px #0000000a;
+}
+.iso-svg{display:block;width:100%;height:auto;overflow:visible}
+.iso-svg path,.iso-svg circle{vector-effect:non-scaling-stroke}
+.iso-fill{fill:var(--anatomy-paper);stroke:none}
+.iso-solid[data-lit]>.iso-fill{fill:var(--anatomy-face)}
+.iso-shade,.iso-top{stroke:none}
+.iso-shade[data-shade="0"]{fill:var(--anatomy-shade-0)}
+.iso-shade[data-shade="1"]{fill:var(--anatomy-shade-1)}
+.iso-shade[data-shade="2"]{fill:var(--anatomy-shade-2)}
+.iso-shade[data-shade="3"]{fill:var(--anatomy-shade-3)}
+.iso-top{fill:var(--anatomy-top)}
+.iso-solid[data-lit]>.iso-top{fill:var(--anatomy-lit-top)}
+.iso-solid[data-lit]>.iso-shade{fill:var(--anatomy-lit-shade)}
+.iso-solid[data-seamless]>.iso-shade,.iso-solid[data-seamless]>.iso-top{stroke-width:.4;stroke-linejoin:round}
+.iso-solid[data-seamless]>.iso-shade[data-shade="0"]{stroke:var(--anatomy-shade-0)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="1"]{stroke:var(--anatomy-shade-1)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="2"]{stroke:var(--anatomy-shade-2)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="3"]{stroke:var(--anatomy-shade-3)}
+.iso-solid[data-seamless]>.iso-top{stroke:var(--anatomy-top)}
+.iso-solid[data-seamless][data-lit]>.iso-top{stroke:var(--anatomy-lit-top)}
+.iso-solid[data-seamless][data-lit]>.iso-shade{stroke:var(--anatomy-lit-shade)}
+.iso-solid[data-lit]>.iso-edge{stroke:var(--anatomy-lit)}
+.iso-halo{fill:var(--anatomy-halo);stroke:none;filter:blur(9px);opacity:var(--anatomy-halo-opacity);transform:translateY(3px)}
+.iso-line{fill:none;stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight);stroke-linecap:round;stroke-linejoin:round}
+.iso-line[data-tone="hi"]{stroke:var(--anatomy-hi)}
+.iso-line[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.iso-line[data-tone="lo"]{stroke:var(--anatomy-lo)}
+.iso-line[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.iso-line[data-tone="lit"]{stroke:var(--anatomy-lit)}
+.iso-line[data-tone="red"]{stroke:var(--anatomy-red)}
+.iso-line[data-tone="green"]{stroke:var(--anatomy-green)}
+.iso-line[data-tone="blue"]{stroke:var(--anatomy-blue)}
+.iso-line[data-dotted]{stroke-dasharray:.01 3.5;stroke-width:1}
+.iso-line[data-dashed]{stroke-dasharray:3 3}
+.iso-line[data-flow]{stroke-dasharray:2 6}
+.iso-wire-end{fill:var(--anatomy-paper);stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight)}
+.iso-wire[data-tone="hi"] .iso-wire-end{stroke:var(--anatomy-hi)}
+.iso-wire[data-tone="mid"] .iso-wire-end{stroke:var(--anatomy-mid)}
+.iso-wire[data-tone="faint"] .iso-wire-end{stroke:var(--anatomy-faint)}
+.iso-wire[data-tone="lit"] .iso-wire-end{stroke:var(--anatomy-lit)}
+.iso-dots circle{fill:var(--anatomy-dot);stroke:none;opacity:.32}
+.iso-dots[data-tone="hi"] circle{opacity:.85}
+.iso-dots[data-tone="mid"] circle{opacity:.45}
+.iso-dots[data-tone="lo"] circle{opacity:.22}
+.iso-dots[data-tone="faint"] circle{opacity:.12}
+.iso-face-text{fill:var(--anatomy-mid);font-family:var(--anatomy-mono);letter-spacing:.04em}
+.iso-face-text[data-tone="hi"]{fill:var(--anatomy-hi)}
+.iso-face-text[data-tone="lo"]{fill:var(--anatomy-lo)}
+.iso-face-text[data-tone="faint"]{fill:var(--anatomy-faint)}
+.tb-body{fill:var(--anatomy-shade-2);stroke:none}
+.tb-shine{fill:var(--anatomy-top);stroke:none}
+.tb-shade{fill:var(--anatomy-shade-0);stroke:none}
+.tb-ring{fill:none;stroke:var(--anatomy-lo);stroke-width:.45;stroke-linecap:butt;stroke-linejoin:round}
+.tb-ring[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.tb-ring[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.tb-ring[data-tone="hi"]{stroke:var(--anatomy-hi)}
+@keyframes iso-flow{to{stroke-dashoffset:-32}}
+@keyframes iso-pulse{0%,100%{opacity:.18}12%{opacity:1}40%{opacity:.18}}
+.iso-line[data-flow]{animation:iso-flow 1600ms linear infinite}
+.iso-dots circle[data-pulse]{animation:iso-pulse 1600ms steps(1,end) infinite;animation-delay:var(--pulse-at,0ms)}
+.iso-figure{margin:32px 0 36px}
+.iso-plate{position:relative;padding:52px 24px;border-radius:0;background:var(--anatomy-card);box-shadow:0 0 0 1px var(--anatomy-mid);--anatomy-paper:var(--anatomy-card)}
+.iso-plate-corners{position:absolute;inset:18px 20px;pointer-events:none}
+.iso-plate-corner{position:absolute;color:var(--anatomy-muted);font-family:var(--anatomy-mono);font-size:10.5px;line-height:1;letter-spacing:.04em;white-space:nowrap}
+.iso-plate-corner[data-corner="fig"]{top:0;left:0;color:var(--anatomy-text)}
+.iso-plate-corner[data-corner="title"]{top:0;right:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="hint"]{bottom:0;left:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="readout"]{right:0;bottom:0;color:var(--anatomy-text);font-variant-numeric:tabular-nums}
+.iso-plate .iso-svg{margin:0 auto}
+.iso-legend{display:grid;gap:8px;margin-top:12px;color:var(--anatomy-muted);font-size:13px;line-height:1.55}
+.iso-keys{display:flex;flex-wrap:wrap;gap:6px 18px}
+.iso-key{display:inline-flex;align-items:center;gap:7px}
+.iso-swatch{width:16px;height:10px;flex:none;overflow:visible}
+.iso-swatch path{fill:none;stroke:var(--anatomy-hi);stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+.iso-swatch[data-mark="raised"] path,.iso-swatch[data-mark="flat"] path{stroke:var(--anatomy-mid)}
+.iso-swatch[data-mark="lit"] path{stroke:var(--anatomy-lit)}
+.iso-swatch[data-mark="dim"] path{stroke:var(--anatomy-lo)}
+.iso-swatch[data-mark="dotted"] path{stroke-dasharray:.01 3;stroke-width:1.4}
+.iso-swatch[data-mark="dashed"] path{stroke-dasharray:3 2.5}
+.iso-swatch[data-mark="red"] path{stroke:var(--anatomy-red)}
+.iso-swatch[data-mark="green"] path{stroke:var(--anatomy-green)}
+.iso-swatch[data-mark="blue"] path{stroke:var(--anatomy-blue)}
+.iso-swatch-crease{stroke:var(--anatomy-lo)!important}
+@media (max-width:560px){.iso-plate{padding:48px 12px 70px}.iso-plate-corner[data-corner="hint"]{bottom:18px}}
+@media (prefers-reduced-motion:reduce){.iso-line[data-flow],.iso-dots circle[data-pulse]{animation:none}}
+
+*{box-sizing:border-box}
+html{color-scheme:dark}
+body[data-theme="light"]{color-scheme:light}
+body{margin:0;background:var(--anatomy-page);color:var(--anatomy-text);font:14px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.iso-page{width:min(720px,100% - 32px);margin:64px auto 96px}
+</style></head><body class="iso" data-theme="light"><main class="iso-page"><style>.fx-stage{position:relative;overflow:hidden}
+.fx-stage svg{display:block;position:relative}
+.fx-smoke{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle 55% at 50% 45%,#ffffff 0%,#dfe8ff 35%,rgba(200,215,255,0) 100%)}
+.sec{stroke:rgba(0,0,0,.35);stroke-width:.4}.sec.core{stroke:#000}
+.rod{stroke:#1b1d20;stroke-width:2;stroke-linecap:butt}.disp{stroke:#8e8a84;stroke-width:2;stroke-linecap:butt}
+.fuel{stroke-width:1.6;stroke-linecap:butt}.fuel.thin{stroke-width:2.2}
+.crdm{stroke:#7f878f;stroke-width:1.6}
+.pipe{fill:none;stroke:#8a9097;stroke-width:.7;opacity:.85}
+.leg{fill:none;stroke:#7c858d;stroke-width:4;stroke-linecap:round}
+.water{stroke:none}.corium{stroke:#ffcf7a;stroke-width:.6}
+.fx-stage path{stroke-linejoin:round}
+.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
+.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ctl-label{min-width:72px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
+.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
+.ctl button[hidden]{display:none}
+.ctl button:hover{border-color:var(--anatomy-mid)}
+.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
+.ctl #safe[aria-pressed="true"],.ctl #test,.ctl #scram{color:#ff6a3d;border-color:#ff6a3d}
+.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
+.ctl output{min-width:96px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
+.slide{position:relative;flex:1;min-width:120px}.slide input{width:100%;accent-color:var(--anatomy-lit);margin:0}
+.meter{position:relative;flex:1;min-width:110px;height:10px;margin-top:14px;border:1px solid var(--anatomy-lo);border-radius:5px}
+.meter .fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .1s;background:#3ddc84}
+.meter .fill[data-state="warn"]{background:#ffb347}.meter .fill[data-state="bad"]{background:#ff5a2a}
+.mark{position:absolute;top:-14px;bottom:-3px;width:0;border-left:1px dashed #ff6a3d;pointer-events:none}
+.mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:#ff6a3d}
+.mark.l::after{left:auto;right:4px}
+#stats{font-size:12px;color:var(--anatomy-mid);line-height:1.5}#stats b{color:var(--anatomy-hi,var(--anatomy-mid));font-weight:600}
+#shot{min-height:3.6em;font-size:12px;line-height:1.4}
+@media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:80px}.ctl button small{display:none}}</style><figure class="iso-figure"><div class="iso-plate"><div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 23</span><span class="iso-plate-corner" data-corner="title">Nuclear reactor</span><span class="iso-plate-corner" data-corner="hint">Same abuse, two reactors</span><span class="iso-plate-corner" data-corner="readout" data-readout></span></div><div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Nuclear reactor: up and down move the rods, S scrams, P trips the pumps, T swaps RBMK and PWR"><svg xmlns="http://www.w3.org/2000/svg" class="iso-svg" viewBox="0 0 680 520" role="img" aria-label="A nuclear power plant reactor cut in half. In one mode it's an RBMK-1000 like Chernobyl 4: a graphite core with fuel and control rod channels, the upper shield, steam drums and pumps in an ordinary building. In the other it's a modern pressurised water reactor: a steel pressure vessel with steam generators inside a concrete containment."><path class="iso-halo" d="M119.1 385.3L119.4 384L120.2 382.7L121.4 381.5L123 380.5L330.6 276.8L332.6 275.9L334.9 275.3L337.4 274.9L340 274.8L342.6 274.9L345.1 275.3L347.4 275.9L349.4 276.8L557 380.5L558.6 381.5L559.8 382.7L560.6 384L560.9 385.3L560.9 396.8L560.6 398.1L559.8 399.4L558.6 400.5L557 401.5L349.4 505.3L347.4 506.1L345.1 506.7L342.6 507.1L340 507.2L337.4 507.1L334.9 506.7L332.6 506.1L330.6 505.3L123 401.5L121.4 400.5L120.2 399.4L119.4 398.1L119.1 396.8Z"/><g class="iso-solid"><path class="iso-fill" d="M334 296.6L334.2 295.8L334.8 295.1L335.8 294.5L337 294L338.4 293.7L340 293.6L341.6 293.7L343 294L344.2 294.5L345.2 295.1L345.8 295.8L346 296.6L346 297.8L345.8 298.5L345.2 299.3L344.2 299.9L343 300.4L341.6 300.7L340 300.8L338.4 300.7L337 300.4L335.8 299.9L334.8 299.3L334.2 298.5L334 297.8Z"/><path class="iso-shade" data-shade="0" d="M344.2 299.9L343 300.4L343 299.2L344.2 298.7ZM346 297.8L345.8 298.5L345.8 297.4L346 296.6ZM345.8 298.5L345.2 299.3L345.2 298.1L345.8 297.4ZM345.2 299.3L344.2 299.9L344.2 298.7L345.2 298.1Z"/><path class="iso-shade" data-shade="1" d="M343 300.4L341.6 300.7L341.6 299.5L343 299.2ZM341.6 300.7L340 300.8L340 299.6L341.6 299.5Z"/><path class="iso-shade" data-shade="2" d="M340 300.8L338.4 300.7L338.4 299.5L340 299.6ZM338.4 300.7L337 300.4L337 299.2L338.4 299.5Z"/><path class="iso-shade" data-shade="3" d="M337 300.4L335.8 299.9L335.8 298.7L337 299.2ZM335.8 299.9L334.8 299.3L334.8 298.1L335.8 298.7ZM334.8 299.3L334.2 298.5L334.2 297.4L334.8 298.1ZM334.2 298.5L334 297.8L334 296.6L334.2 297.4Z"/><path class="iso-top" d="M344.2 298.7L343 299.2L341.6 299.5L340 299.6L338.4 299.5L337 299.2L335.8 298.7L334.8 298.1L334.2 297.4L334 296.6L334.2 295.8L334.8 295.1L335.8 294.5L337 294L338.4 293.7L340 293.6L341.6 293.7L343 294L344.2 294.5L345.2 295.1L345.8 295.8L346 296.6L345.8 297.4L345.2 298.1Z"/><path class="iso-line iso-crease" data-tone="faint" d="M346 296.6L345.8 297.4L345.2 298.1L344.2 298.7L343 299.2L341.6 299.5L340 299.6L338.4 299.5L337 299.2L335.8 298.7L334.8 298.1L334.2 297.4L334 296.6"/><path class="iso-line iso-edge" data-tone="lo" d="M334 296.6L334.2 295.8L334.8 295.1L335.8 294.5L337 294L338.4 293.7L340 293.6L341.6 293.7L343 294L344.2 294.5L345.2 295.1L345.8 295.8L346 296.6M346 297.8L345.8 298.5L345.2 299.3L344.2 299.9L343 300.4L341.6 300.7L340 300.8L338.4 300.7L337 300.4L335.8 299.9L334.8 299.3L334.2 298.5L334 297.8M334 296.6L334 297.8M346 296.6L346 297.8"/></g><g class="iso-solid"><path class="iso-fill" d="M335.3 292L335.5 291.4L336 290.8L336.7 290.3L337.7 290L338.8 289.7L340 289.6L341.2 289.7L342.3 290L343.3 290.3L344 290.8L344.5 291.4L344.7 292L344.7 296.6L344.5 297.2L344 297.8L343.3 298.3L342.3 298.6L341.2 298.9L340 298.9L338.8 298.9L337.7 298.6L336.7 298.3L336 297.8L335.5 297.2L335.3 296.6Z"/><path class="iso-shade" data-shade="0" d="M343.3 298.3L342.3 298.6L342.3 294L343.3 293.6ZM344.7 296.6L344.5 297.2L344.5 292.6L344.7 292ZM344.5 297.2L344 297.8L344 293.2L344.5 292.6ZM344 297.8L343.3 298.3L343.3 293.6L344 293.2Z"/><path class="iso-shade" data-shade="1" d="M342.3 298.6L341.2 298.9L341.2 294.2L342.3 294ZM341.2 298.9L340 298.9L340 294.3L341.2 294.2Z"/><path class="iso-shade" data-shade="2" d="M340 298.9L338.8 298.9L338.8 294.2L340 294.3ZM338.8 298.9L337.7 298.6L337.7 294L338.8 294.2Z"/><path class="iso-shade" data-shade="3" d="M337.7 298.6L336.7 298.3L336.7 293.6L337.7 294ZM336.7 298.3L336 297.8L336 293.2L336.7 293.6ZM336 297.8L335.5 297.2L335.5 292.6L336 293.2ZM335.5 297.2L335.3 296.6L335.3 292L335.5 292.6Z"/><path class="iso-top" d="M343.3 293.6L342.3 294L341.2 294.2L340 294.3L338.8 294.2L337.7 294L336.7 293.6L336 293.2L335.5 292.6L335.3 292L335.5 291.4L336 290.8L336.7 290.3L337.7 290L338.8 289.7L340 289.6L341.2 289.7L342.3 290L343.3 290.3L344 290.8L344.5 291.4L344.7 292L344.5 292.6L344 293.2Z"/><path class="iso-line iso-crease" data-tone="faint" d="M344.7 292L344.5 292.6L344 293.2L343.3 293.6L342.3 294L341.2 294.2L340 294.3L338.8 294.2L337.7 294L336.7 293.6L336 293.2L335.5 292.6L335.3 292"/><path class="iso-line iso-edge" data-tone="mid" d="M335.3 292L335.5 291.4L336 290.8L336.7 290.3L337.7 290L338.8 289.7L340 289.6L341.2 289.7L342.3 290L343.3 290.3L344 290.8L344.5 291.4L344.7 292M344.7 296.6L344.5 297.2L344 297.8L343.3 298.3L342.3 298.6L341.2 298.9L340 298.9L338.8 298.9L337.7 298.6L336.7 298.3L336 297.8L335.5 297.2L335.3 296.6M335.3 292L335.3 296.6M344.7 292L344.7 296.6"/></g><g class="iso-solid"><path class="iso-fill" d="M135.9 395.7L136.1 394.9L136.7 394.1L137.7 393.5L138.9 393.1L140.4 392.8L141.9 392.6L143.5 392.8L144.9 393.1L146.2 393.5L147.1 394.1L147.7 394.9L147.9 395.7L147.9 396.8L147.7 397.6L147.1 398.3L146.2 398.9L144.9 399.4L143.5 399.7L141.9 399.8L140.4 399.7L138.9 399.4L137.7 398.9L136.7 398.3L136.1 397.6L135.9 396.8Z"/><path class="iso-shade" data-shade="0" d="M146.2 398.9L144.9 399.4L144.9 398.2L146.2 397.8ZM147.9 396.8L147.7 397.6L147.7 396.4L147.9 395.7ZM147.7 397.6L147.1 398.3L147.1 397.2L147.7 396.4ZM147.1 398.3L146.2 398.9L146.2 397.8L147.1 397.2Z"/><path class="iso-shade" data-shade="1" d="M144.9 399.4L143.5 399.7L143.5 398.5L144.9 398.2ZM143.5 399.7L141.9 399.8L141.9 398.7L143.5 398.5Z"/><path class="iso-shade" data-shade="2" d="M141.9 399.8L140.4 399.7L140.4 398.5L141.9 398.7ZM140.4 399.7L138.9 399.4L138.9 398.2L140.4 398.5Z"/><path class="iso-shade" data-shade="3" d="M138.9 399.4L137.7 398.9L137.7 397.8L138.9 398.2ZM137.7 398.9L136.7 398.3L136.7 397.2L137.7 397.8ZM136.7 398.3L136.1 397.6L136.1 396.4L136.7 397.2ZM136.1 397.6L135.9 396.8L135.9 395.7L136.1 396.4Z"/><path class="iso-top" d="M146.2 397.8L144.9 398.2L143.5 398.5L141.9 398.7L140.4 398.5L138.9 398.2L137.7 397.8L136.7 397.2L136.1 396.4L135.9 395.7L136.1 394.9L136.7 394.1L137.7 393.5L138.9 393.1L140.4 392.8L141.9 392.6L143.5 392.8L144.9 393.1L146.2 393.5L147.1 394.1L147.7 394.9L147.9 395.7L147.7 396.4L147.1 397.2Z"/><path class="iso-line iso-crease" data-tone="faint" d="M147.9 395.7L147.7 396.4L147.1 397.2L146.2 397.8L144.9 398.2L143.5 398.5L141.9 398.7L140.4 398.5L138.9 398.2L137.7 397.8L136.7 397.2L136.1 396.4L135.9 395.7"/><path class="iso-line iso-edge" data-tone="lo" d="M135.9 395.7L136.1 394.9L136.7 394.1L137.7 393.5L138.9 393.1L140.4 392.8L141.9 392.6L143.5 392.8L144.9 393.1L146.2 393.5L147.1 394.1L147.7 394.9L147.9 395.7M147.9 396.8L147.7 397.6L147.1 398.3L146.2 398.9L144.9 399.4L143.5 399.7L141.9 399.8L140.4 399.7L138.9 399.4L137.7 398.9L136.7 398.3L136.1 397.6L135.9 396.8M135.9 395.7L135.9 396.8M147.9 395.7L147.9 396.8"/></g><g class="iso-solid"><path class="iso-fill" d="M137.2 391L137.4 390.4L137.9 389.9L138.6 389.4L139.6 389L140.7 388.8L141.9 388.7L143.1 388.8L144.2 389L145.2 389.4L146 389.9L146.4 390.4L146.6 391L146.6 395.7L146.4 396.3L146 396.8L145.2 397.3L144.2 397.7L143.1 397.9L141.9 398L140.7 397.9L139.6 397.7L138.6 397.3L137.9 396.8L137.4 396.3L137.2 395.7Z"/><path class="iso-shade" data-shade="0" d="M145.2 397.3L144.2 397.7L144.2 393.1L145.2 392.7ZM146.6 395.7L146.4 396.3L146.4 391.6L146.6 391ZM146.4 396.3L146 396.8L146 392.2L146.4 391.6ZM146 396.8L145.2 397.3L145.2 392.7L146 392.2Z"/><path class="iso-shade" data-shade="1" d="M144.2 397.7L143.1 397.9L143.1 393.3L144.2 393.1ZM143.1 397.9L141.9 398L141.9 393.4L143.1 393.3Z"/><path class="iso-shade" data-shade="2" d="M141.9 398L140.7 397.9L140.7 393.3L141.9 393.4ZM140.7 397.9L139.6 397.7L139.6 393.1L140.7 393.3Z"/><path class="iso-shade" data-shade="3" d="M139.6 397.7L138.6 397.3L138.6 392.7L139.6 393.1ZM138.6 397.3L137.9 396.8L137.9 392.2L138.6 392.7ZM137.9 396.8L137.4 396.3L137.4 391.6L137.9 392.2ZM137.4 396.3L137.2 395.7L137.2 391L137.4 391.6Z"/><path class="iso-top" d="M145.2 392.7L144.2 393.1L143.1 393.3L141.9 393.4L140.7 393.3L139.6 393.1L138.6 392.7L137.9 392.2L137.4 391.6L137.2 391L137.4 390.4L137.9 389.9L138.6 389.4L139.6 389L140.7 388.8L141.9 388.7L143.1 388.8L144.2 389L145.2 389.4L146 389.9L146.4 390.4L146.6 391L146.4 391.6L146 392.2Z"/><path class="iso-line iso-crease" data-tone="faint" d="M146.6 391L146.4 391.6L146 392.2L145.2 392.7L144.2 393.1L143.1 393.3L141.9 393.4L140.7 393.3L139.6 393.1L138.6 392.7L137.9 392.2L137.4 391.6L137.2 391"/><path class="iso-line iso-edge" data-tone="mid" d="M137.2 391L137.4 390.4L137.9 389.9L138.6 389.4L139.6 389L140.7 388.8L141.9 388.7L143.1 388.8L144.2 389L145.2 389.4L146 389.9L146.4 390.4L146.6 391M146.6 395.7L146.4 396.3L146 396.8L145.2 397.3L144.2 397.7L143.1 397.9L141.9 398L140.7 397.9L139.6 397.7L138.6 397.3L137.9 396.8L137.4 396.3L137.2 395.7M137.2 391L137.2 395.7M146.6 391L146.6 395.7"/></g><g class="iso-solid"><path class="iso-fill" d="M532.1 395.7L532.3 394.9L532.9 394.1L533.8 393.5L535.1 393.1L536.5 392.8L538.1 392.6L539.6 392.8L541.1 393.1L542.3 393.5L543.3 394.1L543.9 394.9L544.1 395.7L544.1 396.8L543.9 397.6L543.3 398.3L542.3 398.9L541.1 399.4L539.6 399.7L538.1 399.8L536.5 399.7L535.1 399.4L533.8 398.9L532.9 398.3L532.3 397.6L532.1 396.8Z"/><path class="iso-shade" data-shade="0" d="M542.3 398.9L541.1 399.4L541.1 398.2L542.3 397.8ZM544.1 396.8L543.9 397.6L543.9 396.4L544.1 395.7ZM543.9 397.6L543.3 398.3L543.3 397.2L543.9 396.4ZM543.3 398.3L542.3 398.9L542.3 397.8L543.3 397.2Z"/><path class="iso-shade" data-shade="1" d="M541.1 399.4L539.6 399.7L539.6 398.5L541.1 398.2ZM539.6 399.7L538.1 399.8L538.1 398.7L539.6 398.5Z"/><path class="iso-shade" data-shade="2" d="M538.1 399.8L536.5 399.7L536.5 398.5L538.1 398.7ZM536.5 399.7L535.1 399.4L535.1 398.2L536.5 398.5Z"/><path class="iso-shade" data-shade="3" d="M535.1 399.4L533.8 398.9L533.8 397.8L535.1 398.2ZM533.8 398.9L532.9 398.3L532.9 397.2L533.8 397.8ZM532.9 398.3L532.3 397.6L532.3 396.4L532.9 397.2ZM532.3 397.6L532.1 396.8L532.1 395.7L532.3 396.4Z"/><path class="iso-top" d="M542.3 397.8L541.1 398.2L539.6 398.5L538.1 398.7L536.5 398.5L535.1 398.2L533.8 397.8L532.9 397.2L532.3 396.4L532.1 395.7L532.3 394.9L532.9 394.1L533.8 393.5L535.1 393.1L536.5 392.8L538.1 392.6L539.6 392.8L541.1 393.1L542.3 393.5L543.3 394.1L543.9 394.9L544.1 395.7L543.9 396.4L543.3 397.2Z"/><path class="iso-line iso-crease" data-tone="faint" d="M544.1 395.7L543.9 396.4L543.3 397.2L542.3 397.8L541.1 398.2L539.6 398.5L538.1 398.7L536.5 398.5L535.1 398.2L533.8 397.8L532.9 397.2L532.3 396.4L532.1 395.7"/><path class="iso-line iso-edge" data-tone="lo" d="M532.1 395.7L532.3 394.9L532.9 394.1L533.8 393.5L535.1 393.1L536.5 392.8L538.1 392.6L539.6 392.8L541.1 393.1L542.3 393.5L543.3 394.1L543.9 394.9L544.1 395.7M544.1 396.8L543.9 397.6L543.3 398.3L542.3 398.9L541.1 399.4L539.6 399.7L538.1 399.8L536.5 399.7L535.1 399.4L533.8 398.9L532.9 398.3L532.3 397.6L532.1 396.8M532.1 395.7L532.1 396.8M544.1 395.7L544.1 396.8"/></g><g class="iso-solid"><path class="iso-fill" d="M533.4 391L533.6 390.4L534 389.9L534.8 389.4L535.8 389L536.9 388.8L538.1 388.7L539.3 388.8L540.4 389L541.4 389.4L542.1 389.9L542.6 390.4L542.8 391L542.8 395.7L542.6 396.3L542.1 396.8L541.4 397.3L540.4 397.7L539.3 397.9L538.1 398L536.9 397.9L535.8 397.7L534.8 397.3L534 396.8L533.6 396.3L533.4 395.7Z"/><path class="iso-shade" data-shade="0" d="M541.4 397.3L540.4 397.7L540.4 393.1L541.4 392.7ZM542.8 395.7L542.6 396.3L542.6 391.6L542.8 391ZM542.6 396.3L542.1 396.8L542.1 392.2L542.6 391.6ZM542.1 396.8L541.4 397.3L541.4 392.7L542.1 392.2Z"/><path class="iso-shade" data-shade="1" d="M540.4 397.7L539.3 397.9L539.3 393.3L540.4 393.1ZM539.3 397.9L538.1 398L538.1 393.4L539.3 393.3Z"/><path class="iso-shade" data-shade="2" d="M538.1 398L536.9 397.9L536.9 393.3L538.1 393.4ZM536.9 397.9L535.8 397.7L535.8 393.1L536.9 393.3Z"/><path class="iso-shade" data-shade="3" d="M535.8 397.7L534.8 397.3L534.8 392.7L535.8 393.1ZM534.8 397.3L534 396.8L534 392.2L534.8 392.7ZM534 396.8L533.6 396.3L533.6 391.6L534 392.2ZM533.6 396.3L533.4 395.7L533.4 391L533.6 391.6Z"/><path class="iso-top" d="M541.4 392.7L540.4 393.1L539.3 393.3L538.1 393.4L536.9 393.3L535.8 393.1L534.8 392.7L534 392.2L533.6 391.6L533.4 391L533.6 390.4L534 389.9L534.8 389.4L535.8 389L536.9 388.8L538.1 388.7L539.3 388.8L540.4 389L541.4 389.4L542.1 389.9L542.6 390.4L542.8 391L542.6 391.6L542.1 392.2Z"/><path class="iso-line iso-crease" data-tone="faint" d="M542.8 391L542.6 391.6L542.1 392.2L541.4 392.7L540.4 393.1L539.3 393.3L538.1 393.4L536.9 393.3L535.8 393.1L534.8 392.7L534 392.2L533.6 391.6L533.4 391"/><path class="iso-line iso-edge" data-tone="mid" d="M533.4 391L533.6 390.4L534 389.9L534.8 389.4L535.8 389L536.9 388.8L538.1 388.7L539.3 388.8L540.4 389L541.4 389.4L542.1 389.9L542.6 390.4L542.8 391M542.8 395.7L542.6 396.3L542.1 396.8L541.4 397.3L540.4 397.7L539.3 397.9L538.1 398L536.9 397.9L535.8 397.7L534.8 397.3L534 396.8L533.6 396.3L533.4 395.7M533.4 391L533.4 395.7M542.8 391L542.8 395.7"/></g><g class="iso-solid"><path class="iso-fill" d="M334 494.7L334.2 493.9L334.8 493.2L335.8 492.6L337 492.1L338.4 491.8L340 491.7L341.6 491.8L343 492.1L344.2 492.6L345.2 493.2L345.8 493.9L346 494.7L346 495.9L345.8 496.6L345.2 497.4L344.2 498L343 498.5L341.6 498.7L340 498.9L338.4 498.7L337 498.5L335.8 498L334.8 497.4L334.2 496.6L334 495.9Z"/><path class="iso-shade" data-shade="0" d="M344.2 498L343 498.5L343 497.3L344.2 496.8ZM346 495.9L345.8 496.6L345.8 495.5L346 494.7ZM345.8 496.6L345.2 497.4L345.2 496.2L345.8 495.5ZM345.2 497.4L344.2 498L344.2 496.8L345.2 496.2Z"/><path class="iso-shade" data-shade="1" d="M343 498.5L341.6 498.7L341.6 497.6L343 497.3ZM341.6 498.7L340 498.9L340 497.7L341.6 497.6Z"/><path class="iso-shade" data-shade="2" d="M340 498.9L338.4 498.7L338.4 497.6L340 497.7ZM338.4 498.7L337 498.5L337 497.3L338.4 497.6Z"/><path class="iso-shade" data-shade="3" d="M337 498.5L335.8 498L335.8 496.8L337 497.3ZM335.8 498L334.8 497.4L334.8 496.2L335.8 496.8ZM334.8 497.4L334.2 496.6L334.2 495.5L334.8 496.2ZM334.2 496.6L334 495.9L334 494.7L334.2 495.5Z"/><path class="iso-top" d="M344.2 496.8L343 497.3L341.6 497.6L340 497.7L338.4 497.6L337 497.3L335.8 496.8L334.8 496.2L334.2 495.5L334 494.7L334.2 493.9L334.8 493.2L335.8 492.6L337 492.1L338.4 491.8L340 491.7L341.6 491.8L343 492.1L344.2 492.6L345.2 493.2L345.8 493.9L346 494.7L345.8 495.5L345.2 496.2Z"/><path class="iso-line iso-crease" data-tone="faint" d="M346 494.7L345.8 495.5L345.2 496.2L344.2 496.8L343 497.3L341.6 497.6L340 497.7L338.4 497.6L337 497.3L335.8 496.8L334.8 496.2L334.2 495.5L334 494.7"/><path class="iso-line iso-edge" data-tone="lo" d="M334 494.7L334.2 493.9L334.8 493.2L335.8 492.6L337 492.1L338.4 491.8L340 491.7L341.6 491.8L343 492.1L344.2 492.6L345.2 493.2L345.8 493.9L346 494.7M346 495.9L345.8 496.6L345.2 497.4L344.2 498L343 498.5L341.6 498.7L340 498.9L338.4 498.7L337 498.5L335.8 498L334.8 497.4L334.2 496.6L334 495.9M334 494.7L334 495.9M346 494.7L346 495.9"/></g><g class="iso-solid"><path class="iso-fill" d="M335.3 490.1L335.5 489.5L336 488.9L336.7 488.4L337.7 488.1L338.8 487.8L340 487.7L341.2 487.8L342.3 488.1L343.3 488.4L344 488.9L344.5 489.5L344.7 490.1L344.7 494.7L344.5 495.3L344 495.9L343.3 496.3L342.3 496.7L341.2 497L340 497L338.8 497L337.7 496.7L336.7 496.3L336 495.9L335.5 495.3L335.3 494.7Z"/><path class="iso-shade" data-shade="0" d="M343.3 496.3L342.3 496.7L342.3 492.1L343.3 491.7ZM344.7 494.7L344.5 495.3L344.5 490.7L344.7 490.1ZM344.5 495.3L344 495.9L344 491.2L344.5 490.7ZM344 495.9L343.3 496.3L343.3 491.7L344 491.2Z"/><path class="iso-shade" data-shade="1" d="M342.3 496.7L341.2 497L341.2 492.3L342.3 492.1ZM341.2 497L340 497L340 492.4L341.2 492.3Z"/><path class="iso-shade" data-shade="2" d="M340 497L338.8 497L338.8 492.3L340 492.4ZM338.8 497L337.7 496.7L337.7 492.1L338.8 492.3Z"/><path class="iso-shade" data-shade="3" d="M337.7 496.7L336.7 496.3L336.7 491.7L337.7 492.1ZM336.7 496.3L336 495.9L336 491.2L336.7 491.7ZM336 495.9L335.5 495.3L335.5 490.7L336 491.2ZM335.5 495.3L335.3 494.7L335.3 490.1L335.5 490.7Z"/><path class="iso-top" d="M343.3 491.7L342.3 492.1L341.2 492.3L340 492.4L338.8 492.3L337.7 492.1L336.7 491.7L336 491.2L335.5 490.7L335.3 490.1L335.5 489.5L336 488.9L336.7 488.4L337.7 488.1L338.8 487.8L340 487.7L341.2 487.8L342.3 488.1L343.3 488.4L344 488.9L344.5 489.5L344.7 490.1L344.5 490.7L344 491.2Z"/><path class="iso-line iso-crease" data-tone="faint" d="M344.7 490.1L344.5 490.7L344 491.2L343.3 491.7L342.3 492.1L341.2 492.3L340 492.4L338.8 492.3L337.7 492.1L336.7 491.7L336 491.2L335.5 490.7L335.3 490.1"/><path class="iso-line iso-edge" data-tone="mid" d="M335.3 490.1L335.5 489.5L336 488.9L336.7 488.4L337.7 488.1L338.8 487.8L340 487.7L341.2 487.8L342.3 488.1L343.3 488.4L344 488.9L344.5 489.5L344.7 490.1M344.7 494.7L344.5 495.3L344 495.9L343.3 496.3L342.3 496.7L341.2 497L340 497L338.8 497L337.7 496.7L336.7 496.3L336 495.9L335.5 495.3L335.3 494.7M335.3 490.1L335.3 494.7M344.7 490.1L344.7 494.7"/></g><g class="iso-solid"><path class="iso-fill" d="M119.1 379.5L119.4 378.2L120.2 376.9L121.4 375.8L123 374.8L330.6 271L332.6 270.2L334.9 269.6L337.4 269.2L340 269L342.6 269.2L345.1 269.6L347.4 270.2L349.4 271L557 374.8L558.6 375.8L559.8 376.9L560.6 378.2L560.9 379.5L560.9 391L560.6 392.3L559.8 393.6L558.6 394.7L557 395.7L349.4 499.5L347.4 500.3L345.1 501L342.6 501.3L340 501.5L337.4 501.3L334.9 501L332.6 500.3L330.6 499.5L123 395.7L121.4 394.7L120.2 393.6L119.4 392.3L119.1 391Z"/><path class="iso-shade" data-shade="0" d="M560.9 391L560.6 392.3L560.6 380.8L560.9 379.5ZM560.6 392.3L559.8 393.6L559.8 382L560.6 380.8ZM559.8 393.6L558.6 394.7L558.6 383.2L559.8 382ZM558.6 394.7L557 395.7L557 384.2L558.6 383.2ZM557 395.7L349.4 499.5L349.4 488L557 384.2ZM349.4 499.5L347.4 500.3L347.4 488.8L349.4 488Z"/><path class="iso-shade" data-shade="1" d="M347.4 500.3L345.1 501L345.1 489.4L347.4 488.8ZM345.1 501L342.6 501.3L342.6 489.8L345.1 489.4ZM342.6 501.3L340 501.5L340 489.9L342.6 489.8Z"/><path class="iso-shade" data-shade="2" d="M340 501.5L337.4 501.3L337.4 489.8L340 489.9ZM337.4 501.3L334.9 501L334.9 489.4L337.4 489.8ZM334.9 501L332.6 500.3L332.6 488.8L334.9 489.4Z"/><path class="iso-shade" data-shade="3" d="M332.6 500.3L330.6 499.5L330.6 488L332.6 488.8ZM330.6 499.5L123 395.7L123 384.2L330.6 488ZM123 395.7L121.4 394.7L121.4 383.2L123 384.2ZM121.4 394.7L120.2 393.6L120.2 382L121.4 383.2ZM120.2 393.6L119.4 392.3L119.4 380.8L120.2 382ZM119.4 392.3L119.1 391L119.1 379.5L119.4 380.8Z"/><path class="iso-top" d="M557 374.8L558.6 375.8L559.8 376.9L560.6 378.2L560.9 379.5L560.6 380.8L559.8 382L558.6 383.2L557 384.2L349.4 488L347.4 488.8L345.1 489.4L342.6 489.8L340 489.9L337.4 489.8L334.9 489.4L332.6 488.8L330.6 488L123 384.2L121.4 383.2L120.2 382L119.4 380.8L119.1 379.5L119.4 378.2L120.2 376.9L121.4 375.8L123 374.8L330.6 271L332.6 270.2L334.9 269.6L337.4 269.2L340 269L342.6 269.2L345.1 269.6L347.4 270.2L349.4 271Z"/><path class="iso-line iso-crease" data-tone="faint" d="M560.9 379.5L560.6 380.8L559.8 382L558.6 383.2L557 384.2L349.4 488L347.4 488.8L345.1 489.4L342.6 489.8L340 489.9L337.4 489.8L334.9 489.4L332.6 488.8L330.6 488L123 384.2L121.4 383.2L120.2 382L119.4 380.8L119.1 379.5"/><path class="iso-line iso-bevel" data-tone="faint" d="M560.9 379.5L559.3 380.6L558.6 381.8L557.5 382.8L556 383.7L348.5 487.5L346.7 488.2L344.6 488.8L342.3 489.1L340 489.2L337.7 489.1L335.4 488.8L333.3 488.2L331.5 487.5L124 383.7L122.5 382.8L121.4 381.8L120.7 380.6L119.1 379.5"/><path class="iso-line" data-tone="faint" d="M560.9 385.3L560.6 386.6L559.8 387.8L558.6 389L557 390L349.4 493.7L347.4 494.6L345.1 495.2L342.6 495.6L340 495.7L337.4 495.6L334.9 495.2L332.6 494.6L330.6 493.7L123 390L121.4 389L120.2 387.8L119.4 386.6L119.1 385.3"/><path class="iso-line iso-edge" data-tone="mid" d="M119.1 379.5L119.4 378.2L120.2 376.9L121.4 375.8L123 374.8L330.6 271L332.6 270.2L334.9 269.6L337.4 269.2L340 269L342.6 269.2L345.1 269.6L347.4 270.2L349.4 271L557 374.8L558.6 375.8L559.8 376.9L560.6 378.2L560.9 379.5M560.9 391L560.6 392.3L559.8 393.6L558.6 394.7L557 395.7L349.4 499.5L347.4 500.3L345.1 501L342.6 501.3L340 501.5L337.4 501.3L334.9 501L332.6 500.3L330.6 499.5L123 395.7L121.4 394.7L120.2 393.6L119.4 392.3L119.1 391M560.9 379.5L560.9 391M119.1 379.5L119.1 391"/></g><g data-part="scene"></g><g data-part="fly"></g></svg><canvas class="fx-smoke" aria-hidden="true"></canvas><div class="fx-flash" aria-hidden="true"></div></div></div><div class="ctl" role="group" aria-label="Controls">
+  <div class="ctl-row"><span class="ctl-label">Reactor</span><button type="button" data-type="rbmk" aria-pressed="true">RBMK-1000<small>Chernobyl</small></button><button type="button" data-type="pwr" aria-pressed="false">PWR<small>modern, AP1000-style</small></button></div>
+  <div class="ctl-row"><span class="ctl-label">Rods</span><div class="slide"><input id="rods" type="range" min="0" max="100" step="1" value="50" aria-label="Control rods, percent inserted"></div><output id="rods-out">50 % in</output></div>
+  <div class="ctl-row"><span class="ctl-label">Pumps</span><div class="slide"><input id="pump" type="range" min="0" max="120" step="1" value="100" aria-label="Coolant flow, percent"></div><output id="pump-out">100 %</output></div>
+  <div class="ctl-row"><span class="ctl-label">Do</span><button type="button" id="scram">AZ-5</button><button type="button" id="trippumps">Trip pumps</button><button type="button" id="wait">Wait an hour<small>xenon</small></button><button type="button" id="safe" aria-pressed="false">Safety systems on</button><button type="button" id="test">Run the 1986 test<small>01:23:04</small></button></div>
+  <div class="ctl-row"><span class="ctl-label">Power</span><div class="meter"><span id="pw-fill" class="fill"></span><span class="mark" style="left:60%" data-label="100 %"></span></div><output id="pw-out">100 %</output></div>
+  <div class="ctl-row"><span class="ctl-label">React.</span><div class="meter"><span id="rho-fill" class="fill"></span><span class="mark" style="left:75%" data-label="prompt critical"></span></div><output id="rho-out">0 $</output></div>
+  <div class="ctl-row"><span class="ctl-label">Fuel</span><div class="meter"><span id="tf-fill" class="fill"></span><span class="mark" style="left:93.3%" data-label="melts"></span></div><output id="tf-out">900 °C</output></div>
+  <div class="ctl-row"><span class="ctl-label">Steam</span><div class="meter"><span id="v-fill" class="fill"></span></div><output id="v-out">30 %</output></div>
+  <div class="ctl-row"><span class="ctl-label">Xenon</span><div class="meter"><span id="x-fill" class="fill"></span></div><output id="x-out">2.5 $</output></div>
+  <div class="ctl-row"><span class="ctl-label" id="o-label">ORM</span><div class="meter"><span id="o-fill" class="fill"></span></div><output id="o-out">30 rods</output></div>
+  <div class="ctl-row"><span class="ctl-label">Plant</span><span id="stats"></span></div>
+  <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="fresh">Reset</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
+  <div id="shot" aria-live="polite"></div>
+</div><figcaption class="iso-legend"><span class="iso-keys"><span class="iso-key"><svg class="iso-swatch" data-mark="lit" viewBox="0 0 16 10" aria-hidden="true"><path d="M2 4.5 8 1.5 14 4.5 14 6 8 9 2 6Z"/><path class="iso-swatch-crease" d="M2 4.5 8 7.5 14 4.5"/></svg>Live: neutrons in the cut core, rod positions, glow with power, steam, the aftermath</span><span class="iso-key"><svg class="iso-swatch" data-mark="raised" viewBox="0 0 16 10" aria-hidden="true"><path d="M2 4.5 8 1.5 14 4.5 14 6 8 9 2 6Z"/><path class="iso-swatch-crease" d="M2 4.5 8 7.5 14 4.5"/></svg>Chernobyl-style RBMK in a plain building, or a modern PWR in its containment, cut in half</span></span><span class="iso-caption">A reactor runs on a chain reaction: each uranium fission frees neutrons, a moderator slows them down, and slow ones split the next atoms. Control rods soak up neutrons to hold it steady. A fraction of a percent of the neutrons come out seconds late, and that's what makes it controllable; add more than that fraction's worth of reactivity (one dollar) and it's prompt critical, running away in milliseconds. What keeps it safe is feedback: in a PWR, water is both coolant and moderator, so heat or steam slows the reaction down. In Chernobyl's RBMK graphite did the moderating and water only absorbed, so at low power with the rods out, steam sped it up. And the emergency rods made it worse for the first few seconds.</span></figcaption></figure><p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a reactor simulator. Real: point kinetics with delayed neutrons and the one-dollar prompt-critical line, Doppler feedback, the RBMK's positive void coefficient at low power and low margin against a PWR's negative one, xenon-135 piling up after a power cut, the RBMK's graphite displacers adding reactivity at the bottom of the core when AZ-5 drives in rods that were fully out (the positive scram), decay heat, and containment. The 1986 sequence follows World Nuclear Association's timeline (30 MWt, back to 200 MWt, margin at 8 rods against a minimum of 15, emergency cooling isolated, test at 01:23:04, AZ-5 at 01:23:40). Three Mile Island (1979) was a meltdown that the containment held. Made up: one delayed group and every coefficient, the sped-up xenon, decay heat and melting, the geometry and the explosion.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="index.html" style="color:inherit">Dark version</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/reactor" style="color:inherit">Source</a></p></main><script type="module">const AZIMUTH = 45;
+const ELEVATION = 30;
+const SHADES = 4;
+const RADIANS = Math.PI / 180;
+const UNIT = Math.sqrt(1.6);
+function cameraOf({ scale, azimuth = AZIMUTH, elevation = ELEVATION }) {
+    const a = azimuth * RADIANS;
+    const e = elevation * RADIANS;
+    return { sinA: Math.sin(a), cosA: Math.cos(a), sinE: Math.sin(e), cosE: Math.cos(e), k: scale * UNIT };
+}
+function iso([x, y, z], projection) {
+    const { origin } = projection;
+    const { sinA, cosA, sinE, cosE, k } = cameraOf(projection);
+    return [origin[0] + (x * sinA - y * cosA) * k, origin[1] + ((x * cosA + y * sinA) * sinE - z * cosE) * k];
+}
+function towardViewer(projection) {
+    const { sinA, cosA } = cameraOf(projection);
+    return [cosA, sinA];
+}
+function depthOf([x, y, z], projection) {
+    const { sinA, cosA, sinE, cosE } = cameraOf(projection);
+    return (x * cosA + y * sinA) * cosE + z * sinE;
+}
+const tenth = (value) => {
+    const text = (Math.round(value * 10) / 10).toFixed(1).replace(/\.0$/, "");
+    return text === "-0" ? "0" : text;
+};
+function pathOf(points, closed = false) {
+    if (!points.length)
+        return "";
+    return points.map(([x, y], at) => `${at ? "L" : "M"}${tenth(x)} ${tenth(y)}`).join("") + (closed ? "Z" : "");
+}
+const joinPaths = (paths) => paths.filter(Boolean).join("");
+function roundedPlan({ x, y, w, d, r }, steps = 8) {
+    const radius = Math.max(0, Math.min(r, w / 2, d / 2));
+    const corners = [
+        [x + w - radius, y + radius, -90],
+        [x + w - radius, y + d - radius, 0],
+        [x + radius, y + d - radius, 90],
+        [x + radius, y + radius, 180],
+    ];
+    const out = [];
+    for (const [cx, cy, start] of corners) {
+        const count = radius > 0 ? steps : 0;
+        for (let step = 0; step <= count; step++) {
+            const angle = (start + (count ? (90 * step) / count : 45)) * RADIANS;
+            out.push([cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)]);
+        }
+    }
+    return out;
+}
+function signedArea(points) {
+    let area = 0;
+    for (let index = 0; index < points.length; index++) {
+        const [ax, ay] = points[index];
+        const [bx, by] = points[(index + 1) % points.length];
+        area += ax * by - bx * ay;
+    }
+    return area / 2;
+}
+const oriented = (points) => (signedArea(points) < 0 ? [...points].reverse() : points);
+function convexHull(points) {
+    const sorted = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    if (sorted.length < 3)
+        return sorted;
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lower = [];
+    for (const point of sorted) {
+        while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], point) <= 0)
+            lower.pop();
+        lower.push(point);
+    }
+    const upper = [];
+    for (let index = sorted.length - 1; index >= 0; index--) {
+        const point = sorted[index];
+        while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], point) <= 0)
+            upper.pop();
+        upper.push(point);
+    }
+    return [...lower.slice(0, -1), ...upper.slice(0, -1)];
+}
+function runsOf(flags, want) {
+    const count = flags.length;
+    const runs = [];
+    const start = flags.findIndex((flag, index) => flag !== flags[(index + count - 1) % count]);
+    if (start < 0)
+        return flags[0] === want ? [Array.from({ length: count + 1 }, (_, index) => index % count)] : [];
+    let run = null;
+    for (let step = 0; step < count; step++) {
+        const index = (start + step) % count;
+        if (flags[index] === want) {
+            if (!run)
+                run = [index];
+            run.push((index + 1) % count);
+        }
+        else if (run) {
+            runs.push(run);
+            run = null;
+        }
+    }
+    if (run)
+        runs.push(run);
+    return runs;
+}
+function extrude(ring, z, height, projection, options = {}) {
+    const convex = options.convex ?? true;
+    const count = ring.length;
+    const counter = signedArea(ring) > 0;
+    const [vx, vy] = towardViewer(projection);
+    const { sinA, cosA } = cameraOf(projection);
+    const normals = ring.map(([ax, ay], index) => {
+        const [bx, by] = ring[(index + 1) % count];
+        const dx = bx - ax;
+        const dy = by - ay;
+        const length = Math.hypot(dx, dy) || 1;
+        return (counter ? [dy / length, -dx / length] : [-dy / length, dx / length]);
+    });
+    const facing = normals.map(([nx, ny]) => nx * vx + ny * vy > 1e-9);
+    const top = ring.map(([x, y]) => iso([x, y, z + height], projection));
+    const bottom = ring.map(([x, y]) => iso([x, y, z], projection));
+    const outline = [];
+    const crease = [];
+    for (const run of runsOf(facing, false))
+        outline.push(pathOf(run.map((index) => top[index])));
+    for (const run of runsOf(facing, true)) {
+        crease.push(pathOf(run.map((index) => top[index])));
+        if (height > 0)
+            outline.push(pathOf(run.map((index) => bottom[index])));
+    }
+    if (height > 0) {
+        for (let index = 0; index < count; index++) {
+            if (facing[(index + count - 1) % count] !== facing[index])
+                outline.push(pathOf([top[index], bottom[index]]));
+        }
+    }
+    let fill;
+    if (convex) {
+        fill = pathOf(convexHull([...top, ...bottom]), true);
+    }
+    else {
+        const parts = [pathOf(oriented(top), true), pathOf(oriented(bottom), true)];
+        for (let index = 0; index < count; index++) {
+            if (!facing[index])
+                continue;
+            const next = (index + 1) % count;
+            parts.push(pathOf(oriented([top[index], top[next], bottom[next], bottom[index]]), true));
+        }
+        fill = parts.join("");
+    }
+    const buckets = Array.from({ length: SHADES }, () => []);
+    if (height > 0) {
+        const [lx, ly] = [-sinA, cosA];
+        for (let index = 0; index < count; index++) {
+            if (!facing[index])
+                continue;
+            const [nx, ny] = normals[index];
+            const lit = (nx * lx + ny * ly + 1) / 2;
+            const shade = Math.min(SHADES - 1, Math.max(0, Math.floor(lit * SHADES)));
+            const next = (index + 1) % count;
+            buckets[shade].push(pathOf(oriented([top[index], top[next], bottom[next], bottom[index]]), true));
+        }
+    }
+    let bevel;
+    if (options.bevel && options.bevel > 0) {
+        const by = options.bevel;
+        const inset = ring.map(([x, y], index) => {
+            const [ax, ay] = normals[(index + count - 1) % count];
+            const [bx, by2] = normals[index];
+            const mx = ax + bx;
+            const my = ay + by2;
+            const length = Math.hypot(mx, my) || 1;
+            return [x - (mx / length) * by, y - (my / length) * by];
+        });
+        const insetTop = inset.map(([x, y]) => iso([x, y, z + height], projection));
+        bevel = runsOf(facing, true)
+            .map((run) => pathOf([top[run[0]], ...run.slice(1, -1).map((index) => insetTop[index]), top[run[run.length - 1]]]))
+            .join("");
+    }
+    return {
+        fill,
+        outline: outline.join(""),
+        crease: crease.join(""),
+        top: pathOf(oriented(top), true),
+        shades: buckets.map((paths) => paths.join("")),
+        bevel,
+    };
+}
+const ringOf = (plan, steps = 8) => roundedPlan(plan, steps);
+function slabOf(plan, z, height, projection, steps = 8, bevel = 0) {
+    return extrude(ringOf(plan, steps), z, height, projection, { convex: true, bevel });
+}
+function circleRing(cx, cy, radius, steps = 40) {
+    return Array.from({ length: steps }, (_, step) => {
+        const angle = (step / steps) * Math.PI * 2;
+        return [cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)];
+    });
+}
+function cylinder(cx, cy, radius, z, height, projection, steps = 32, bevel = 0) {
+    return extrude(circleRing(cx, cy, radius, steps), z, height, projection, { convex: true, bevel });
+}
+const insetPlan = ({ x, y, w, d, r }, by) => ({ x: x + by, y: y + by, w: w - by * 2, d: d - by * 2, r: Math.max(0, r - by) });
+function onTop(points, z, projection, closed = false) {
+    return pathOf(points.map(([x, y]) => iso([x, y, z], projection)), closed);
+}
+const planOutline = (plan, z, projection, steps = 8) => onTop(ringOf(plan, steps), z, projection, true);
+const lineOnTop = (from, to, z, projection) => onTop([from, to], z, projection);
+const segment = (from, to, projection) => pathOf([iso(from, projection), iso(to, projection)]);
+const rise = (at, from, to, projection) => segment([at[0], at[1], from], [at[0], at[1], to], projection);
+const ring = (cx, cy, radius, z, projection, steps = 40) => onTop(circleRing(cx, cy, radius, steps), z, projection, true);
+const pointsAt = (points, projection) => points.map((point) => iso(point, projection));
+function dotGrid(x, y, columns, rows, gap, z, projection) {
+    const dots = [];
+    for (let row = 0; row < rows; row++) {
+        for (let column = 0; column < columns; column++)
+            dots.push(iso([x + column * gap, y + row * gap, z], projection));
+    }
+    return dots;
+}
+function corners({ x, y, w, d }, inset = 0) {
+    return [
+        [x + inset, y + inset],
+        [x + w - inset, y + inset],
+        [x + inset, y + d - inset],
+        [x + w - inset, y + d - inset],
+    ];
+}
+function boxCorners({ x, y, w, d }, z0, z1) {
+    const out = [];
+    for (const px of [x, x + w])
+        for (const py of [y, y + d])
+            for (const z of [z0, z1])
+                out.push([px, py, z]);
+    return out;
+}
+function knurl(cx, cy, radius, z0, z1, count, projection, inset = 0.4) {
+    const [vx, vy] = towardViewer(projection);
+    const lines = [];
+    for (let index = 0; index < count; index++) {
+        const angle = (index / count) * Math.PI * 2;
+        const nx = Math.cos(angle);
+        const ny = Math.sin(angle);
+        if (nx * vx + ny * vy < 0.15)
+            continue;
+        lines.push(segment([cx + radius * nx, cy + radius * ny, z0 + inset], [cx + radius * nx, cy + radius * ny, z1 - inset], projection));
+    }
+    return lines.join("");
+}
+function sideArc(cx, cy, radius, z, projection, steps = 24) {
+    const [vx, vy] = towardViewer(projection);
+    const facing = Math.atan2(vy, vx);
+    const points = [];
+    for (let step = 0; step <= steps; step++) {
+        const angle = facing - Math.PI / 2 + (step / steps) * Math.PI;
+        points.push(iso([cx + radius * Math.cos(angle), cy + radius * Math.sin(angle), z], projection));
+    }
+    return pathOf(points);
+}
+function ringSeam(ring, z, projection) {
+    const count = ring.length;
+    const counter = signedArea(ring) > 0;
+    const [vx, vy] = towardViewer(projection);
+    const facing = ring.map(([ax, ay], index) => {
+        const [bx, by] = ring[(index + 1) % count];
+        const dx = bx - ax;
+        const dy = by - ay;
+        const [nx, ny] = counter ? [dy, -dx] : [-dy, dx];
+        return nx * vx + ny * vy > 1e-9;
+    });
+    return runsOf(facing, true).map((run) => pathOf(run.map((index) => iso([ring[index][0], ring[index][1], z], projection)))).join("");
+}
+const sideSeam = (plan, z, projection, steps = 8) => ringSeam(ringOf(plan, steps), z, projection);
+function sideRing(center, radius, axis, projection, steps = 20) {
+    const [px, py, pz] = center;
+    const points = [];
+    for (let step = 0; step < steps; step++) {
+        const angle = (step / steps) * Math.PI * 2;
+        const u = radius * Math.cos(angle);
+        const v = radius * Math.sin(angle);
+        points.push(iso(axis === "x" ? [px, py + u, pz + v] : [px + u, py, pz + v], projection));
+    }
+    return pathOf(points, true);
+}
+function coil(from, to, center, radius, turns, axis, projection, perTurn = 16) {
+    const count = Math.max(1, Math.round(turns * perTurn));
+    const back = [];
+    const front = [];
+    let run = [];
+    let near = null;
+    for (let index = 0; index <= count; index++) {
+        const share = index / count;
+        const angle = share * turns * Math.PI * 2;
+        const u = radius * Math.cos(angle);
+        const v = radius * Math.sin(angle);
+        const along = from + (to - from) * share;
+        const point = axis === "x" ? [along, center[0] + u, center[1] + v] : [center[0] + u, along, center[1] + v];
+        const normal = axis === "x" ? [0, Math.cos(angle), Math.sin(angle)] : [Math.cos(angle), 0, Math.sin(angle)];
+        const facing = depthOf(normal, projection) > 0;
+        const flat = iso(point, projection);
+        if (near === null)
+            near = facing;
+        if (facing !== near) {
+            run.push(flat);
+            (near ? front : back).push(pathOf(run));
+            run = [flat];
+            near = facing;
+            continue;
+        }
+        run.push(flat);
+    }
+    if (run.length > 1)
+        (near ? front : back).push(pathOf(run));
+    return { back: back.join(""), front: front.join("") };
+}
+function topTicks(from, to, step, every, edge, z, lengths, projection, axis = "x") {
+    const minor = [];
+    const major = [];
+    const first = Math.ceil(from / step) * step;
+    for (let at = first, index = Math.round(first / step); at <= to + 1e-9; at += step, index++) {
+        const big = index % every === 0;
+        const length = big ? lengths[1] : lengths[0];
+        const a = axis === "x" ? [at, edge] : [edge, at];
+        const b = axis === "x" ? [at, edge + length] : [edge + length, at];
+        (big ? major : minor).push(lineOnTop(a, b, z, projection));
+    }
+    return { minor: minor.join(""), major: major.join("") };
+}
+function sideTicks(from, to, step, every, face, top, lengths, projection, axis = "x") {
+    const minor = [];
+    const major = [];
+    const first = Math.ceil(from / step) * step;
+    for (let at = first, index = Math.round(first / step); at <= to + 1e-9; at += step, index++) {
+        const big = index % every === 0;
+        const length = big ? lengths[1] : lengths[0];
+        const a = axis === "x" ? [at, face, top] : [face, at, top];
+        const b = axis === "x" ? [at, face, top - length] : [face, at, top - length];
+        (big ? major : minor).push(segment(a, b, projection));
+    }
+    return { minor: minor.join(""), major: major.join("") };
+}
+function radialTicks(cx, cy, radius, count, every, z, lengths, projection, from = 0, span = Math.PI * 2) {
+    const minor = [];
+    const major = [];
+    const closed = Math.abs(span - Math.PI * 2) < 1e-9;
+    const steps = closed ? count : count + 1;
+    for (let index = 0; index < steps; index++) {
+        const angle = from + (index / count) * span;
+        const big = index % every === 0;
+        const inner = radius - (big ? lengths[1] : lengths[0]);
+        const sx = Math.sin(angle);
+        const sy = -Math.cos(angle);
+        (big ? major : minor).push(lineOnTop([cx + sx * inner, cy + sy * inner], [cx + sx * radius, cy + sy * radius], z, projection));
+    }
+    return { minor: minor.join(""), major: major.join("") };
+}
+const haloOf = (plan, z, height, projection) => slabOf(plan, z, height, projection).fill;
+function axisVector(projection, [dx, dy, dz]) {
+    const origin = iso([0, 0, 0], projection);
+    const moved = iso([dx, dy, dz], projection);
+    return [moved[0] - origin[0], moved[1] - origin[1]];
+}
+const fine = (value) => Math.round(value * 100) / 100;
+function translateAlong(projection, by) {
+    const [x, y] = axisVector(projection, by);
+    return `translate(${fine(x)} ${fine(y)})`;
+}
+const thousandth = (value) => Math.round(value * 1000) / 1000;
+function axesAt(at, z, projection) {
+    const origin = iso([at[0], at[1], z], projection);
+    const along = (point) => {
+        const [px, py] = iso(point, projection);
+        return [px - origin[0], py - origin[1]];
+    };
+    return { origin, x: along([at[0] + 1, at[1], z]), y: along([at[0], at[1] + 1, z]), z: along([at[0], at[1], z + 1]) };
+}
+const matrixOf = (u, v, origin) => `matrix(${thousandth(u[0])} ${thousandth(u[1])} ${thousandth(v[0])} ${thousandth(v[1])} ${thousandth(origin[0])} ${thousandth(origin[1])})`;
+function holdStill(element, [dx, dy]) {
+    const text = dx || dy ? `translate(${-dx} ${-dy})` : "";
+    element.querySelectorAll("[data-hold]").forEach((node) => (text ? node.setAttribute("transform", text) : node.removeAttribute("transform")));
+}
+function topMatrix(at, z, projection, along = "x") {
+    const { origin, x, y } = axesAt(at, z, projection);
+    return along === "x" ? matrixOf(x, y, origin) : matrixOf([-y[0], -y[1]], x, origin);
+}
+function sideMatrix(at, z, projection, face) {
+    const { origin, x, y, z: up } = axesAt(at, z, projection);
+    const down = [-up[0], -up[1]];
+    return face === "left" ? matrixOf(x, down, origin) : matrixOf([-y[0], -y[1]], down, origin);
+}
+function screenRise(height, projection) {
+    const { cosE, k } = cameraOf(projection);
+    return height * cosE * k;
+}
+function fitProjection(points, width, height, { pad = 24, headroom = 0, azimuth = AZIMUTH, elevation = ELEVATION } = {}) {
+    const unit = { origin: [0, 0], scale: 1, azimuth, elevation };
+    const flat = points.map((point) => iso(point, unit));
+    const xs = flat.map(([x]) => x);
+    const ys = flat.map(([, y]) => y);
+    const left = Math.min(...xs);
+    const right = Math.max(...xs);
+    const up = Math.min(...ys);
+    const down = Math.max(...ys);
+    const scale = Math.min((width - pad * 2) / (right - left), (height - pad * 2 - headroom) / (down - up));
+    return {
+        origin: [width / 2 - ((left + right) / 2) * scale, headroom + (height - headroom) / 2 - ((up + down) / 2) * scale],
+        scale,
+        azimuth,
+        elevation,
+    };
+}
+const escape = (text) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const attrs = (pairs) => Object.entries(pairs)
+    .filter(([, value]) => value !== undefined && value !== false)
+    .map(([key, value]) => ` ${key}="${escape(String(value))}"`)
+    .join("");
+function solidSvg(paths, { tone = "hi", crease = "faint", halo = false, lit = false, flat = false, className, inner = "" } = {}) {
+    const parts = [];
+    if (halo)
+        parts.push(`<path class="iso-halo" d="${paths.fill}"/>`);
+    parts.push(`<path class="iso-fill" d="${paths.fill}"/>`);
+    if (!flat) {
+        paths.shades.forEach((d, shade) => {
+            if (d)
+                parts.push(`<path class="iso-shade" data-shade="${shade}" d="${d}"/>`);
+        });
+        parts.push(`<path class="iso-top" d="${paths.top}"/>`);
+    }
+    if (crease !== "none" && paths.crease)
+        parts.push(`<path class="iso-line iso-crease" data-tone="${crease}" d="${paths.crease}"/>`);
+    if (crease !== "none" && paths.bevel)
+        parts.push(`<path class="iso-line iso-bevel" data-tone="${crease}" d="${paths.bevel}"/>`);
+    if (inner)
+        parts.push(inner);
+    parts.push(`<path class="iso-line iso-edge" data-tone="${tone}" d="${paths.outline}"/>`);
+    return `<g${attrs({ class: className ? `iso-solid ${className}` : "iso-solid", "data-lit": lit ? "" : undefined, "data-seamless": paths.seamless ? "" : undefined })}>${parts.join("")}</g>`;
+}
+function lineSvg(d, { tone = "lo", dotted = false, dashed = false, flow = false, className, free } = {}) {
+    if (!d)
+        return "";
+    return `<path${attrs({
+        class: className ? `iso-line ${className}` : "iso-line",
+        "data-tone": tone,
+        "data-free": free === true ? "" : free || undefined,
+        "data-dotted": dotted ? "" : undefined,
+        "data-dashed": dashed ? "" : undefined,
+        "data-flow": flow ? "" : undefined,
+        d,
+    })}/>`;
+}
+function dotsSvg(points, { size = 0.5, tone = "mid", pulse = false } = {}) {
+    const dots = points
+        .map(([x, y, alpha], index) => `<circle cx="${tenth(x)}" cy="${tenth(y)}" r="${size}"${alpha !== undefined && alpha < 1 ? ` fill-opacity="${Math.max(0, alpha).toFixed(2)}"` : ""}${pulse ? ` data-pulse="" style="--pulse-at:${(index * 137) % 1600}ms"` : ""}/>`)
+        .join("");
+    return `<g class="iso-dots" data-tone="${tone}">${dots}</g>`;
+}
+function fadedSvg(list, style = {}) {
+    const groups = new Map();
+    for (const entry of list) {
+        const [d, alpha] = Array.isArray(entry) ? entry : [entry.d, entry.alpha];
+        if (!d || !(alpha > 0.02))
+            continue;
+        const level = Math.min(1, Math.round(alpha * 20) / 20);
+        groups.set(level, (groups.get(level) ?? "") + d);
+    }
+    return [...groups].map(([alpha, d]) => (alpha >= 1 ? lineSvg(d, style) : `<g opacity="${alpha.toFixed(2)}">${lineSvg(d, style)}</g>`)).join("");
+}
+function fadeLineSvg(points, { fade = [0, 0], tone = "lo", className, stops = 6 } = {}) {
+    if (points.length < 2)
+        return "";
+    const ease = (t) => t * t * (3 - 2 * t);
+    const hashOf = (text) => {
+        let hash = 2166136261;
+        for (let index = 0; index < text.length; index++)
+            hash = Math.imul(hash ^ text.charCodeAt(index), 16777619);
+        return (hash >>> 0).toString(36);
+    };
+    const lengths = [0];
+    for (let index = 1; index < points.length; index++)
+        lengths.push(lengths[index - 1] + Math.hypot(points[index][0] - points[index - 1][0], points[index][1] - points[index - 1][1]));
+    const at = (length) => {
+        let index = 1;
+        while (index < points.length - 1 && lengths[index] < length)
+            index++;
+        const span = lengths[index] - lengths[index - 1] || 1;
+        const t = Math.max(0, Math.min(1, (length - lengths[index - 1]) / span));
+        return [points[index - 1][0] + (points[index][0] - points[index - 1][0]) * t, points[index - 1][1] + (points[index][1] - points[index - 1][1]) * t];
+    };
+    const pieceOf = (from, to) => [at(from), ...points.filter((_, index) => lengths[index] > from + 1e-6 && lengths[index] < to - 1e-6), at(to)];
+    const total = lengths[lengths.length - 1];
+    if (total < 1e-6)
+        return "";
+    let [start, end] = Array.isArray(fade) ? fade : [fade, fade];
+    if (start + end > total) {
+        const share = total / (start + end);
+        start *= share;
+        end *= share;
+    }
+    const paint = `var(--anatomy-${tone})`;
+    const ramp = (piece, rising) => {
+        const d = pathOf(piece);
+        const [x1, y1] = piece[0];
+        const [x2, y2] = piece[piece.length - 1];
+        const id = `iso-fade-${hashOf(`${d}|${tone}|${rising}`)}`;
+        const marks = Array.from({ length: stops + 1 }, (_, index) => {
+            const t = index / stops;
+            const alpha = ease(rising ? t : 1 - t);
+            return `<stop offset="${t.toFixed(3)}" stop-opacity="${alpha.toFixed(3)}" style="stop-color:${paint}"/>`;
+        }).join("");
+        const gradient = `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${tenth(x1)}" y1="${tenth(y1)}" x2="${tenth(x2)}" y2="${tenth(y2)}">${marks}</linearGradient>`;
+        return `<defs>${gradient}</defs><path${attrs({ class: className ? `iso-line ${className}` : "iso-line", "data-tone": tone, "data-free": rising ? "start" : "end", d, style: `stroke:url(#${id})` })}/>`;
+    };
+    const parts = [];
+    if (start > 0.05)
+        parts.push(ramp(pieceOf(0, start), true));
+    if (total - end - start > 0.05)
+        parts.push(lineSvg(pathOf(pieceOf(start, total - end)), { tone, className }));
+    if (end > 0.05)
+        parts.push(ramp(pieceOf(total - end, total), false));
+    return `<g class="iso-fade">${parts.join("")}</g>`;
+}
+function wireSvg(from, to, { via = [], tone = "lo", dotted = false, dashed = false, flow = false, ends = "both", size = 1.2 } = {}) {
+    const d = pathOf([from, ...via, to]);
+    const end = ([x, y]) => `<circle class="iso-wire-end" cx="${tenth(x)}" cy="${tenth(y)}" r="${size}"/>`;
+    return `<g class="iso-wire" data-tone="${tone}">${lineSvg(d, { tone, dotted, dashed, flow })}${ends === "both" || ends === "from" ? end(from) : ""}${ends === "both" || ends === "to" ? end(to) : ""}</g>`;
+}
+function faceTextSvg(transform, text, { size = 3, tone = "mid", anchor = "start" } = {}) {
+    return `<text class="iso-face-text" data-tone="${tone}" transform="${transform}" font-size="${size}" text-anchor="${anchor}">${escape(text)}</text>`;
+}
+function groupSvg(children, extra = {}) {
+    return `<g${attrs(extra)}>${Array.isArray(children) ? children.join("") : children}</g>`;
+}
+function figureSvg({ width, height, label, body, standalone = false, className }) {
+    const style = standalone ? `<style>${ISO_CSS}</style>` : "";
+    return `<svg${attrs({
+        xmlns: "http://www.w3.org/2000/svg",
+        class: `iso-svg${standalone ? " iso" : ""}${className ? ` ${className}` : ""}`,
+        "data-theme": standalone || undefined,
+        viewBox: `0 0 ${width} ${height}`,
+        role: "img",
+        "aria-label": label,
+    })}>${style}${Array.isArray(body) ? body.join("") : body}</svg>`;
+}
+function swatchSvg(mark) {
+    if (mark === "raised" || mark === "flat" || mark === "lit") {
+        const body = mark === "flat" ? "M2 6.5 8 3.5 14 6.5 8 9.5Z" : "M2 4.5 8 1.5 14 4.5 14 6 8 9 2 6Z";
+        const crease = mark === "flat" ? "" : `<path class="iso-swatch-crease" d="M2 4.5 8 7.5 14 4.5"/>`;
+        return `<svg class="iso-swatch" data-mark="${mark}" viewBox="0 0 16 10" aria-hidden="true"><path d="${body}"/>${crease}</svg>`;
+    }
+    return `<svg class="iso-swatch" data-mark="${mark}" viewBox="0 0 16 10" aria-hidden="true"><path d="M1.5 5h13"/></svg>`;
+}
+function plateHtml({ fig, title, hint, readout = "", keys = [], caption, body }) {
+    const corner = (name, text, extra = "") => `<span class="iso-plate-corner" data-corner="${name}"${extra}>${escape(text)}</span>`;
+    const legend = keys.length || caption
+        ? `<figcaption class="iso-legend">${keys.length ? `<span class="iso-keys">${keys.map((key) => `<span class="iso-key">${swatchSvg(key.mark)}${escape(key.label)}</span>`).join("")}</span>` : ""}${caption ? `<span class="iso-caption">${escape(caption)}</span>` : ""}</figcaption>`
+        : "";
+    return `<figure class="iso-figure"><div class="iso-plate"><div class="iso-plate-corners" aria-hidden="true">${corner("fig", fig)}${title ? corner("title", title) : ""}${hint ? corner("hint", hint) : ""}${corner("readout", readout, " data-readout")}</div>${body}</div>${legend}</figure>`;
+}
+function pageHtml({ title, theme = "dark", body, script = "", width = 650 }) {
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(title)}</title><style>${ISO_CSS}${PAGE_CSS.replace("__WIDTH__", String(width))}</style></head><body class="iso" data-theme="${theme}"><main class="iso-page">${body}</main>${script ? `<script type="module">${script.replace(/<\/(script)/gi, "<\\/$1")}<\/script>` : ""}</body></html>`;
+}
+const PAGE_CSS = `
+*{box-sizing:border-box}
+html{color-scheme:dark}
+body[data-theme="light"]{color-scheme:light}
+body{margin:0;background:var(--anatomy-page);color:var(--anatomy-text);font:14px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.iso-page{width:min(__WIDTH__px,100% - 32px);margin:64px auto 96px}
+`;
+const ISO_CSS = `
+.iso{
+  --anatomy-page:#0b0b0b;--anatomy-card:#131313;--anatomy-text:#a3a3a3;--anatomy-strong:#e6e6e6;--anatomy-muted:#6e6e6e;
+  --anatomy-paper:#131313;--anatomy-face:#1b1b1b;--anatomy-top:#1c1c1c;
+  --anatomy-shade-0:#0f0f0f;--anatomy-shade-1:#121212;--anatomy-shade-2:#151515;--anatomy-shade-3:#181818;
+  --anatomy-lit-top:#262626;--anatomy-lit-shade:#1d1d1d;
+  --anatomy-hi:#d4d4d4;--anatomy-mid:#6a6a6a;--anatomy-lo:#3e3e3e;--anatomy-faint:#2a2a2a;--anatomy-lit:#ffffff;
+  --anatomy-halo:#050505;--anatomy-halo-opacity:.9;--anatomy-dot:#e6e6e6;
+  --anatomy-red:#ff6b6b;--anatomy-green:#6be0a0;--anatomy-blue:#6b9bff;
+  --anatomy-weight:.6px;--anatomy-ease:cubic-bezier(.32,.72,0,1);
+  --anatomy-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff0a,inset 0 0 0 1px #ffffff06,0 0 0 1px #00000026,0 1px 1px -.5px #00000014,0 3px 3px -1.5px #00000014,0 6px 6px -3px #00000014,0 12px 12px -6px #00000014;
+}
+.iso[data-theme="light"]{
+  --anatomy-page:#f2f2ef;--anatomy-card:#fbfbfa;--anatomy-text:#57575a;--anatomy-strong:#18181a;--anatomy-muted:#8c8c90;
+  --anatomy-paper:#fbfbfa;--anatomy-face:#ffffff;--anatomy-top:#ffffff;
+  --anatomy-shade-0:#dcdcd9;--anatomy-shade-1:#e5e5e2;--anatomy-shade-2:#ededea;--anatomy-shade-3:#f4f4f1;
+  --anatomy-lit-top:#ffffff;--anatomy-lit-shade:#eeeeeb;
+  --anatomy-hi:#26262a;--anatomy-mid:#8a8a8f;--anatomy-lo:#b4b4b8;--anatomy-faint:#d4d4d6;--anatomy-lit:#000000;
+  --anatomy-halo:#8a8a80;--anatomy-halo-opacity:.32;--anatomy-dot:#3a3a3e;
+  --anatomy-red:#e5484d;--anatomy-green:#30a46c;--anatomy-blue:#3e63dd;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff,0 0 0 1px #0000000f,0 1px 1px -.5px #0000000a,0 3px 3px -1.5px #0000000a,0 6px 6px -3px #0000000a,0 12px 12px -6px #0000000a;
+}
+.iso-svg{display:block;width:100%;height:auto;overflow:visible}
+.iso-svg path,.iso-svg circle{vector-effect:non-scaling-stroke}
+.iso-fill{fill:var(--anatomy-paper);stroke:none}
+.iso-solid[data-lit]>.iso-fill{fill:var(--anatomy-face)}
+.iso-shade,.iso-top{stroke:none}
+.iso-shade[data-shade="0"]{fill:var(--anatomy-shade-0)}
+.iso-shade[data-shade="1"]{fill:var(--anatomy-shade-1)}
+.iso-shade[data-shade="2"]{fill:var(--anatomy-shade-2)}
+.iso-shade[data-shade="3"]{fill:var(--anatomy-shade-3)}
+.iso-top{fill:var(--anatomy-top)}
+.iso-solid[data-lit]>.iso-top{fill:var(--anatomy-lit-top)}
+.iso-solid[data-lit]>.iso-shade{fill:var(--anatomy-lit-shade)}
+.iso-solid[data-seamless]>.iso-shade,.iso-solid[data-seamless]>.iso-top{stroke-width:.4;stroke-linejoin:round}
+.iso-solid[data-seamless]>.iso-shade[data-shade="0"]{stroke:var(--anatomy-shade-0)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="1"]{stroke:var(--anatomy-shade-1)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="2"]{stroke:var(--anatomy-shade-2)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="3"]{stroke:var(--anatomy-shade-3)}
+.iso-solid[data-seamless]>.iso-top{stroke:var(--anatomy-top)}
+.iso-solid[data-seamless][data-lit]>.iso-top{stroke:var(--anatomy-lit-top)}
+.iso-solid[data-seamless][data-lit]>.iso-shade{stroke:var(--anatomy-lit-shade)}
+.iso-solid[data-lit]>.iso-edge{stroke:var(--anatomy-lit)}
+.iso-halo{fill:var(--anatomy-halo);stroke:none;filter:blur(9px);opacity:var(--anatomy-halo-opacity);transform:translateY(3px)}
+.iso-line{fill:none;stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight);stroke-linecap:round;stroke-linejoin:round}
+.iso-line[data-tone="hi"]{stroke:var(--anatomy-hi)}
+.iso-line[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.iso-line[data-tone="lo"]{stroke:var(--anatomy-lo)}
+.iso-line[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.iso-line[data-tone="lit"]{stroke:var(--anatomy-lit)}
+.iso-line[data-tone="red"]{stroke:var(--anatomy-red)}
+.iso-line[data-tone="green"]{stroke:var(--anatomy-green)}
+.iso-line[data-tone="blue"]{stroke:var(--anatomy-blue)}
+.iso-line[data-dotted]{stroke-dasharray:.01 3.5;stroke-width:1}
+.iso-line[data-dashed]{stroke-dasharray:3 3}
+.iso-line[data-flow]{stroke-dasharray:2 6}
+.iso-wire-end{fill:var(--anatomy-paper);stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight)}
+.iso-wire[data-tone="hi"] .iso-wire-end{stroke:var(--anatomy-hi)}
+.iso-wire[data-tone="mid"] .iso-wire-end{stroke:var(--anatomy-mid)}
+.iso-wire[data-tone="faint"] .iso-wire-end{stroke:var(--anatomy-faint)}
+.iso-wire[data-tone="lit"] .iso-wire-end{stroke:var(--anatomy-lit)}
+.iso-dots circle{fill:var(--anatomy-dot);stroke:none;opacity:.32}
+.iso-dots[data-tone="hi"] circle{opacity:.85}
+.iso-dots[data-tone="mid"] circle{opacity:.45}
+.iso-dots[data-tone="lo"] circle{opacity:.22}
+.iso-dots[data-tone="faint"] circle{opacity:.12}
+.iso-face-text{fill:var(--anatomy-mid);font-family:var(--anatomy-mono);letter-spacing:.04em}
+.iso-face-text[data-tone="hi"]{fill:var(--anatomy-hi)}
+.iso-face-text[data-tone="lo"]{fill:var(--anatomy-lo)}
+.iso-face-text[data-tone="faint"]{fill:var(--anatomy-faint)}
+.tb-body{fill:var(--anatomy-shade-2);stroke:none}
+.tb-shine{fill:var(--anatomy-top);stroke:none}
+.tb-shade{fill:var(--anatomy-shade-0);stroke:none}
+.tb-ring{fill:none;stroke:var(--anatomy-lo);stroke-width:.45;stroke-linecap:butt;stroke-linejoin:round}
+.tb-ring[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.tb-ring[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.tb-ring[data-tone="hi"]{stroke:var(--anatomy-hi)}
+@keyframes iso-flow{to{stroke-dashoffset:-32}}
+@keyframes iso-pulse{0%,100%{opacity:.18}12%{opacity:1}40%{opacity:.18}}
+.iso-line[data-flow]{animation:iso-flow 1600ms linear infinite}
+.iso-dots circle[data-pulse]{animation:iso-pulse 1600ms steps(1,end) infinite;animation-delay:var(--pulse-at,0ms)}
+.iso-figure{margin:32px 0 36px}
+.iso-plate{position:relative;padding:52px 24px;border-radius:0;background:var(--anatomy-card);box-shadow:0 0 0 1px var(--anatomy-mid);--anatomy-paper:var(--anatomy-card)}
+.iso-plate-corners{position:absolute;inset:18px 20px;pointer-events:none}
+.iso-plate-corner{position:absolute;color:var(--anatomy-muted);font-family:var(--anatomy-mono);font-size:10.5px;line-height:1;letter-spacing:.04em;white-space:nowrap}
+.iso-plate-corner[data-corner="fig"]{top:0;left:0;color:var(--anatomy-text)}
+.iso-plate-corner[data-corner="title"]{top:0;right:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="hint"]{bottom:0;left:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="readout"]{right:0;bottom:0;color:var(--anatomy-text);font-variant-numeric:tabular-nums}
+.iso-plate .iso-svg{margin:0 auto}
+.iso-legend{display:grid;gap:8px;margin-top:12px;color:var(--anatomy-muted);font-size:13px;line-height:1.55}
+.iso-keys{display:flex;flex-wrap:wrap;gap:6px 18px}
+.iso-key{display:inline-flex;align-items:center;gap:7px}
+.iso-swatch{width:16px;height:10px;flex:none;overflow:visible}
+.iso-swatch path{fill:none;stroke:var(--anatomy-hi);stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+.iso-swatch[data-mark="raised"] path,.iso-swatch[data-mark="flat"] path{stroke:var(--anatomy-mid)}
+.iso-swatch[data-mark="lit"] path{stroke:var(--anatomy-lit)}
+.iso-swatch[data-mark="dim"] path{stroke:var(--anatomy-lo)}
+.iso-swatch[data-mark="dotted"] path{stroke-dasharray:.01 3;stroke-width:1.4}
+.iso-swatch[data-mark="dashed"] path{stroke-dasharray:3 2.5}
+.iso-swatch[data-mark="red"] path{stroke:var(--anatomy-red)}
+.iso-swatch[data-mark="green"] path{stroke:var(--anatomy-green)}
+.iso-swatch[data-mark="blue"] path{stroke:var(--anatomy-blue)}
+.iso-swatch-crease{stroke:var(--anatomy-lo)!important}
+@media (max-width:560px){.iso-plate{padding:48px 12px 70px}.iso-plate-corner[data-corner="hint"]{bottom:18px}}
+@media (prefers-reduced-motion:reduce){.iso-line[data-flow],.iso-dots circle[data-pulse]{animation:none}}
+`;
+
+// Tiny solid renderer: prisms (a 2D ring pushed out along one axis), shaded by face normal, painter-sorted.
+// Shared by the build (static parts) and the page (anything that moves or changes colour).
+function solids(project, depthOf) {
+  const o = depthOf([0, 0, 0]);
+  const VIEW = [depthOf([1, 0, 0]) - o, depthOf([0, 1, 0]) - o, depthOf([0, 0, 1]) - o];
+  const LIGHT = (() => { const v = [0.35, 0.7, 1]; const n = Math.hypot(...v); return v.map((a) => a / n); })();
+  const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const fx = (v) => (Math.round(v * 10) / 10).toString();
+  // ring in its own 2D plane, axis is the direction it is pushed out along
+  const toXYZ = (axis, u, v, w) => (axis === "z" ? [u, v, w] : axis === "y" ? [u, w, v] : [w, u, v]);
+  function prism(ring, axis, w0, w1, col, opts = {}) {
+    return { ring, axis, w0, w1, col, ...opts };
+  }
+  const box = (x0, x1, y0, y1, z0, z1, col, opts) => prism([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], "z", z0, z1, col, opts);
+  const circle = (cu, cv, r, n = 24, a0 = 0) => Array.from({ length: n }, (_, i) => [cu + r * Math.cos(a0 + (i / n) * Math.PI * 2), cv + r * Math.sin(a0 + (i / n) * Math.PI * 2)]);
+  const cyl = (cx, cy, r, z0, z1, col, n = 24, opts) => prism(circle(cx, cy, r, n), "z", z0, z1, col, opts);
+  function faces(part, xf) {
+    const n = part.ring.length;
+    const A = part.ring.map(([u, v]) => xf(toXYZ(part.axis, u, v, part.w0))), B = part.ring.map(([u, v]) => xf(toXYZ(part.axis, u, v, part.w1)));
+    const c = [0, 1, 2].map((k) => (A.reduce((s, p) => s + p[k], 0) + B.reduce((s, p) => s + p[k], 0)) / (2 * n));
+    const out = [];
+    const add = (pts, cap) => {
+      const cf = [0, 1, 2].map((k) => pts.reduce((s, p) => s + p[k], 0) / pts.length);
+      let nn = [0, 0, 0];
+      for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; nn[0] += (p[1] - q[1]) * (p[2] + q[2]); nn[1] += (p[2] - q[2]) * (p[0] + q[0]); nn[2] += (p[0] - q[0]) * (p[1] + q[1]); }
+      const len = Math.hypot(...nn); if (len < 1e-9) return;
+      nn = nn.map((v) => v / len);
+      if (dot(nn, [cf[0] - c[0], cf[1] - c[1], cf[2] - c[2]]) < 0) nn = nn.map((v) => -v);
+      if (dot(nn, VIEW) <= 1e-4) return;
+      out.push({ pts, n: nn, depth: dot(cf, VIEW), cap });
+    };
+    add(A, true); add(B, true);
+    if (part.w1 !== part.w0) for (let i = 0; i < n; i++) { const j = (i + 1) % n; add([A[i], A[j], B[j], B[i]], false); }
+    return out;
+  }
+  function shade(part, f) {
+    let base = rgb(f.cap && part.cap ? part.cap : part.col);
+    if (part.glow) base = mix(base, rgb(part.glow[0]), part.glow[1]);
+    const d = Math.max(0, dot(f.n, LIGHT)), k = part.flat ? 1 : 0.48 + 0.62 * d;
+    let c = base.map((v) => v * k);
+    if (part.emit) c = mix(c, rgb(part.emit[0]), part.emit[1]);
+    return "rgb(" + c.map((v) => Math.round(Math.min(255, Math.max(0, v)))).join(",") + ")";
+  }
+  // objects: { parts, xf?, key? }, sorted back to front by key (default: depth of the first part's centre)
+  function render(objects, { stroke = "rgba(0,0,0,.35)", width = 0.35 } = {}) {
+    const items = objects.map((ob) => {
+      const xf = ob.xf || ((p) => p);
+      let key = ob.key;
+      if (key === undefined) { const p = ob.parts[0]; const r = p.ring; const cu = r.reduce((s, q) => s + q[0], 0) / r.length, cv = r.reduce((s, q) => s + q[1], 0) / r.length; key = dot(xf(toXYZ(p.axis, cu, cv, (p.w0 + p.w1) / 2)), VIEW); }
+      return { ob, xf, key };
+    }).sort((a, b) => a.key - b.key);
+    let s = "";
+    for (const { ob, xf } of items) {
+      if (ob.svg !== undefined) { s += ob.svg; continue; }
+      const fs = [];
+      ob.parts.forEach((part, pi) => { for (const f of faces(part, xf)) fs.push({ f, part, layer: part.layer || 0, pi }); });
+      fs.sort((a, b) => a.layer - b.layer || a.f.depth - b.f.depth);
+      let g = "";
+      for (const { f, part } of fs) g += '<path d="M' + f.pts.map((p) => { const q = project(p); return fx(q[0]) + " " + fx(q[1]); }).join("L") + 'Z" fill="' + shade(part, f) + '"' + (part.opacity !== undefined ? ' fill-opacity="' + part.opacity + '"' : "") + "/>";
+      s += ob.cls ? '<g class="' + ob.cls + '">' + g + "</g>" : g;
+    }
+    return '<g stroke="' + stroke + '" stroke-width="' + width + '" stroke-linejoin="round">' + s + "</g>";
+  }
+  return { prism, box, cyl, circle, render, VIEW, rgb };
+}
+
+const D = {"W":680,"H":520,"P":{"origin":[340,379.4765477938508],"scale":5.27312346411568,"azimuth":45,"elevation":30}};
+const PR = D.P;
+const stage = document.querySelector(".fx-stage");
+const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const readout = document.querySelector("[data-readout]");
+const still = matchMedia("(prefers-reduced-motion: reduce)");
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const R = solids((p) => iso(p, PR), (p) => depthOf(p, PR));
+const { box, cyl, prism } = R;
+const svgEl = stage.querySelector("svg"), cv = stage.querySelector(".fx-smoke"), ctx = cv.getContext("2d"), flashEl = stage.querySelector(".fx-flash");
+const sceneG = q("scene"), flyG = q("fly");
+const sp = (p) => { const a = iso(p, PR); return a[0].toFixed(1) + " " + a[1].toFixed(1); };
+const VIEW = R.VIEW, dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const LIGHT = (() => { const v = [0.45, 0.6, 1]; const n = Math.hypot(...v); return v.map((a) => a / n); })();
+const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const shadeHex = (hex, n, k2 = 1) => "rgb(" + rgb(hex).map((v) => Math.round(clamp(v * (0.45 + 0.65 * Math.max(0, dot(n, LIGHT))) * k2, 0, 255))).join(",") + ")";
+function normalOf(pts) { let n = [0, 0, 0]; for (let i = 0; i < pts.length; i++) { const p = pts[i], q2 = pts[(i + 1) % pts.length]; n[0] += (p[1] - q2[1]) * (p[2] + q2[2]); n[1] += (p[2] - q2[2]) * (p[0] + q2[0]); n[2] += (p[0] - q2[0]) * (p[1] + q2[1]); } const l = Math.hypot(...n) || 1; return n.map((v) => v / l); }
+const face = (pts, fill, extra = "") => '<path d="M' + pts.map(sp).join("L") + 'Z" fill="' + fill + '"' + extra + "/>";
+let seed = 3; const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+
+// a vertical body of revolution cut in half by the plane x + y = 0 (the near half is removed)
+const F0 = Math.PI * 0.75, F1 = Math.PI * 1.75;
+const at = (cx, cy, r, f, z) => [cx + r * Math.cos(f), cy + r * Math.sin(f), z];
+function half(cx, cy, prof, side, col, n = 16, glow) {
+  const out = [];
+  for (let i = 0; i < prof.length - 1; i++) for (let j = 0; j < n; j++) {
+    const a = F0 + ((F1 - F0) * j) / n, b = F0 + ((F1 - F0) * (j + 1)) / n, fm = (a + b) / 2;
+    const [z0, r0] = prof[i], [z1, r1] = prof[i + 1];
+    const pts = [at(cx, cy, r0, a, z0), at(cx, cy, r1, a, z1), at(cx, cy, r1, b, z1), at(cx, cy, r0, b, z0)];
+    let nn = normalOf(pts);
+    if (dot(nn, [Math.cos(fm), Math.sin(fm), 0]) * side < 0) nn = nn.map((v) => -v);
+    if (Math.abs(nn[0]) + Math.abs(nn[1]) < 0.05 && dot(nn, [0, 0, side]) < 0) nn = nn.map((v) => -v);
+    if (dot(nn, VIEW) <= 0) continue;
+    const c = pts.reduce((s2, p) => [s2[0] + p[0] / 4, s2[1] + p[1] / 4, s2[2] + p[2] / 4], [0, 0, 0]);
+    out.push({ d: dot(c, VIEW), s: face(pts, glow ? glow : shadeHex(col, nn)) });
+  }
+  return out;
+}
+// the cut face of a ring between outer and inner profiles, both sides of the axis
+function sect(cx, cy, outer, inner, fill, cls = "sec") {
+  let s2 = "";
+  for (const f of [F0, F1]) s2 += face([...outer.map(([z, r]) => at(cx, cy, r, f, z)), ...inner.slice().reverse().map(([z, r]) => at(cx, cy, r, f, z))], fill, ' class="' + cls + '"');
+  return s2;
+}
+// a solid disk/slab across the whole cut (both halves of the section joined through the axis)
+function sectFull(cx, cy, z0, z1, r, fill, cls = "sec") { return face([at(cx, cy, r, F0, z0), at(cx, cy, r, F1, z0), at(cx, cy, r, F1, z1), at(cx, cy, r, F0, z1)], fill, ' class="' + cls + '"'); }
+const sectPt = (cx, cy, s, z) => [cx - 0.7071 * s, cy + 0.7071 * s, z];
+
+// ---------------- physics (toy point kinetics, one delayed group, in dollars) ----------------
+const BETA = 0.0065, LAM = 1e-3, LD = 0.08;
+const TYPES = {
+  rbmk: { name: "RBMK-1000", mwt: 3200, W: 12, rho0: 9.28, rate: 0.08, dopp: -0.0018, tf0: 300, mtc: 0, tipMax: 1.1, scramT: 18, voidK: 0.35, voidA: (r) => 1.0 + 3.6 * clamp(1 - r / 0.5, 0, 1) },
+  pwr: { name: "PWR", mwt: 3400, W: 10, rho0: 9.75, rate: 0.05, dopp: -0.003, tf0: 300, mtc: -0.03, tipMax: 0, scramT: 2.2, voidK: 0, voidA: () => -20 },
+};
+let type = "rbmk", T = TYPES.rbmk;
+let n = 1, C = 1, rods = 0.5, rodT = 0.5, rodEff = 0.5, flow = 1, Tf = 900, Tc = 320, voidF = 0.3, I = 1, X = 0.395, rho = 0, tip = 0, scramAt = null, scramFrom = 0;
+let vgain = 1, safety = true, eccs = true, subcool = 0.1, auto = null, Pset = 1, dead = null, melt = 0, cpress = 1, h2 = 0, fireT = -9, energy = 0, tripped = false, decayT = 0, Tcore = 600;
+let now = 0, last = 0, frame = 0, visible = false, touring = true, slow = false, tourClock = 0, tourStep = -1, actions = [], lastShot = "", lastEvent = "", lastEventAt = -10, flashT = -9, shake = 0;
+let test = null;
+const event = (t) => { lastEvent = t; lastEventAt = now; };
+const XSC = 6.33; // xenon in dollars per normalised unit
+function equilibrium() {
+  n = 1; C = 1; rods = 0.5; rodT = 0.5; rodEff = 0.5; flow = 1; Tf = 900; Tc = 320; voidF = type === "rbmk" ? 0.3 : 0; I = 1; X = 0.395; tip = 0; scramAt = null; auto = null; subcool = 0.05;
+  dead = null; melt = 0; cpress = 1; h2 = 0; energy = 0; tripped = false; decayT = 0; Tcore = 600; test = null; safety = true; eccs = true; Pset = 1; vgain = 1;
+}
+function xenon(dt, p) { const lI = 2.9e-5, lX = 2.1e-5, b = 6e-5, g = 3e-6; I += dt * lI * (p - I); X += dt * (g * p + lI * I - lX * X - b * p * X); }
+function reactivity() {
+  const Tc2 = Tc;
+  return T.rho0 - T.W * rodEff + T.voidA(rods) * voidF + T.dopp * (Tf - T.tf0) + T.mtc * (Tc2 - 305) - X * XSC + tip + (type === "pwr" && voidF > 0 ? 0 : 0);
+}
+function physics(dt) {
+  if (dead && dead.kind === "boom") { n = Math.max(0, n * Math.exp(-dt * 3)); return; }
+  // control rods: scram drives them in; the RBMK's graphite displacers add reactivity at the bottom for the first few seconds
+  if (scramAt !== null) {
+    const t = now - scramAt;
+    rods = Math.min(1, scramFrom + t / T.scramT); rodT = rods;
+    // in the RBMK the absorbers start in the top of the core where the flux was low, so for the first few seconds they barely bite
+    const bite = type === "rbmk" ? (t < 4 ? 0.12 : Math.min(1, 0.12 + (t - 4) / 2)) : 1;
+    rodEff = scramFrom + (rods - scramFrom) * bite;
+    const out = clamp(1 - scramFrom / 0.4, 0, 1);
+    tip = T.tipMax * out * (t < 3 ? Math.sin(Math.PI * t / 6) * 1 : Math.max(0, 1 - (t - 3) / 2));
+  } else { tip = 0; if (auto) rodT = clamp(rodT + dt * clamp((n - auto.p) * 2, -0.04, 0.04), 0, 1); rods += clamp(rodT - rods, -T.rate * dt, T.rate * dt); rodEff = rods; }
+  // flow, boiling, coolant temperature
+  Tc += ((type === "pwr" ? 290 + 30 * n / Math.max(flow, 0.03) : 270 + 14 * n / Math.max(flow, 0.05)) - Tc) * Math.min(1, dt / 1.5);
+  let vT;
+  if (type === "rbmk") vT = clamp(T.voidK * vgain * n / Math.max(flow, 0.05) - subcool, 0, 0.85);
+  else vT = clamp((Tc - 345) / 60, 0, 0.8);
+  voidF += (vT - voidF) * Math.min(1, dt / 0.8);
+  Tf += (T.tf0 + 600 * n - Tf) * Math.min(1, dt / 2.5);
+  // kinetics in 2 ms steps
+  const steps = Math.ceil(dt / 0.002), h = dt / steps;
+  for (let i = 0; i < steps; i++) {
+    rho = reactivity();
+    const r = rho * BETA;
+    const dn = ((r - BETA) / LAM) * n + (BETA / LAM) * C, dC = LD * (n - C);
+    n = Math.max(1e-6, n + h * dn); C = Math.max(0, C + h * dC);
+    if (n > 150) n = 150;
+  }
+  xenon(dt * 150, n);
+  // decay heat after shutdown
+  if (n < 0.08) decayT += dt; else decayT = 0;
+  const decay = n < 0.08 ? 0.066 * Math.pow(Math.max(1, decayT * 600), -0.2) : 0;
+  // protection system
+  if (safety && !tripped && scramAt === null && (n > 1.12 || (type === "pwr" && flow < 0.6 && n > 0.2))) { scram(true); }
+  // excursion: energy into the fuel
+  if (n > 3) energy += (n - 3) * dt;
+  if (type === "rbmk" && !dead && (energy > 3 || n > 40 || (rho > 1.1 && n > 1.5))) boom();
+  if (type === "pwr" && !dead && energy > 6) { dead = { kind: "fuel", t: now }; event("Fuel damage from overpower with the protection switched off. Even so, the negative feedback held the power down; the vessel and containment are intact."); }
+  // core heat-up with no cooling (decay heat keeps going after shutdown)
+  const cooling = Math.max(flow, eccs && safety ? 0.35 : 0);
+  if (cooling < 0.05) Tcore += dt * (n + decay * 14) * 600; else Tcore += ((600 + n * 300 / cooling) - Tcore) * Math.min(1, dt / 3);
+  if (Tcore > 2200) melt = Math.min(1, melt + dt * 0.08);
+  if (type === "pwr") { cpress += ((1 + melt * 2.6 + (Tcore > 1200 ? (Tcore - 1200) / 1500 : 0)) - cpress) * Math.min(1, dt / 4); h2 = Math.min(1, h2 + (Tcore > 1200 ? dt * 0.05 : 0)); if (h2 > 0.6 && !dead) { dead = { kind: "melt", t: now }; flashT = now; shake = 0.4; event("Meltdown inside the vessel and a hydrogen burn in the containment, like Three Mile Island in 1979. The containment held: the steel and concrete shell is the whole point."); } }
+  if (type === "rbmk" && melt > 0.5 && !dead) boom();
+  // the 1986 test
+  if (test) testStep(dt);
+}
+function scram(auto2) {
+  if (scramAt !== null) return;
+  scramAt = now; scramFrom = rods; tripped = true; auto = null;
+  if (type === "rbmk") event(auto2 ? "Automatic trip: the rods start in at 0.4 m/s and take 18 s." : "AZ-5 pressed. The rods take 18 s to go in, and the ones that were right out push water out of the bottom of the core with their graphite tips first." + (scramFrom < 0.2 ? " With almost every rod pulled, that's a lot of reactivity, right where it hurts." : ""));
+  else event((auto2 ? "Reactor trip: " : "SCRAM: ") + "the rods are held up by electromagnets; cut the power and they fall in by gravity in about 2 s.");
+}
+function boom() {
+  dead = { kind: "boom", t: now }; flashT = now; shake = 2.4; fireT = now;
+  els.lid = { t: now, z: 0, vz: 34, r: 0, vr: 1.6 };
+  els.chunks = []; for (let i = 0; i < 40; i++) { const a = rnd() * Math.PI * 2, s2 = 6 + rnd() * 14; els.chunks.push({ p: [rnd() * 4 - 2, rnd() * 4 - 2, 10], v: [Math.cos(a) * s2, Math.sin(a) * s2, 18 + rnd() * 26], s: 0.5 + rnd() * 0.9, r: rnd() * 6, gr: rnd() < 0.7 }); }
+  for (let i = 0; i < 80; i++) spark([0, 0, 11], 1.8);
+  event("Prompt critical. Power went to about " + Math.round(n * 100) + " % in a second or two, the fuel shattered, the water flashed to steam, and the 2,000 t upper shield went up through the roof. The graphite's on fire. There is no containment.");
+}
+function testStep(dt) {
+  const t = now - test.t;
+  if (t < 0.1 && !test.set) { test.set = true; safety = false; eccs = false; n = 0.07; C = 0.07; I = 1.1; X = 1.15; rods = 0.165; rodT = 0.165; rodEff = 0.165; Tf = 340; voidF = 0; flow = 1.15; subcool = 0.005; vgain = 3.5; auto = { p: 0.07 }; Pset = 0.07; tripped = true; }
+  if (t > 4 && !test.started) { test.started = true; auto = null; event("01:23:04, the test starts. The turbine's cut off and four of the pumps start coasting down. Less flow, more boiling, and in this reactor more steam means more power."); }
+  if (test.started && !dead) flow = Math.max(0.55, flow - dt * 0.02);
+  if (t > 4 && (n > 0.25 || t > 40) && !test.az5) { test.az5 = true; scram(false); }
+}
+
+// ---------------- particles ----------------
+let parts = [];
+function spark(p, s) { const a = rnd() * Math.PI * 2; parts.push({ k: "spark", p: [...p], v: [Math.cos(a) * 10 * s, Math.sin(a) * 10 * s, 6 + rnd() * 14 * s], life: 0, max: 0.6 + rnd() * 0.8 }); }
+function smokeP(p, s) { parts.push({ k: "smoke", p: [...p], v: [(rnd() - 0.5) * 1.5, (rnd() - 0.5) * 1.5, 5 + rnd() * 4], life: 0, max: 4 + rnd() * 3, s }); }
+function flameP(p) { parts.push({ k: "flame", p: [...p], v: [(rnd() - 0.5) * 2, (rnd() - 0.5) * 2, 4 + rnd() * 5], life: 0, max: 0.6 + rnd() * 0.6 }); }
+function fogP(p) { parts.push({ k: "fog", p: [...p], v: [(rnd() - 0.5) * 3, (rnd() - 0.5) * 3, 1 + rnd() * 2], life: 0, max: 2.5 + rnd() * 2 }); }
+let neutrons = [];
+function sizeCanvas() { const r = svgEl.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1); const w = Math.max(1, Math.round(r.width * dpr)), hh = Math.max(1, Math.round(r.height * dpr)); if (cv.width !== w || cv.height !== hh) { cv.width = w; cv.height = hh; } }
+let shakeOff = [0, 0];
+function drawParticles(dt) {
+  sizeCanvas();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(cv.width / D.W, 0, 0, cv.height / D.H, shakeOff[0] * cv.width / D.W, shakeOff[1] * cv.height / D.H);
+  // neutrons darting about in the cut face of the core
+  const want = dead && dead.kind === "boom" ? 0 : Math.round(clamp(8 + 14 * Math.log10(Math.max(n, 1e-3)) + 14, 0, 70));
+  while (neutrons.length < want) neutrons.push({ s: (rnd() - 0.5) * 2 * (type === "rbmk" ? 5.6 : 2.5), z: (type === "rbmk" ? 2.4 + rnd() * 6.2 : 10.6 + rnd() * 5), a: rnd() * 7, life: 0 });
+  neutrons.length = Math.min(neutrons.length, want);
+  ctx.fillStyle = type === "rbmk" ? "rgba(255,220,150,0.9)" : "rgba(150,210,255,0.95)";
+  for (const nt of neutrons) {
+    nt.a += (rnd() - 0.5) * 2; nt.s += Math.cos(nt.a) * dt * 6; nt.z += Math.sin(nt.a) * dt * 6;
+    const lim = type === "rbmk" ? 5.6 : 2.5, z0 = type === "rbmk" ? 2.2 : 10.4, z1 = type === "rbmk" ? 8.8 : 16;
+    if (Math.abs(nt.s) > lim || nt.z < z0 || nt.z > z1) { nt.s = (rnd() - 0.5) * 2 * lim; nt.z = z0 + rnd() * (z1 - z0); }
+    const P2 = iso(sectPt(0, 0, nt.s, nt.z), PR); ctx.fillRect(P2[0] - 0.8, P2[1] - 0.8, 1.6, 1.6);
+  }
+  parts = parts.filter((p) => {
+    p.life += dt; if (p.life > p.max) return false;
+    const t = p.life / p.max;
+    if (p.k === "spark") p.v[2] -= 20 * dt;
+    for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * dt;
+    const P2 = iso(p.p, PR);
+    const soft = (r, c, a) => { const g = ctx.createRadialGradient(P2[0], P2[1], 0, P2[0], P2[1], r); g.addColorStop(0, "rgba(" + c + "," + a.toFixed(3) + ")"); g.addColorStop(1, "rgba(" + c + ",0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(P2[0], P2[1], r, 0, 7); ctx.fill(); };
+    if (p.k === "smoke") soft((6 + 26 * t) * p.s, "52,50,50", 0.55 * (1 - t));
+    if (p.k === "flame") soft(4 + 10 * t, t < 0.4 ? "255,220,140" : "255,110,40", 0.8 * (1 - t));
+    if (p.k === "fog") soft(6 + 14 * t, "235,240,245", 0.3 * Math.sin(Math.PI * t));
+    if (p.k === "spark") { ctx.fillStyle = "rgba(255," + Math.round(220 - 120 * t) + ",90," + (1 - t).toFixed(2) + ")"; ctx.fillRect(P2[0] - 1, P2[1] - 1, 2, 2); }
+    return true;
+  });
+  // the glow over the open core afterwards
+  if (dead && dead.kind === "boom" && now - dead.t > 1.5) { const A = iso([0, 0, 10], PR), B = iso([0, 0, 60], PR), g = ctx.createLinearGradient(A[0], A[1], B[0], B[1]); g.addColorStop(0, "rgba(140,170,255,0.28)"); g.addColorStop(1, "rgba(140,170,255,0)"); ctx.fillStyle = g; ctx.fillRect(A[0] - 10, B[1], 20, A[1] - B[1]); }
+}
+
+// ---------------- drawing ----------------
+const els = { lid: null, chunks: [] };
+const powerCol = () => { const L2 = clamp((Math.log10(Math.max(n, 1e-3)) + 2) / 3.5, 0, 1); return L2; };
+function hot(base, k2) { const b = rgb(base), hcol = k2 < 0.6 ? [255, 120, 40] : [255, 240, 200], t = clamp(k2, 0, 1); return "rgb(" + b.map((v, i) => Math.round(v + (hcol[i] - v) * t)).join(",") + ")"; }
+function drawRbmk(dt) {
+  const fs = [], boomed = dead && dead.kind === "boom", bt = boomed ? now - dead.t : 0;
+  // building: floor and the two back walls (cut low at the front), roof gone after the blast
+  const obj = [{ parts: [box(-21, 21, -21, 21, -0.6, 0, "#5f646a")], key: -1e9 }];
+  obj.push({ parts: [box(-21, -19.5, -21, 21, 0, boomed ? 26 : 34, "#a9a49a", { cap: "#8c877d" })], key: -9e8 });
+  obj.push({ parts: [box(-19.5, 21, -21, -19.5, 0, boomed ? 22 : 34, "#b5b0a5", { cap: "#8c877d" })], key: -8.9e8 });
+  if (!boomed) obj.push({ parts: [box(-21, 21, -21, -12, 34, 35.2, "#77726a")], key: -8.8e8 });
+  // steam separator drums, the pump room, the refuelling machine
+  obj.push({ parts: [prism(R.circle(-15, 15, 1.5, 16), "x", -12, 5, "#9ca3aa")], key: -5e5 });
+  obj.push({ parts: [prism(R.circle(-15, 15, 1.5, 16), "y", -12, 5, "#9ca3aa")], key: -5e5 + 1 });
+  for (const [x, y] of [[-17, -5], [-17, 2], [-5, -17], [2, -17]]) obj.push({ parts: [cyl(x, y, 1.4, 0, 3.4, "#5e7f9a", 14), cyl(x, y, 0.9, 3.4, 4.6, "#47525c", 12)] });
+  if (!boomed) obj.push({ parts: [box(-11, -8, -11, -8, 22, 29, "#d9b54a"), box(-19, 5, -10.5, -8.5, 29, 30.3, "#9c8a4a"), box(-10.5, -8.5, -19, 5, 29, 30.3, "#9c8a4a")], key: -4e5 });
+  sceneHtml = R.render(obj);
+  // the concrete vault, lower shield, graphite core, upper shield ("Elena")
+  const vault = [[0, 10], [14, 10]], vaultIn = [[0, 7.6], [14, 7.6]];
+  fs.push(...half(0, 0, vault, 1, "#9b968c"), ...half(0, 0, vaultIn, -1, "#7d786f"));
+  const pc = powerCol(), coreGlow = boomed ? hot("#2a2622", 0.6 + 0.3 * Math.sin(now * 3)) : hot("#2a2622", pc * 0.55);
+  fs.push(...half(0, 0, [[2, 5.9], [9, 5.9]], -1, "#2a2622", 16, coreGlow));
+  fs.push(...half(0, 0, [[0, 7.6], [2, 7.6]], 1, "#6d6a66"));
+  fs.sort((a, b) => a.d - b.d);
+  let s2 = fs.map((f) => f.s).join("");
+  // pipe forest from the channel tops to the drums
+  if (!boomed) for (let i = 0; i < 14; i++) { const a = F0 + (F1 - F0) * (i + 0.5) / 14, p0 = at(0, 0, 4 + (i % 3), a, 12), p1 = i % 2 ? [-15, -2 + (i % 5) * 1.5, 15] : [-2 + (i % 5) * 1.5, -15, 15]; s2 += '<path class="pipe" d="M' + sp(p0) + "L" + sp([p0[0], p0[1], 14]) + "L" + sp(p1) + '"/>'; }
+  // the cut face: vault ring, lower shield, core with its channels, the upper shield
+  s2 += sect(0, 0, vault, vaultIn, "#d9c9a6");
+  s2 += sectFull(0, 0, 0, 2, 7.6, "#a39d93");
+  s2 += sectFull(0, 0, 2, 9, 5.9, coreGlow, "sec core");
+  for (let i = 0; i < 19; i++) {
+    const s3 = -5.4 + i * 0.6, rodCh = i % 3 === 1;
+    if (rodCh) {
+      const ins = scramAt === null ? rods : rods, zt = 9, zb = 9 - 7 * ins;
+      s2 += '<path class="rod" d="M' + sp(sectPt(0, 0, s3, zt)) + "L" + sp(sectPt(0, 0, s3, zb)) + '"/>';
+      const dz0 = zb - 0.3, dz1 = Math.max(2, zb - 4.5);
+      if (dz0 > 2) s2 += '<path class="disp" d="M' + sp(sectPt(0, 0, s3, dz0)) + "L" + sp(sectPt(0, 0, s3, dz1)) + '"/>';
+    } else s2 += '<path class="fuel" style="stroke:' + hot("#5a3d2a", pc) + '" d="M' + sp(sectPt(0, 0, s3, 2.2)) + "L" + sp(sectPt(0, 0, s3, 8.8)) + '"/>';
+  }
+  if (!els.lid || !boomed) s2 += sectFull(0, 0, 9, 12, 8.4, "#b9b3a8");
+  // a few channel tops (fuel blue-grey, rods orange) on the shield, for the look of the "pentachoron" floor
+  sceneHtml += s2;
+  // near walls, cut low
+  sceneHtml += R.render([{ parts: [box(-21, 21, 19.5, 21, 0, 2.5, "#a9a49a", { cap: "#d9c9a6" })], key: 1e9 }, { parts: [box(19.5, 21, -21, 19.5, 0, 2.5, "#a9a49a", { cap: "#d9c9a6" })], key: 1e9 + 1 }]);
+  // flying things
+  let fl = "";
+  if (els.lid) {
+    const L2 = els.lid; if (bt < 6) { L2.vz -= 14 * dt; L2.z = Math.max(0, L2.z + L2.vz * dt); L2.r = Math.min(1.35, L2.r + L2.vr * dt); if (L2.z <= 0 && L2.vz < 0) { L2.vz = 0; L2.vr = 0; } }
+    const c = [0, 0, 10.5], cr = Math.cos(L2.r), sr = Math.sin(L2.r);
+    fl += R.render([{ parts: [cyl(0, 0, 8.4, 9, 12, "#b9b3a8", 28, { cap: "#8a857c" })], xf: (p) => { const y = p[1] - c[1], z = p[2] - c[2]; return [p[0] + L2.z * 0.15, c[1] + y * cr - z * sr, c[2] + y * sr + z * cr + L2.z]; } }]);
+  }
+  if (els.chunks.length) {
+    const objs = els.chunks.map((ch) => { if (ch.p[2] > 0.3) { ch.v[2] -= 14 * dt; for (let i = 0; i < 3; i++) ch.p[i] += ch.v[i] * dt; ch.r += dt * 4; } else { ch.p[2] = 0.3; } const s4 = ch.s; return { parts: [box(-s4, s4, -s4, s4, -s4 * 1.6, s4 * 1.6, ch.gr ? "#2b2826" : "#8d887f", ch.gr && now - dead.t < 20 ? { emit: ["#ff6a2a", 0.4] } : undefined)], xf: (p) => { const c2 = Math.cos(ch.r), s5 = Math.sin(ch.r); return [ch.p[0] + p[0] * c2 - p[2] * s5, ch.p[1] + p[1], ch.p[2] + p[0] * s5 + p[2] * c2]; } }; });
+    fl += R.render(objs);
+  }
+  flyG.innerHTML = fl;
+  if (boomed && rnd() < dt * 18) flameP([rnd() * 6 - 3, rnd() * 6 - 3, 9 + rnd() * 2]);
+  if (boomed && rnd() < dt * 8) smokeP([rnd() * 4 - 2, rnd() * 4 - 2, 12], 1.4);
+}
+function drawPwr(dt) {
+  const fs = [], pc = powerCol(), melted = melt > 0.05;
+  // containment: cylinder + dome, steel liner inside concrete, cut in half
+  const cOut = [[0, 21.5], [30, 21.5], [36, 19.8], [41, 15.2], [44.5, 8.2], [46, 0.1]], cIn = [[0, 20], [30, 20], [35.5, 18.5], [40, 14.2], [43.2, 7.6], [44.5, 0.1]];
+  fs.push(...half(0, 0, cOut, 1, "#c9c4b9"), ...half(0, 0, cIn, -1, "#8d949b"));
+  fs.sort((a, b) => a.d - b.d);
+  let s2 = fs.map((f) => f.s).join("");
+  // floor, steam generators, pressuriser, pumps, the polar crane
+  const obj = [{ parts: [box(-20, 20, -20, 20, 0, 1.5, "#8a8f94")], key: -1e9 }];
+  for (const [x, y] of [[-10, 3], [3, -10]]) obj.push({ parts: [cyl(x, y, 2.2, 3, 18, "#c8ccd1", 18), cyl(x, y, 3, 18, 26, "#c8ccd1", 18), cyl(x, y, 3.05, 25.5, 27, "#b2b7bd", 18, { cap: "#d7dbe0" })] });
+  obj.push({ parts: [cyl(-8, -8, 1.3, 6, 22, "#c8ccd1", 14, { cap: "#e0e3e7" })] });
+  for (const [x, y] of [[-12, -2], [-2, -12]]) obj.push({ parts: [cyl(x, y, 1, 1.5, 5, "#5e7f9a", 12)] });
+  obj.push({ parts: [box(-14, 14, -15.5, -13, 32, 33.5, "#c9a43a"), box(-15.5, -13, -14, 14, 32, 33.5, "#c9a43a")], key: -3e5 });
+  s2 += R.render(obj);
+  // hot and cold legs
+  for (const [x, y] of [[-10, 3], [3, -10]]) s2 += '<path class="leg" d="M' + sp([0, 0, 12]) + "L" + sp([x, y, 6]) + '"/>';
+  // the pressure vessel, cut: steel shell, the core, water
+  const VZ = (z) => 4 + (z - 6.2) * 1.4, VP = (r, z) => sectPt(0, 0, r * 1.6, VZ(z)), VM = (a) => a.map(([z, r]) => [VZ(z), r * 1.6]);
+  const vOut = [[6.2, 0.1], [6.6, 1.2], [7.6, 2.1], [9, 2.3], [17, 2.3], [18.4, 2.1], [19.4, 1.3], [19.8, 0.1]], vIn = [[6.6, 0.1], [7.0, 1.0], [7.9, 1.85], [9, 2.05], [17, 2.05], [18.1, 1.85], [19, 1.1], [19.4, 0.1]];
+  const vv = [...half(0, 0, VM(vOut), 1, "#8f969d"), ...half(0, 0, VM(vIn), -1, "#5c646c")]; vv.sort((a, b) => a.d - b.d);
+  s2 += vv.map((f) => f.s).join("");
+  const boil = clamp(voidF * 1.6, 0, 1), wcol = melted ? "rgba(120,110,100,0.4)" : "rgba(" + Math.round(40 + 90 * pc) + "," + Math.round(110 + 110 * pc) + "," + Math.round(200 + 55 * pc) + "," + (0.55 - 0.4 * boil).toFixed(2) + ")";
+  s2 += face([VP(-2.05, 9), VP(2.05, 9), VP(2.05, 17), VP(-2.05, 17)], wcol, ' class="water"');
+  // fuel assemblies, control rods from the top, corium if it melts
+  if (melt < 0.9) for (let i = 0; i < 9; i++) { const s3 = -1.6 + i * 0.4, rodCh = i % 2 === 1, mz = 14.6 - melt * 4; if (rodCh) { const zb = 14.8 - 3.8 * rods; s2 += '<path class="rod" d="M' + sp(VP(s3, 18.5)) + "L" + sp(VP(s3, zb)) + '"/>'; } s2 += '<path class="fuel thin" style="stroke:' + (melted ? hot("#5a3d2a", 0.5 + melt * 0.5) : hot("#5a5048", pc * 0.4)) + '" d="M' + sp(VP(s3, 11)) + "L" + sp(VP(s3, mz)) + '"/>'; }
+  if (melted) { const r = 0.6 + melt * 1.3; s2 += face([VP(-r, 7.2), VP(r, 7.2), VP(r * 0.8, 7.2 + melt * 1.5), VP(-r * 0.8, 7.2 + melt * 1.5)], hot("#7a3a1a", 0.7 + 0.2 * Math.sin(now * 4)), ' class="corium"'); }
+  s2 += sect(0, 0, VM(vOut), VM(vIn), "#b9bfc6");
+  for (let i = 0; i < 5; i++) s2 += '<path class="crdm" d="M' + sp(VP(-0.8 + i * 0.4, 19.6)) + "L" + sp(VP(-0.8 + i * 0.4, 22.5)) + '"/>';
+  // the containment's cut face last
+  s2 += sect(0, 0, cOut, cIn, "#d9c9a6");
+  sceneHtml = s2;
+  flyG.innerHTML = "";
+  if (h2 > 0.05 && rnd() < dt * 10 * h2) fogP([rnd() * 20 - 14, rnd() * 20 - 14, 6 + rnd() * 26]);
+  if (voidF > 0.05 && rnd() < dt * 10) fogP([rnd() * 2 - 1, rnd() * 2 - 1, 16]);
+}
+let sceneHtml = "";
+function draw(dt) {
+  if (type === "rbmk") drawRbmk(dt); else drawPwr(dt);
+  sceneG.innerHTML = sceneHtml;
+  shake = Math.max(0, shake - dt * 0.7);
+  const amp = shake * 6 + (n > 2 && !dead ? Math.min(3, n * 0.15) : 0);
+  shakeOff = amp > 0.05 ? [(rnd() - 0.5) * amp, (rnd() - 0.5) * amp] : [0, 0];
+  svgEl.style.transform = amp > 0.05 ? "translate(" + shakeOff[0].toFixed(1) + "px," + shakeOff[1].toFixed(1) + "px)" : "";
+  const ft = now - flashT; flashEl.style.opacity = ft < 0.6 ? String((1 - ft / 0.6) * 0.85) : "0";
+  drawParticles(dt);
+  const text = dead ? (dead.kind === "boom" ? "UNIT 4 DESTROYED" : dead.kind === "melt" ? "MELTDOWN · CONTAINED" : "FUEL DAMAGED") : (n * 100 < 10 ? (n * 100).toFixed(1) : Math.round(n * 100)) + " % · " + Math.round(n * T.mwt) + " MWt · ρ " + (rho >= 0 ? "+" : "") + rho.toFixed(2) + " $";
+  if (readout.textContent !== text) readout.textContent = text;
+}
+
+// ---------------- UI ----------------
+const ui = {
+  types: [...document.querySelectorAll("[data-type]")], rods: document.querySelector("#rods"), rodsOut: document.querySelector("#rods-out"), pump: document.querySelector("#pump"), pumpOut: document.querySelector("#pump-out"),
+  scramB: document.querySelector("#scram"), trip: document.querySelector("#trippumps"), wait: document.querySelector("#wait"), safe: document.querySelector("#safe"), test: document.querySelector("#test"), fresh: document.querySelector("#fresh"),
+  slow: document.querySelector("#slow"), tour: document.querySelector("#tour"), shot: document.querySelector("#shot"),
+  pF: document.querySelector("#pw-fill"), pO: document.querySelector("#pw-out"), rF: document.querySelector("#rho-fill"), rO: document.querySelector("#rho-out"), tF: document.querySelector("#tf-fill"), tO: document.querySelector("#tf-out"),
+  vF: document.querySelector("#v-fill"), vO: document.querySelector("#v-out"), xF: document.querySelector("#x-fill"), xO: document.querySelector("#x-out"), oF: document.querySelector("#o-fill"), oO: document.querySelector("#o-out"), oL: document.querySelector("#o-label"), stats: document.querySelector("#stats"),
+};
+const say = (t) => { if (t !== lastShot) { ui.shot.textContent = t; lastShot = t; } };
+function syncUi() {
+  ui.types.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.type === type)));
+  if (document.activeElement !== ui.rods) ui.rods.value = String(Math.round(rodT * 100)); ui.rodsOut.textContent = Math.round(rods * 100) + " % in";
+  ui.pump.value = String(Math.round(flow * 100)); ui.pumpOut.textContent = Math.round(flow * 100) + " %";
+  ui.scramB.textContent = type === "rbmk" ? "AZ-5" : "SCRAM"; ui.test.hidden = type !== "rbmk";
+  ui.safe.setAttribute("aria-pressed", String(!safety)); ui.safe.textContent = safety ? "Safety systems on" : "Safety systems OFF";
+  const lp = clamp((Math.log10(Math.max(n, 1e-3)) + 3) / 5, 0, 1);
+  ui.pF.style.width = (lp * 100).toFixed(1) + "%"; ui.pF.dataset.state = n > 1.12 ? "bad" : n > 1.02 ? "warn" : "ok"; ui.pO.textContent = (n * 100 < 10 ? (n * 100).toFixed(1) : Math.round(n * 100)) + " %";
+  ui.rF.style.width = clamp((rho + 2) / 4 * 100, 0, 100).toFixed(1) + "%"; ui.rF.dataset.state = rho >= 1 ? "bad" : rho > 0.3 ? "warn" : "ok"; ui.rO.textContent = (rho >= 0 ? "+" : "") + rho.toFixed(2) + " $";
+  ui.tF.style.width = clamp(Tf / 3000 * 100, 0, 100).toFixed(1) + "%"; ui.tF.dataset.state = Tf > 2000 ? "bad" : Tf > 1300 ? "warn" : "ok"; ui.tO.textContent = Math.round(Tf) + " °C";
+  ui.vF.style.width = (voidF * 100).toFixed(1) + "%"; ui.vO.textContent = Math.round(voidF * 100) + " % · " + (T.voidA(rods) >= 0 ? "+" : "") + (T.voidA(rods) / 100).toFixed(2) + " $/%";
+  ui.xF.style.width = clamp(X * XSC / 10 * 100, 0, 100).toFixed(1) + "%"; ui.xO.textContent = (X * XSC).toFixed(1) + " $";
+  if (type === "rbmk") { const v = clamp(rods / 0.5 * 30, 0, 60); ui.oL.textContent = "ORM"; ui.oF.style.width = clamp(v / 60 * 100, 0, 100).toFixed(1) + "%"; ui.oF.dataset.state = v < 15 ? "bad" : v < 26 ? "warn" : "ok"; ui.oO.textContent = Math.round(v) + " rods"; }
+  else { ui.oL.textContent = "Contain"; ui.oF.style.width = clamp(cpress / 5 * 100, 0, 100).toFixed(1) + "%"; ui.oF.dataset.state = cpress > 3 ? "bad" : cpress > 1.6 ? "warn" : "ok"; ui.oO.textContent = cpress.toFixed(1) + " bar"; }
+  ui.stats.innerHTML = "<b>" + T.name + "</b> · " + Math.round(n * T.mwt).toLocaleString("en-AU") + " MW of heat, about <b>" + Math.round(n * T.mwt / 3.2).toLocaleString("en-AU") + " MW</b> of power · core " + Math.round(Tcore) + " °C" + (melt > 0.01 ? " · <b>" + Math.round(melt * 100) + " % melted</b>" : "") + (decayT > 0 && n < 0.08 ? " · decay heat still <b>" + Math.round(0.066 * Math.pow(Math.max(1, decayT * 600), -0.2) * T.mwt) + " MW</b>" : "");
+  ui.slow.setAttribute("aria-pressed", String(slow)); ui.tour.setAttribute("aria-pressed", String(touring));
+}
+function story() {
+  if (now - lastEventAt < 6.5 && lastEvent) return say(lastEvent);
+  if (touring && tourStep >= 0 && TOUR[tourStep].say) return say(TOUR[tourStep].say);
+  if (dead) return;
+  if (rho > 0.9) return say("Nearly a dollar of reactivity: that's prompt critical, where the chain reaction no longer waits for the delayed neutrons. Power doubles in milliseconds.");
+  if (type === "rbmk" && rods < 0.25) return say("Operating reactivity margin down to " + Math.round(clamp(rods / 0.5 * 30, 0, 60)) + " rods. The rule was never below 15: with the rods out, the void coefficient goes strongly positive, and AZ-5 itself becomes dangerous.");
+  if (type === "rbmk" && voidF > 0.4 && T.voidA(rods) > 2) return say("More steam, more power, more steam. In an RBMK the water absorbs neutrons and the graphite does the moderating, so boiling the water off speeds the reaction up.");
+  if (type === "pwr" && voidF > 0.05) return say("Boiling in the core. In a PWR the water is the moderator: steam slows fewer neutrons, so the reaction backs itself off. That's the opposite of the RBMK.");
+  if (X * XSC > 4) return say("Xenon-135 piles up for hours after you cut power and eats neutrons. Fighting it by pulling rods is how Chernobyl's operators got into trouble.");
+  if (n < 0.08 && decayT > 0) return say("Shut down, but not cold: the fission products are still making several percent of full power as heat. That's why you need the cooling to keep running.");
+  return say(type === "rbmk" ? "An RBMK-1000 at full power: 3,200 MW of heat from uranium in channels through a graphite block, cooled by boiling water. Most of the time, a perfectly good power station." : "A modern PWR: water under 155 bar is both the coolant and the moderator, the rods fall in by gravity, and the whole thing sits in a steel and concrete containment.");
+}
+function setType(t) { type = t; T = TYPES[t]; equilibrium(); els.lid = null; els.chunks = []; parts = []; neutrons = []; }
+const TOUR = [
+  { say: "Chernobyl 4, an RBMK-1000, at full power: a graphite block with uranium and water in 1,661 channels, 211 control rods, in a plain industrial building.", acts: [[0, () => setType("rbmk")], [7, null]] },
+  { say: "The night of 25-26 April 1986: power cut for a turbine test, xenon builds up, the operators pull almost every rod to keep it going, extra pumps on, the emergency cooling isolated.", acts: [[0, () => { test = { t: now }; }], [40, null]] },
+  { say: "Same abuse, modern PWR. Pull the rods out:", acts: [[0, () => setType("pwr")], [2, () => { rodT = 0.1; }], [10, null]] },
+  { say: "Trip the coolant pumps: the core boils, the void coefficient is negative, the power falls, the rods drop.", acts: [[0, () => { equilibrium(); }], [2, () => { flow = 0.15; }], [10, null]] },
+  { say: "Station blackout with the emergency cooling off: no pumps, no water. The reactor's shut down but the decay heat keeps cooking the core.", acts: [[0, () => { equilibrium(); }], [1, () => { flow = 0; eccs = false; safety = false; scram(true); }], [28, null]] },
+];
+function tourTick() {
+  if (tourStep < 0 || !actions.length) { tourStep = (tourStep + 1) % TOUR.length; actions = TOUR[tourStep].acts.map(([w, fn]) => [tourClock + w, fn]); }
+  while (actions.length && tourClock >= actions[0][0]) { const fn = actions.shift()[1]; if (fn) fn(); else actions = []; }
+}
+function tick(t) {
+  const dt = last ? Math.min((t - last) / 1000, 1 / 30) : 1 / 60;
+  last = t;
+  const sdt = dt * (slow ? 0.2 : 1);
+  now += sdt;
+  if (touring) { tourClock += sdt; tourTick(); }
+  physics(sdt); draw(sdt); syncUi(); story();
+  frame = visible ? requestAnimationFrame(tick) : 0;
+}
+const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
+const takeOver = () => { if (touring) { touring = false; actions = []; tourStep = -1; } };
+const act = (fn) => (...a) => { takeOver(); fn(...a); syncUi(); run(); };
+const live = () => !dead || dead.kind === "fuel";
+ui.types.forEach((b) => b.addEventListener("click", act(() => setType(b.dataset.type))));
+ui.rods.addEventListener("input", act(() => { if (!live()) return; scramAt = null; tip = 0; auto = null; rodT = +ui.rods.value / 100; }));
+ui.pump.addEventListener("input", act(() => { if (!live()) return; flow = +ui.pump.value / 100; }));
+ui.scramB.addEventListener("click", act(() => live() && scram(false)));
+ui.trip.addEventListener("click", act(() => { if (live()) { flow = type === "rbmk" ? 0.2 : 0.1; event("Pumps tripped: the flow's coasting down."); } }));
+ui.wait.addEventListener("click", act(() => { for (let i = 0; i < 360; i++) xenon(10, n); event("An hour later: xenon now worth " + (X * XSC).toFixed(1) + " $ against you."); }));
+ui.safe.addEventListener("click", act(() => { safety = !safety; eccs = safety; }));
+ui.test.addEventListener("click", act(() => { setType("rbmk"); test = { t: now }; }));
+ui.fresh.addEventListener("click", act(() => setType(type)));
+ui.slow.addEventListener("click", () => { slow = !slow; run(); });
+ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; actions = []; } syncUi(); run(); });
+stage.addEventListener("keydown", (ev) => {
+  const map = { ArrowUp: () => { rodT = clamp(rodT - 0.05, 0, 1); scramAt = null; }, ArrowDown: () => { rodT = clamp(rodT + 0.05, 0, 1); }, s: () => scram(false), p: () => { flow = 0.15; }, t: () => setType(type === "rbmk" ? "pwr" : "rbmk") };
+  if (map[ev.key] && live()) { ev.preventDefault(); act(map[ev.key])(); }
+});
+new IntersectionObserver((es) => { visible = es[es.length - 1].isIntersecting; if (visible) run(); }, { rootMargin: "120px 0px" }).observe(stage);
+if (still.matches) touring = false;
+window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+setType("rbmk"); draw(0); syncUi(); story();
+</script></body></html>

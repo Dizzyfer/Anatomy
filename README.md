@@ -26,6 +26,7 @@ Interactive engineering toys you can break. Poke them, push them past the limit,
 | [Overclocking a CPU](overclock/) · [play](https://dizzyfer.github.io/Anatomy/overclock/) | Clock, voltage and four coolers up to an LN2 pot: power with voltage squared, thermal runaway, the voltage wall, blue screens, the silicon lottery, the cold bug, and a VRM letting go with the safeties off. |
 | [Jet engine](jet/) · [play](https://dizzyfer.github.io/Anatomy/jet/) | A GE9X-sized turbofan cut in half: bypass vs core, throttle to the 597 kN record, a goose, a flock and surges, the fan blade-off containment test, and an HP turbine burst with the FADEC off. |
 | [Hydro dam](dam/) · [play](https://dizzyfer.github.io/Anatomy/dam/) | A concrete gravity dam making power: ρgQH, water hammer vs overspeed on a grid trip, floods and the spillway, uplift and the sliding check, and a breach with a flood wave down the valley. |
+| [Nuclear reactor](reactor/) · [play](https://dizzyfer.github.io/Anatomy/reactor/) | Chernobyl's RBMK-1000 against a modern PWR: delayed neutrons and prompt critical, void coefficients, xenon, the positive scram, decay heat and containment, and the 1986 test run step by step. |
 
 All built with [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22), an open-source kit for interactive isometric figures. The drawing kit, isometric camera and WebGL layer are his work.
 
