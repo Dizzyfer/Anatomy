@@ -1,0 +1,1274 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>F1 car</title><style>
+.iso{
+  --anatomy-page:#0b0b0b;--anatomy-card:#131313;--anatomy-text:#a3a3a3;--anatomy-strong:#e6e6e6;--anatomy-muted:#6e6e6e;
+  --anatomy-paper:#131313;--anatomy-face:#1b1b1b;--anatomy-top:#1c1c1c;
+  --anatomy-shade-0:#0f0f0f;--anatomy-shade-1:#121212;--anatomy-shade-2:#151515;--anatomy-shade-3:#181818;
+  --anatomy-lit-top:#262626;--anatomy-lit-shade:#1d1d1d;
+  --anatomy-hi:#d4d4d4;--anatomy-mid:#6a6a6a;--anatomy-lo:#3e3e3e;--anatomy-faint:#2a2a2a;--anatomy-lit:#ffffff;
+  --anatomy-halo:#050505;--anatomy-halo-opacity:.9;--anatomy-dot:#e6e6e6;
+  --anatomy-red:#ff6b6b;--anatomy-green:#6be0a0;--anatomy-blue:#6b9bff;
+  --anatomy-weight:.6px;--anatomy-ease:cubic-bezier(.32,.72,0,1);
+  --anatomy-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff0a,inset 0 0 0 1px #ffffff06,0 0 0 1px #00000026,0 1px 1px -.5px #00000014,0 3px 3px -1.5px #00000014,0 6px 6px -3px #00000014,0 12px 12px -6px #00000014;
+}
+.iso[data-theme="light"]{
+  --anatomy-page:#f2f2ef;--anatomy-card:#fbfbfa;--anatomy-text:#57575a;--anatomy-strong:#18181a;--anatomy-muted:#8c8c90;
+  --anatomy-paper:#fbfbfa;--anatomy-face:#ffffff;--anatomy-top:#ffffff;
+  --anatomy-shade-0:#dcdcd9;--anatomy-shade-1:#e5e5e2;--anatomy-shade-2:#ededea;--anatomy-shade-3:#f4f4f1;
+  --anatomy-lit-top:#ffffff;--anatomy-lit-shade:#eeeeeb;
+  --anatomy-hi:#26262a;--anatomy-mid:#8a8a8f;--anatomy-lo:#b4b4b8;--anatomy-faint:#d4d4d6;--anatomy-lit:#000000;
+  --anatomy-halo:#8a8a80;--anatomy-halo-opacity:.32;--anatomy-dot:#3a3a3e;
+  --anatomy-red:#e5484d;--anatomy-green:#30a46c;--anatomy-blue:#3e63dd;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff,0 0 0 1px #0000000f,0 1px 1px -.5px #0000000a,0 3px 3px -1.5px #0000000a,0 6px 6px -3px #0000000a,0 12px 12px -6px #0000000a;
+}
+.iso-svg{display:block;width:100%;height:auto;overflow:visible}
+.iso-svg path,.iso-svg circle{vector-effect:non-scaling-stroke}
+.iso-fill{fill:var(--anatomy-paper);stroke:none}
+.iso-solid[data-lit]>.iso-fill{fill:var(--anatomy-face)}
+.iso-shade,.iso-top{stroke:none}
+.iso-shade[data-shade="0"]{fill:var(--anatomy-shade-0)}
+.iso-shade[data-shade="1"]{fill:var(--anatomy-shade-1)}
+.iso-shade[data-shade="2"]{fill:var(--anatomy-shade-2)}
+.iso-shade[data-shade="3"]{fill:var(--anatomy-shade-3)}
+.iso-top{fill:var(--anatomy-top)}
+.iso-solid[data-lit]>.iso-top{fill:var(--anatomy-lit-top)}
+.iso-solid[data-lit]>.iso-shade{fill:var(--anatomy-lit-shade)}
+.iso-solid[data-seamless]>.iso-shade,.iso-solid[data-seamless]>.iso-top{stroke-width:.4;stroke-linejoin:round}
+.iso-solid[data-seamless]>.iso-shade[data-shade="0"]{stroke:var(--anatomy-shade-0)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="1"]{stroke:var(--anatomy-shade-1)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="2"]{stroke:var(--anatomy-shade-2)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="3"]{stroke:var(--anatomy-shade-3)}
+.iso-solid[data-seamless]>.iso-top{stroke:var(--anatomy-top)}
+.iso-solid[data-seamless][data-lit]>.iso-top{stroke:var(--anatomy-lit-top)}
+.iso-solid[data-seamless][data-lit]>.iso-shade{stroke:var(--anatomy-lit-shade)}
+.iso-solid[data-lit]>.iso-edge{stroke:var(--anatomy-lit)}
+.iso-halo{fill:var(--anatomy-halo);stroke:none;filter:blur(9px);opacity:var(--anatomy-halo-opacity);transform:translateY(3px)}
+.iso-line{fill:none;stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight);stroke-linecap:round;stroke-linejoin:round}
+.iso-line[data-tone="hi"]{stroke:var(--anatomy-hi)}
+.iso-line[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.iso-line[data-tone="lo"]{stroke:var(--anatomy-lo)}
+.iso-line[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.iso-line[data-tone="lit"]{stroke:var(--anatomy-lit)}
+.iso-line[data-tone="red"]{stroke:var(--anatomy-red)}
+.iso-line[data-tone="green"]{stroke:var(--anatomy-green)}
+.iso-line[data-tone="blue"]{stroke:var(--anatomy-blue)}
+.iso-line[data-dotted]{stroke-dasharray:.01 3.5;stroke-width:1}
+.iso-line[data-dashed]{stroke-dasharray:3 3}
+.iso-line[data-flow]{stroke-dasharray:2 6}
+.iso-wire-end{fill:var(--anatomy-paper);stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight)}
+.iso-wire[data-tone="hi"] .iso-wire-end{stroke:var(--anatomy-hi)}
+.iso-wire[data-tone="mid"] .iso-wire-end{stroke:var(--anatomy-mid)}
+.iso-wire[data-tone="faint"] .iso-wire-end{stroke:var(--anatomy-faint)}
+.iso-wire[data-tone="lit"] .iso-wire-end{stroke:var(--anatomy-lit)}
+.iso-dots circle{fill:var(--anatomy-dot);stroke:none;opacity:.32}
+.iso-dots[data-tone="hi"] circle{opacity:.85}
+.iso-dots[data-tone="mid"] circle{opacity:.45}
+.iso-dots[data-tone="lo"] circle{opacity:.22}
+.iso-dots[data-tone="faint"] circle{opacity:.12}
+.iso-face-text{fill:var(--anatomy-mid);font-family:var(--anatomy-mono);letter-spacing:.04em}
+.iso-face-text[data-tone="hi"]{fill:var(--anatomy-hi)}
+.iso-face-text[data-tone="lo"]{fill:var(--anatomy-lo)}
+.iso-face-text[data-tone="faint"]{fill:var(--anatomy-faint)}
+.tb-body{fill:var(--anatomy-shade-2);stroke:none}
+.tb-shine{fill:var(--anatomy-top);stroke:none}
+.tb-shade{fill:var(--anatomy-shade-0);stroke:none}
+.tb-ring{fill:none;stroke:var(--anatomy-lo);stroke-width:.45;stroke-linecap:butt;stroke-linejoin:round}
+.tb-ring[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.tb-ring[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.tb-ring[data-tone="hi"]{stroke:var(--anatomy-hi)}
+@keyframes iso-flow{to{stroke-dashoffset:-32}}
+@keyframes iso-pulse{0%,100%{opacity:.18}12%{opacity:1}40%{opacity:.18}}
+.iso-line[data-flow]{animation:iso-flow 1600ms linear infinite}
+.iso-dots circle[data-pulse]{animation:iso-pulse 1600ms steps(1,end) infinite;animation-delay:var(--pulse-at,0ms)}
+.iso-figure{margin:32px 0 36px}
+.iso-plate{position:relative;padding:52px 24px;border-radius:0;background:var(--anatomy-card);box-shadow:0 0 0 1px var(--anatomy-mid);--anatomy-paper:var(--anatomy-card)}
+.iso-plate-corners{position:absolute;inset:18px 20px;pointer-events:none}
+.iso-plate-corner{position:absolute;color:var(--anatomy-muted);font-family:var(--anatomy-mono);font-size:10.5px;line-height:1;letter-spacing:.04em;white-space:nowrap}
+.iso-plate-corner[data-corner="fig"]{top:0;left:0;color:var(--anatomy-text)}
+.iso-plate-corner[data-corner="title"]{top:0;right:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="hint"]{bottom:0;left:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="readout"]{right:0;bottom:0;color:var(--anatomy-text);font-variant-numeric:tabular-nums}
+.iso-plate .iso-svg{margin:0 auto}
+.iso-legend{display:grid;gap:8px;margin-top:12px;color:var(--anatomy-muted);font-size:13px;line-height:1.55}
+.iso-keys{display:flex;flex-wrap:wrap;gap:6px 18px}
+.iso-key{display:inline-flex;align-items:center;gap:7px}
+.iso-swatch{width:16px;height:10px;flex:none;overflow:visible}
+.iso-swatch path{fill:none;stroke:var(--anatomy-hi);stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+.iso-swatch[data-mark="raised"] path,.iso-swatch[data-mark="flat"] path{stroke:var(--anatomy-mid)}
+.iso-swatch[data-mark="lit"] path{stroke:var(--anatomy-lit)}
+.iso-swatch[data-mark="dim"] path{stroke:var(--anatomy-lo)}
+.iso-swatch[data-mark="dotted"] path{stroke-dasharray:.01 3;stroke-width:1.4}
+.iso-swatch[data-mark="dashed"] path{stroke-dasharray:3 2.5}
+.iso-swatch[data-mark="red"] path{stroke:var(--anatomy-red)}
+.iso-swatch[data-mark="green"] path{stroke:var(--anatomy-green)}
+.iso-swatch[data-mark="blue"] path{stroke:var(--anatomy-blue)}
+.iso-swatch-crease{stroke:var(--anatomy-lo)!important}
+@media (max-width:560px){.iso-plate{padding:48px 12px 70px}.iso-plate-corner[data-corner="hint"]{bottom:18px}}
+@media (prefers-reduced-motion:reduce){.iso-line[data-flow],.iso-dots circle[data-pulse]{animation:none}}
+
+*{box-sizing:border-box}
+html{color-scheme:dark}
+body[data-theme="light"]{color-scheme:light}
+body{margin:0;background:var(--anatomy-page);color:var(--anatomy-text);font:14px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.iso-page{width:min(720px,100% - 32px);margin:64px auto 96px}
+</style></head><body class="iso" data-theme="dark"><main class="iso-page"><style>.fx-stage{position:relative;overflow:hidden}
+.fx-stage svg{display:block;position:relative}
+.fx-smoke{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.m-wrap{position:absolute;right:2.5%;top:3%;width:40%;aspect-ratio:2.4/1;border:1px solid var(--anatomy-lo);border-radius:6px;overflow:hidden;pointer-events:none}
+.m-cv{width:100%;height:100%;display:block}
+.tarmac{fill:#2a2c30}.edge{fill:none;stroke:#e8e8e8;stroke-width:1.6}.dash{fill:none;stroke:#e8e8e8;stroke-width:1.2;opacity:.55}
+body[data-theme="light"] .tarmac{fill:#5a5d63}
+.arrF,.arrR{fill:none;stroke:#3ddc84;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}.arrtx{font:600 10px var(--anatomy-mono);fill:#3ddc84}
+body[data-theme="light"] .arrF,body[data-theme="light"] .arrR{stroke:#13985a}body[data-theme="light"] .arrtx{fill:#13985a}
+.fx-stage path{stroke-linejoin:round}
+.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
+.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ctl-label{min-width:72px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
+.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
+.ctl button:disabled{opacity:.5;cursor:default}
+.ctl button:hover{border-color:var(--anatomy-mid)}
+.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
+.ctl #snap{color:#ff6a3d;border-color:#ff6a3d}
+.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
+.ctl output{min-width:110px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
+.slide{position:relative;flex:1;min-width:120px}.slide input{width:100%;accent-color:var(--anatomy-lit);margin:0}
+.meter{position:relative;flex:1;min-width:110px;height:10px;margin-top:14px;border:1px solid var(--anatomy-lo);border-radius:5px}
+.meter .fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .1s;background:#3ddc84}
+.meter .fill[data-state="warn"]{background:#ffb347}.meter .fill[data-state="bad"]{background:#ff5a2a}.meter .fill[data-state="lit"]{background:#4fb3ff}
+.mark{position:absolute;top:-14px;bottom:-3px;width:0;border-left:1px dashed #ff6a3d;pointer-events:none}
+.mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:#ff6a3d}
+#stats{font-size:12px;color:var(--anatomy-mid);line-height:1.5;flex:1}#stats b{color:var(--anatomy-hi,var(--anatomy-mid));font-weight:600}
+#shot{min-height:3.6em;font-size:12px;line-height:1.4}
+@media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:84px}.ctl button small{display:none}.m-wrap{width:52%}}</style><figure class="iso-figure"><div class="iso-plate"><div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 27</span><span class="iso-plate-corner" data-corner="title">F1 car</span><span class="iso-plate-corner" data-corner="hint">Grip you buy with drag</span><span class="iso-plate-corner" data-corner="readout" data-readout></span></div><div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="F1 car: A toggles active aero, F the car ahead, D the brake ducts, W snaps the rear wing, R resets, up and down change the wing level"><svg xmlns="http://www.w3.org/2000/svg" class="iso-svg" viewBox="0 0 680 470" role="img" aria-label="A 2026-style Formula 1 car on a strip of track, with air streaming over its wings, downforce arrows on the axles and glowing front brakes, and a track map inset."><path class="iso-halo" d="M20.3 177.3L20.8 174.9L22.2 172.6L24.5 170.4L27.6 168.6L189 87.8L192.8 86.3L197.1 85.1L201.8 84.4L206.6 84.2L211.4 84.4L216.1 85.1L220.4 86.3L224.1 87.8L652.4 302L655.5 303.8L657.8 306L659.2 308.3L659.7 310.7L659.7 330.1L659.2 332.5L657.8 334.8L655.5 337L652.4 338.9L491 419.6L487.2 421.1L482.9 422.3L478.2 423L473.4 423.2L468.6 423L463.9 422.3L459.6 421.1L455.9 419.6L27.6 205.5L24.5 203.6L22.2 201.4L20.8 199.1L20.3 196.7Z"/><g class="iso-solid"><path class="iso-fill" d="M194.7 123.9L195.1 122.3L196.3 120.9L198.2 119.7L200.6 118.7L203.5 118.1L206.6 117.9L209.7 118.1L212.6 118.7L215 119.7L216.9 120.9L218.1 122.3L218.5 123.9L218.5 126.5L218.1 128L216.9 129.4L215 130.7L212.6 131.6L209.7 132.2L206.6 132.4L203.5 132.2L200.6 131.6L198.2 130.7L196.3 129.4L195.1 128L194.7 126.5Z"/><path class="iso-shade" data-shade="0" d="M215 130.7L212.6 131.6L212.6 129L215 128.1ZM218.5 126.5L218.1 128L218.1 125.4L218.5 123.9ZM218.1 128L216.9 129.4L216.9 126.9L218.1 125.4ZM216.9 129.4L215 130.7L215 128.1L216.9 126.9Z"/><path class="iso-shade" data-shade="1" d="M212.6 131.6L209.7 132.2L209.7 129.6L212.6 129ZM209.7 132.2L206.6 132.4L206.6 129.8L209.7 129.6Z"/><path class="iso-shade" data-shade="2" d="M206.6 132.4L203.5 132.2L203.5 129.6L206.6 129.8ZM203.5 132.2L200.6 131.6L200.6 129L203.5 129.6Z"/><path class="iso-shade" data-shade="3" d="M200.6 131.6L198.2 130.7L198.2 128.1L200.6 129ZM198.2 130.7L196.3 129.4L196.3 126.9L198.2 128.1ZM196.3 129.4L195.1 128L195.1 125.4L196.3 126.9ZM195.1 128L194.7 126.5L194.7 123.9L195.1 125.4Z"/><path class="iso-top" d="M215 128.1L212.6 129L209.7 129.6L206.6 129.8L203.5 129.6L200.6 129L198.2 128.1L196.3 126.9L195.1 125.4L194.7 123.9L195.1 122.3L196.3 120.9L198.2 119.7L200.6 118.7L203.5 118.1L206.6 117.9L209.7 118.1L212.6 118.7L215 119.7L216.9 120.9L218.1 122.3L218.5 123.9L218.1 125.4L216.9 126.9Z"/><path class="iso-line iso-crease" data-tone="faint" d="M218.5 123.9L218.1 125.4L216.9 126.9L215 128.1L212.6 129L209.7 129.6L206.6 129.8L203.5 129.6L200.6 129L198.2 128.1L196.3 126.9L195.1 125.4L194.7 123.9"/><path class="iso-line iso-edge" data-tone="lo" d="M194.7 123.9L195.1 122.3L196.3 120.9L198.2 119.7L200.6 118.7L203.5 118.1L206.6 117.9L209.7 118.1L212.6 118.7L215 119.7L216.9 120.9L218.1 122.3L218.5 123.9M218.5 126.5L218.1 128L216.9 129.4L215 130.7L212.6 131.6L209.7 132.2L206.6 132.4L203.5 132.2L200.6 131.6L198.2 130.7L196.3 129.4L195.1 128L194.7 126.5M194.7 123.9L194.7 126.5M218.5 123.9L218.5 126.5"/></g><g class="iso-solid"><path class="iso-fill" d="M197.2 115.7L197.5 114.5L198.4 113.4L199.9 112.4L201.9 111.6L204.2 111.2L206.6 111L209 111.2L211.3 111.6L213.3 112.4L214.8 113.4L215.7 114.5L216 115.7L216 123.9L215.7 125.1L214.8 126.2L213.3 127.2L211.3 128L209 128.4L206.6 128.6L204.2 128.4L201.9 128L199.9 127.2L198.4 126.2L197.5 125.1L197.2 123.9Z"/><path class="iso-shade" data-shade="0" d="M213.3 127.2L211.3 128L211.3 119.8L213.3 119.1ZM216 123.9L215.7 125.1L215.7 116.9L216 115.7ZM215.7 125.1L214.8 126.2L214.8 118.1L215.7 116.9ZM214.8 126.2L213.3 127.2L213.3 119.1L214.8 118.1Z"/><path class="iso-shade" data-shade="1" d="M211.3 128L209 128.4L209 120.3L211.3 119.8ZM209 128.4L206.6 128.6L206.6 120.4L209 120.3Z"/><path class="iso-shade" data-shade="2" d="M206.6 128.6L204.2 128.4L204.2 120.3L206.6 120.4ZM204.2 128.4L201.9 128L201.9 119.8L204.2 120.3Z"/><path class="iso-shade" data-shade="3" d="M201.9 128L199.9 127.2L199.9 119.1L201.9 119.8ZM199.9 127.2L198.4 126.2L198.4 118.1L199.9 119.1ZM198.4 126.2L197.5 125.1L197.5 116.9L198.4 118.1ZM197.5 125.1L197.2 123.9L197.2 115.7L197.5 116.9Z"/><path class="iso-top" d="M213.3 119.1L211.3 119.8L209 120.3L206.6 120.4L204.2 120.3L201.9 119.8L199.9 119.1L198.4 118.1L197.5 116.9L197.2 115.7L197.5 114.5L198.4 113.4L199.9 112.4L201.9 111.6L204.2 111.2L206.6 111L209 111.2L211.3 111.6L213.3 112.4L214.8 113.4L215.7 114.5L216 115.7L215.7 116.9L214.8 118.1Z"/><path class="iso-line iso-crease" data-tone="faint" d="M216 115.7L215.7 116.9L214.8 118.1L213.3 119.1L211.3 119.8L209 120.3L206.6 120.4L204.2 120.3L201.9 119.8L199.9 119.1L198.4 118.1L197.5 116.9L197.2 115.7"/><path class="iso-line iso-edge" data-tone="mid" d="M197.2 115.7L197.5 114.5L198.4 113.4L199.9 112.4L201.9 111.6L204.2 111.2L206.6 111L209 111.2L211.3 111.6L213.3 112.4L214.8 113.4L215.7 114.5L216 115.7M216 123.9L215.7 125.1L214.8 126.2L213.3 127.2L211.3 128L209 128.4L206.6 128.6L204.2 128.4L201.9 128L199.9 127.2L198.4 126.2L197.5 125.1L197.2 123.9M197.2 115.7L197.2 123.9M216 115.7L216 123.9"/></g><g class="iso-solid"><path class="iso-fill" d="M54.3 194.1L54.7 192.6L55.9 191.1L57.7 189.9L60.2 188.9L63.1 188.3L66.2 188.1L69.3 188.3L72.1 188.9L74.6 189.9L76.5 191.1L77.7 192.6L78.1 194.1L78.1 196.7L77.7 198.2L76.5 199.7L74.6 200.9L72.1 201.8L69.3 202.4L66.2 202.6L63.1 202.4L60.2 201.8L57.7 200.9L55.9 199.7L54.7 198.2L54.3 196.7Z"/><path class="iso-shade" data-shade="0" d="M74.6 200.9L72.1 201.8L72.1 199.3L74.6 198.3ZM78.1 196.7L77.7 198.2L77.7 195.6L78.1 194.1ZM77.7 198.2L76.5 199.7L76.5 197.1L77.7 195.6ZM76.5 199.7L74.6 200.9L74.6 198.3L76.5 197.1Z"/><path class="iso-shade" data-shade="1" d="M72.1 201.8L69.3 202.4L69.3 199.9L72.1 199.3ZM69.3 202.4L66.2 202.6L66.2 200.1L69.3 199.9Z"/><path class="iso-shade" data-shade="2" d="M66.2 202.6L63.1 202.4L63.1 199.9L66.2 200.1ZM63.1 202.4L60.2 201.8L60.2 199.3L63.1 199.9Z"/><path class="iso-shade" data-shade="3" d="M60.2 201.8L57.7 200.9L57.7 198.3L60.2 199.3ZM57.7 200.9L55.9 199.7L55.9 197.1L57.7 198.3ZM55.9 199.7L54.7 198.2L54.7 195.6L55.9 197.1ZM54.7 198.2L54.3 196.7L54.3 194.1L54.7 195.6Z"/><path class="iso-top" d="M74.6 198.3L72.1 199.3L69.3 199.9L66.2 200.1L63.1 199.9L60.2 199.3L57.7 198.3L55.9 197.1L54.7 195.6L54.3 194.1L54.7 192.6L55.9 191.1L57.7 189.9L60.2 188.9L63.1 188.3L66.2 188.1L69.3 188.3L72.1 188.9L74.6 189.9L76.5 191.1L77.7 192.6L78.1 194.1L77.7 195.6L76.5 197.1Z"/><path class="iso-line iso-crease" data-tone="faint" d="M78.1 194.1L77.7 195.6L76.5 197.1L74.6 198.3L72.1 199.3L69.3 199.9L66.2 200.1L63.1 199.9L60.2 199.3L57.7 198.3L55.9 197.1L54.7 195.6L54.3 194.1"/><path class="iso-line iso-edge" data-tone="lo" d="M54.3 194.1L54.7 192.6L55.9 191.1L57.7 189.9L60.2 188.9L63.1 188.3L66.2 188.1L69.3 188.3L72.1 188.9L74.6 189.9L76.5 191.1L77.7 192.6L78.1 194.1M78.1 196.7L77.7 198.2L76.5 199.7L74.6 200.9L72.1 201.8L69.3 202.4L66.2 202.6L63.1 202.4L60.2 201.8L57.7 200.9L55.9 199.7L54.7 198.2L54.3 196.7M54.3 194.1L54.3 196.7M78.1 194.1L78.1 196.7"/></g><g class="iso-solid"><path class="iso-fill" d="M56.7 185.9L57.1 184.7L58 183.6L59.5 182.6L61.5 181.8L63.7 181.4L66.2 181.2L68.6 181.4L70.9 181.8L72.8 182.6L74.3 183.6L75.3 184.7L75.6 185.9L75.6 194.1L75.3 195.3L74.3 196.5L72.8 197.4L70.9 198.2L68.6 198.7L66.2 198.8L63.7 198.7L61.5 198.2L59.5 197.4L58 196.5L57.1 195.3L56.7 194.1Z"/><path class="iso-shade" data-shade="0" d="M72.8 197.4L70.9 198.2L70.9 190L72.8 189.3ZM75.6 194.1L75.3 195.3L75.3 187.2L75.6 185.9ZM75.3 195.3L74.3 196.5L74.3 188.3L75.3 187.2ZM74.3 196.5L72.8 197.4L72.8 189.3L74.3 188.3Z"/><path class="iso-shade" data-shade="1" d="M70.9 198.2L68.6 198.7L68.6 190.5L70.9 190ZM68.6 198.7L66.2 198.8L66.2 190.6L68.6 190.5Z"/><path class="iso-shade" data-shade="2" d="M66.2 198.8L63.7 198.7L63.7 190.5L66.2 190.6ZM63.7 198.7L61.5 198.2L61.5 190L63.7 190.5Z"/><path class="iso-shade" data-shade="3" d="M61.5 198.2L59.5 197.4L59.5 189.3L61.5 190ZM59.5 197.4L58 196.5L58 188.3L59.5 189.3ZM58 196.5L57.1 195.3L57.1 187.2L58 188.3ZM57.1 195.3L56.7 194.1L56.7 185.9L57.1 187.2Z"/><path class="iso-top" d="M72.8 189.3L70.9 190L68.6 190.5L66.2 190.6L63.7 190.5L61.5 190L59.5 189.3L58 188.3L57.1 187.2L56.7 185.9L57.1 184.7L58 183.6L59.5 182.6L61.5 181.8L63.7 181.4L66.2 181.2L68.6 181.4L70.9 181.8L72.8 182.6L74.3 183.6L75.3 184.7L75.6 185.9L75.3 187.2L74.3 188.3Z"/><path class="iso-line iso-crease" data-tone="faint" d="M75.6 185.9L75.3 187.2L74.3 188.3L72.8 189.3L70.9 190L68.6 190.5L66.2 190.6L63.7 190.5L61.5 190L59.5 189.3L58 188.3L57.1 187.2L56.7 185.9"/><path class="iso-line iso-edge" data-tone="mid" d="M56.7 185.9L57.1 184.7L58 183.6L59.5 182.6L61.5 181.8L63.7 181.4L66.2 181.2L68.6 181.4L70.9 181.8L72.8 182.6L74.3 183.6L75.3 184.7L75.6 185.9M75.6 194.1L75.3 195.3L74.3 196.5L72.8 197.4L70.9 198.2L68.6 198.7L66.2 198.8L63.7 198.7L61.5 198.2L59.5 197.4L58 196.5L57.1 195.3L56.7 194.1M56.7 185.9L56.7 194.1M75.6 185.9L75.6 194.1"/></g><g class="iso-solid"><path class="iso-fill" d="M601.9 327.5L602.3 326L603.5 324.5L605.4 323.3L607.9 322.3L610.7 321.7L613.8 321.5L616.9 321.7L619.8 322.3L622.3 323.3L624.1 324.5L625.3 326L625.7 327.5L625.7 330.1L625.3 331.6L624.1 333.1L622.3 334.3L619.8 335.2L616.9 335.8L613.8 336L610.7 335.8L607.9 335.2L605.4 334.3L603.5 333.1L602.3 331.6L601.9 330.1Z"/><path class="iso-shade" data-shade="0" d="M622.3 334.3L619.8 335.2L619.8 332.7L622.3 331.7ZM625.7 330.1L625.3 331.6L625.3 329L625.7 327.5ZM625.3 331.6L624.1 333.1L624.1 330.5L625.3 329ZM624.1 333.1L622.3 334.3L622.3 331.7L624.1 330.5Z"/><path class="iso-shade" data-shade="1" d="M619.8 335.2L616.9 335.8L616.9 333.3L619.8 332.7ZM616.9 335.8L613.8 336L613.8 333.5L616.9 333.3Z"/><path class="iso-shade" data-shade="2" d="M613.8 336L610.7 335.8L610.7 333.3L613.8 333.5ZM610.7 335.8L607.9 335.2L607.9 332.7L610.7 333.3Z"/><path class="iso-shade" data-shade="3" d="M607.9 335.2L605.4 334.3L605.4 331.7L607.9 332.7ZM605.4 334.3L603.5 333.1L603.5 330.5L605.4 331.7ZM603.5 333.1L602.3 331.6L602.3 329L603.5 330.5ZM602.3 331.6L601.9 330.1L601.9 327.5L602.3 329Z"/><path class="iso-top" d="M622.3 331.7L619.8 332.7L616.9 333.3L613.8 333.5L610.7 333.3L607.9 332.7L605.4 331.7L603.5 330.5L602.3 329L601.9 327.5L602.3 326L603.5 324.5L605.4 323.3L607.9 322.3L610.7 321.7L613.8 321.5L616.9 321.7L619.8 322.3L622.3 323.3L624.1 324.5L625.3 326L625.7 327.5L625.3 329L624.1 330.5Z"/><path class="iso-line iso-crease" data-tone="faint" d="M625.7 327.5L625.3 329L624.1 330.5L622.3 331.7L619.8 332.7L616.9 333.3L613.8 333.5L610.7 333.3L607.9 332.7L605.4 331.7L603.5 330.5L602.3 329L601.9 327.5"/><path class="iso-line iso-edge" data-tone="lo" d="M601.9 327.5L602.3 326L603.5 324.5L605.4 323.3L607.9 322.3L610.7 321.7L613.8 321.5L616.9 321.7L619.8 322.3L622.3 323.3L624.1 324.5L625.3 326L625.7 327.5M625.7 330.1L625.3 331.6L624.1 333.1L622.3 334.3L619.8 335.2L616.9 335.8L613.8 336L610.7 335.8L607.9 335.2L605.4 334.3L603.5 333.1L602.3 331.6L601.9 330.1M601.9 327.5L601.9 330.1M625.7 327.5L625.7 330.1"/></g><g class="iso-solid"><path class="iso-fill" d="M604.4 319.3L604.7 318.1L605.7 317L607.2 316L609.1 315.3L611.4 314.8L613.8 314.6L616.3 314.8L618.5 315.3L620.5 316L622 317L622.9 318.1L623.3 319.3L623.3 327.5L622.9 328.7L622 329.9L620.5 330.8L618.5 331.6L616.3 332.1L613.8 332.2L611.4 332.1L609.1 331.6L607.2 330.8L605.7 329.9L604.7 328.7L604.4 327.5Z"/><path class="iso-shade" data-shade="0" d="M620.5 330.8L618.5 331.6L618.5 323.4L620.5 322.7ZM623.3 327.5L622.9 328.7L622.9 320.6L623.3 319.3ZM622.9 328.7L622 329.9L622 321.7L622.9 320.6ZM622 329.9L620.5 330.8L620.5 322.7L622 321.7Z"/><path class="iso-shade" data-shade="1" d="M618.5 331.6L616.3 332.1L616.3 323.9L618.5 323.4ZM616.3 332.1L613.8 332.2L613.8 324.1L616.3 323.9Z"/><path class="iso-shade" data-shade="2" d="M613.8 332.2L611.4 332.1L611.4 323.9L613.8 324.1ZM611.4 332.1L609.1 331.6L609.1 323.4L611.4 323.9Z"/><path class="iso-shade" data-shade="3" d="M609.1 331.6L607.2 330.8L607.2 322.7L609.1 323.4ZM607.2 330.8L605.7 329.9L605.7 321.7L607.2 322.7ZM605.7 329.9L604.7 328.7L604.7 320.6L605.7 321.7ZM604.7 328.7L604.4 327.5L604.4 319.3L604.7 320.6Z"/><path class="iso-top" d="M620.5 322.7L618.5 323.4L616.3 323.9L613.8 324.1L611.4 323.9L609.1 323.4L607.2 322.7L605.7 321.7L604.7 320.6L604.4 319.3L604.7 318.1L605.7 317L607.2 316L609.1 315.3L611.4 314.8L613.8 314.6L616.3 314.8L618.5 315.3L620.5 316L622 317L622.9 318.1L623.3 319.3L622.9 320.6L622 321.7Z"/><path class="iso-line iso-crease" data-tone="faint" d="M623.3 319.3L622.9 320.6L622 321.7L620.5 322.7L618.5 323.4L616.3 323.9L613.8 324.1L611.4 323.9L609.1 323.4L607.2 322.7L605.7 321.7L604.7 320.6L604.4 319.3"/><path class="iso-line iso-edge" data-tone="mid" d="M604.4 319.3L604.7 318.1L605.7 317L607.2 316L609.1 315.3L611.4 314.8L613.8 314.6L616.3 314.8L618.5 315.3L620.5 316L622 317L622.9 318.1L623.3 319.3M623.3 327.5L622.9 328.7L622 329.9L620.5 330.8L618.5 331.6L616.3 332.1L613.8 332.2L611.4 332.1L609.1 331.6L607.2 330.8L605.7 329.9L604.7 328.7L604.4 327.5M604.4 319.3L604.4 327.5M623.3 319.3L623.3 327.5"/></g><g class="iso-solid"><path class="iso-fill" d="M461.5 397.7L461.9 396.2L463.1 394.7L465 393.5L467.4 392.6L470.3 392L473.4 391.8L476.5 392L479.4 392.6L481.8 393.5L483.7 394.7L484.9 396.2L485.3 397.7L485.3 400.3L484.9 401.8L483.7 403.3L481.8 404.5L479.4 405.5L476.5 406.1L473.4 406.3L470.3 406.1L467.4 405.5L465 404.5L463.1 403.3L461.9 401.8L461.5 400.3Z"/><path class="iso-shade" data-shade="0" d="M481.8 404.5L479.4 405.5L479.4 402.9L481.8 401.9ZM485.3 400.3L484.9 401.8L484.9 399.3L485.3 397.7ZM484.9 401.8L483.7 403.3L483.7 400.7L484.9 399.3ZM483.7 403.3L481.8 404.5L481.8 401.9L483.7 400.7Z"/><path class="iso-shade" data-shade="1" d="M479.4 405.5L476.5 406.1L476.5 403.5L479.4 402.9ZM476.5 406.1L473.4 406.3L473.4 403.7L476.5 403.5Z"/><path class="iso-shade" data-shade="2" d="M473.4 406.3L470.3 406.1L470.3 403.5L473.4 403.7ZM470.3 406.1L467.4 405.5L467.4 402.9L470.3 403.5Z"/><path class="iso-shade" data-shade="3" d="M467.4 405.5L465 404.5L465 401.9L467.4 402.9ZM465 404.5L463.1 403.3L463.1 400.7L465 401.9ZM463.1 403.3L461.9 401.8L461.9 399.3L463.1 400.7ZM461.9 401.8L461.5 400.3L461.5 397.7L461.9 399.3Z"/><path class="iso-top" d="M481.8 401.9L479.4 402.9L476.5 403.5L473.4 403.7L470.3 403.5L467.4 402.9L465 401.9L463.1 400.7L461.9 399.3L461.5 397.7L461.9 396.2L463.1 394.7L465 393.5L467.4 392.6L470.3 392L473.4 391.8L476.5 392L479.4 392.6L481.8 393.5L483.7 394.7L484.9 396.2L485.3 397.7L484.9 399.3L483.7 400.7Z"/><path class="iso-line iso-crease" data-tone="faint" d="M485.3 397.7L484.9 399.3L483.7 400.7L481.8 401.9L479.4 402.9L476.5 403.5L473.4 403.7L470.3 403.5L467.4 402.9L465 401.9L463.1 400.7L461.9 399.3L461.5 397.7"/><path class="iso-line iso-edge" data-tone="lo" d="M461.5 397.7L461.9 396.2L463.1 394.7L465 393.5L467.4 392.6L470.3 392L473.4 391.8L476.5 392L479.4 392.6L481.8 393.5L483.7 394.7L484.9 396.2L485.3 397.7M485.3 400.3L484.9 401.8L483.7 403.3L481.8 404.5L479.4 405.5L476.5 406.1L473.4 406.3L470.3 406.1L467.4 405.5L465 404.5L463.1 403.3L461.9 401.8L461.5 400.3M461.5 397.7L461.5 400.3M485.3 397.7L485.3 400.3"/></g><g class="iso-solid"><path class="iso-fill" d="M464 389.5L464.3 388.3L465.2 387.2L466.7 386.2L468.7 385.5L471 385L473.4 384.8L475.8 385L478.1 385.5L480.1 386.2L481.6 387.2L482.5 388.3L482.8 389.5L482.8 397.7L482.5 398.9L481.6 400.1L480.1 401.1L478.1 401.8L475.8 402.3L473.4 402.4L471 402.3L468.7 401.8L466.7 401.1L465.2 400.1L464.3 398.9L464 397.7Z"/><path class="iso-shade" data-shade="0" d="M480.1 401.1L478.1 401.8L478.1 393.6L480.1 392.9ZM482.8 397.7L482.5 398.9L482.5 390.8L482.8 389.5ZM482.5 398.9L481.6 400.1L481.6 391.9L482.5 390.8ZM481.6 400.1L480.1 401.1L480.1 392.9L481.6 391.9Z"/><path class="iso-shade" data-shade="1" d="M478.1 401.8L475.8 402.3L475.8 394.1L478.1 393.6ZM475.8 402.3L473.4 402.4L473.4 394.3L475.8 394.1Z"/><path class="iso-shade" data-shade="2" d="M473.4 402.4L471 402.3L471 394.1L473.4 394.3ZM471 402.3L468.7 401.8L468.7 393.6L471 394.1Z"/><path class="iso-shade" data-shade="3" d="M468.7 401.8L466.7 401.1L466.7 392.9L468.7 393.6ZM466.7 401.1L465.2 400.1L465.2 391.9L466.7 392.9ZM465.2 400.1L464.3 398.9L464.3 390.8L465.2 391.9ZM464.3 398.9L464 397.7L464 389.5L464.3 390.8Z"/><path class="iso-top" d="M480.1 392.9L478.1 393.6L475.8 394.1L473.4 394.3L471 394.1L468.7 393.6L466.7 392.9L465.2 391.9L464.3 390.8L464 389.5L464.3 388.3L465.2 387.2L466.7 386.2L468.7 385.5L471 385L473.4 384.8L475.8 385L478.1 385.5L480.1 386.2L481.6 387.2L482.5 388.3L482.8 389.5L482.5 390.8L481.6 391.9Z"/><path class="iso-line iso-crease" data-tone="faint" d="M482.8 389.5L482.5 390.8L481.6 391.9L480.1 392.9L478.1 393.6L475.8 394.1L473.4 394.3L471 394.1L468.7 393.6L466.7 392.9L465.2 391.9L464.3 390.8L464 389.5"/><path class="iso-line iso-edge" data-tone="mid" d="M464 389.5L464.3 388.3L465.2 387.2L466.7 386.2L468.7 385.5L471 385L473.4 384.8L475.8 385L478.1 385.5L480.1 386.2L481.6 387.2L482.5 388.3L482.8 389.5M482.8 397.7L482.5 398.9L481.6 400.1L480.1 401.1L478.1 401.8L475.8 402.3L473.4 402.4L471 402.3L468.7 401.8L466.7 401.1L465.2 400.1L464.3 398.9L464 397.7M464 389.5L464 397.7M482.8 389.5L482.8 397.7"/></g><g class="iso-solid"><path class="iso-fill" d="M20.3 166.6L20.8 164.2L22.2 161.8L24.5 159.7L27.6 157.8L189 77.1L192.8 75.5L197.1 74.4L201.8 73.7L206.6 73.4L211.4 73.7L216.1 74.4L220.4 75.5L224.1 77.1L652.4 291.2L655.5 293.1L657.8 295.2L659.2 297.6L659.7 300L659.7 319.3L659.2 321.8L657.8 324.1L655.5 326.2L652.4 328.1L491 408.9L487.2 410.4L482.9 411.5L478.2 412.3L473.4 412.5L468.6 412.3L463.9 411.5L459.6 410.4L455.9 408.9L27.6 194.7L24.5 192.8L22.2 190.7L20.8 188.4L20.3 185.9Z"/><path class="iso-shade" data-shade="0" d="M659.7 319.3L659.2 321.8L659.2 302.4L659.7 300ZM659.2 321.8L657.8 324.1L657.8 304.7L659.2 302.4ZM657.8 324.1L655.5 326.2L655.5 306.9L657.8 304.7ZM655.5 326.2L652.4 328.1L652.4 308.8L655.5 306.9ZM652.4 328.1L491 408.9L491 389.5L652.4 308.8ZM491 408.9L487.2 410.4L487.2 391.1L491 389.5Z"/><path class="iso-shade" data-shade="1" d="M487.2 410.4L482.9 411.5L482.9 392.2L487.2 391.1ZM482.9 411.5L478.2 412.3L478.2 392.9L482.9 392.2ZM478.2 412.3L473.4 412.5L473.4 393.1L478.2 392.9Z"/><path class="iso-shade" data-shade="2" d="M473.4 412.5L468.6 412.3L468.6 392.9L473.4 393.1ZM468.6 412.3L463.9 411.5L463.9 392.2L468.6 392.9ZM463.9 411.5L459.6 410.4L459.6 391.1L463.9 392.2Z"/><path class="iso-shade" data-shade="3" d="M459.6 410.4L455.9 408.9L455.9 389.5L459.6 391.1ZM455.9 408.9L27.6 194.7L27.6 175.4L455.9 389.5ZM27.6 194.7L24.5 192.8L24.5 173.5L27.6 175.4ZM24.5 192.8L22.2 190.7L22.2 171.3L24.5 173.5ZM22.2 190.7L20.8 188.4L20.8 169L22.2 171.3ZM20.8 188.4L20.3 185.9L20.3 166.6L20.8 169Z"/><path class="iso-top" d="M652.4 291.2L655.5 293.1L657.8 295.2L659.2 297.6L659.7 300L659.2 302.4L657.8 304.7L655.5 306.9L652.4 308.8L491 389.5L487.2 391.1L482.9 392.2L478.2 392.9L473.4 393.1L468.6 392.9L463.9 392.2L459.6 391.1L455.9 389.5L27.6 175.4L24.5 173.5L22.2 171.3L20.8 169L20.3 166.6L20.8 164.2L22.2 161.8L24.5 159.7L27.6 157.8L189 77.1L192.8 75.5L197.1 74.4L201.8 73.7L206.6 73.4L211.4 73.7L216.1 74.4L220.4 75.5L224.1 77.1Z"/><path class="iso-line iso-crease" data-tone="faint" d="M659.7 300L659.2 302.4L657.8 304.7L655.5 306.9L652.4 308.8L491 389.5L487.2 391.1L482.9 392.2L478.2 392.9L473.4 393.1L468.6 392.9L463.9 392.2L459.6 391.1L455.9 389.5L27.6 175.4L24.5 173.5L22.2 171.3L20.8 169L20.3 166.6"/><path class="iso-line iso-bevel" data-tone="faint" d="M659.7 300L656.3 302.1L655.1 304.2L653.1 306.1L650.2 307.8L489 388.4L485.5 389.8L481.8 390.8L477.7 391.4L473.4 391.7L469.1 391.4L465 390.8L461.3 389.8L457.9 388.4L29.8 174.4L26.9 172.7L24.9 170.8L23.7 168.7L20.3 166.6"/><path class="iso-line" data-tone="faint" d="M659.7 309.7L659.2 312.1L657.8 314.4L655.5 316.6L652.4 318.4L491 399.2L487.2 400.7L482.9 401.9L478.2 402.6L473.4 402.8L468.6 402.6L463.9 401.9L459.6 400.7L455.9 399.2L27.6 185L24.5 183.2L22.2 181L20.8 178.7L20.3 176.3"/><path class="iso-line iso-edge" data-tone="mid" d="M20.3 166.6L20.8 164.2L22.2 161.8L24.5 159.7L27.6 157.8L189 77.1L192.8 75.5L197.1 74.4L201.8 73.7L206.6 73.4L211.4 73.7L216.1 74.4L220.4 75.5L224.1 77.1L652.4 291.2L655.5 293.1L657.8 295.2L659.2 297.6L659.7 300M659.7 319.3L659.2 321.8L657.8 324.1L655.5 326.2L652.4 328.1L491 408.9L487.2 410.4L482.9 411.5L478.2 412.3L473.4 412.5L468.6 412.3L463.9 411.5L459.6 410.4L455.9 408.9L27.6 194.7L24.5 192.8L22.2 190.7L20.8 188.4L20.3 185.9M659.7 300L659.7 319.3M20.3 166.6L20.3 185.9"/></g><path class="tarmac" d="M199.6 78.6L648.9 303.3L480.4 387.5L31.1 162.9Z"/><path class="edge" d="M196.1 80.1L645.4 304.8M34.6 160.9L483.9 385.6"/><g data-part="scene"></g></svg><canvas class="fx-smoke" aria-hidden="true"></canvas><div class="m-wrap" aria-hidden="true"><canvas class="m-cv"></canvas></div></div></div><div class="ctl" role="group" aria-label="Controls">
+  <div class="ctl-row"><span class="ctl-label">Wing</span><div class="slide"><input id="wing" type="range" min="0" max="100" step="5" value="50" aria-label="Wing level, low to high downforce"></div><output id="wing-out">Medium</output></div>
+  <div class="ctl-row"><span class="ctl-label">Aero</span><button type="button" id="aero" aria-pressed="true">Active aero on<small>Straight Mode on the straights</small></button></div>
+  <div class="ctl-row"><span class="ctl-label">Traffic</span><button type="button" data-follow="0" aria-pressed="true">Clean air</button><button type="button" data-follow="1">1 s behind</button><button type="button" data-follow="2">0.4 s behind<small>dirty air</small></button></div>
+  <div class="ctl-row"><span class="ctl-label">Break it</span><button type="button" id="ducts" aria-pressed="false">Brake ducts open<small>D</small></button><button type="button" id="snap">Snap the rear wing<small>W</small></button><button type="button" id="reset">Reset<small>R</small></button></div>
+  <div class="ctl-row"><span class="ctl-label">Speed</span><div class="meter"><span id="s-fill" class="fill"></span></div><output id="s-out">0 km/h</output></div>
+  <div class="ctl-row"><span class="ctl-label">Downforce</span><div class="meter"><span id="d-fill" class="fill"></span><span class="mark" style="left:34.9%" data-label="its weight"></span></div><output id="d-out">0 kg</output></div>
+  <div class="ctl-row"><span class="ctl-label">Brakes</span><div class="meter"><span id="b-fill" class="fill"></span><span class="mark" style="left:76.9%" data-label="1,000 °C"></span></div><output id="b-out">0 °C</output></div>
+  <div class="ctl-row"><span class="ctl-label">Tyres</span><div class="meter"><span id="t-fill" class="fill"></span><span class="mark" style="left:70%" data-label="too hot"></span></div><output id="t-out">0 °C</output></div>
+  <div class="ctl-row"><span class="ctl-label">Lap</span><span id="stats"></span></div>
+  <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
+  <div id="shot" aria-live="polite"></div>
+</div><figcaption class="iso-legend"><span class="iso-keys"><span class="iso-key"><svg class="iso-swatch" data-mark="lit" viewBox="0 0 16 10" aria-hidden="true"><path d="M2 4.5 8 1.5 14 4.5 14 6 8 9 2 6Z"/><path class="iso-swatch-crease" d="M2 4.5 8 7.5 14 4.5"/></svg>Live: a lap of a made-up circuit, the airflow, downforce on each axle (green), the flaps, brake and tyre heat</span><span class="iso-key"><svg class="iso-swatch" data-mark="raised" viewBox="0 0 16 10" aria-hidden="true"><path d="M2 4.5 8 1.5 14 4.5 14 6 8 9 2 6Z"/><path class="iso-swatch-crease" d="M2 4.5 8 7.5 14 4.5"/></svg>2026-style car on a strip of track; the track scrolls, the car stays put</span></span><span class="iso-caption">An F1 car is limited by grip, and in a fast corner most of that grip is downforce: the wings and floor push the car into the track with a force that grows with speed squared. It costs drag, so the 2026 cars flatten their front and rear wing flaps on the straights (Straight Mode) and snap them shut for the corners (Corner Mode); DRS is gone. Stopping from over 300 km/h takes the brakes past 1,000 °C. Following close behind another car robs the front wing of clean air, which is why it's hard to pass.</span></figcaption></figure><p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a lap-time simulator. Real: downforce and drag growing with speed squared, the 2026 rules (Straight Mode and Corner Mode active aero instead of DRS, about 400 kW of engine and 350 kW of MGU-K that tapers off at high speed, Overtake Mode within a second of the car ahead, a 768 kg minimum weight), carbon brakes running past 1,000 °C, braking at around 5 g, dirty air, the survival cell and halo, and Grosjean's 67 g impact at 192 km/h in Bahrain in 2020 (FIA). Made up: the circuit, the car, its livery, the aero and tyre numbers, the brake and tyre heat models, the failures and the crash.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="light.html" style="color:inherit">Light version</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/f1" style="color:inherit">Source</a></p></main><script type="module">const AZIMUTH = 45;
+const ELEVATION = 30;
+const SHADES = 4;
+const RADIANS = Math.PI / 180;
+const UNIT = Math.sqrt(1.6);
+function cameraOf({ scale, azimuth = AZIMUTH, elevation = ELEVATION }) {
+    const a = azimuth * RADIANS;
+    const e = elevation * RADIANS;
+    return { sinA: Math.sin(a), cosA: Math.cos(a), sinE: Math.sin(e), cosE: Math.cos(e), k: scale * UNIT };
+}
+function iso([x, y, z], projection) {
+    const { origin } = projection;
+    const { sinA, cosA, sinE, cosE, k } = cameraOf(projection);
+    return [origin[0] + (x * sinA - y * cosA) * k, origin[1] + ((x * cosA + y * sinA) * sinE - z * cosE) * k];
+}
+function towardViewer(projection) {
+    const { sinA, cosA } = cameraOf(projection);
+    return [cosA, sinA];
+}
+function depthOf([x, y, z], projection) {
+    const { sinA, cosA, sinE, cosE } = cameraOf(projection);
+    return (x * cosA + y * sinA) * cosE + z * sinE;
+}
+const tenth = (value) => {
+    const text = (Math.round(value * 10) / 10).toFixed(1).replace(/\.0$/, "");
+    return text === "-0" ? "0" : text;
+};
+function pathOf(points, closed = false) {
+    if (!points.length)
+        return "";
+    return points.map(([x, y], at) => `${at ? "L" : "M"}${tenth(x)} ${tenth(y)}`).join("") + (closed ? "Z" : "");
+}
+const joinPaths = (paths) => paths.filter(Boolean).join("");
+function roundedPlan({ x, y, w, d, r }, steps = 8) {
+    const radius = Math.max(0, Math.min(r, w / 2, d / 2));
+    const corners = [
+        [x + w - radius, y + radius, -90],
+        [x + w - radius, y + d - radius, 0],
+        [x + radius, y + d - radius, 90],
+        [x + radius, y + radius, 180],
+    ];
+    const out = [];
+    for (const [cx, cy, start] of corners) {
+        const count = radius > 0 ? steps : 0;
+        for (let step = 0; step <= count; step++) {
+            const angle = (start + (count ? (90 * step) / count : 45)) * RADIANS;
+            out.push([cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)]);
+        }
+    }
+    return out;
+}
+function signedArea(points) {
+    let area = 0;
+    for (let index = 0; index < points.length; index++) {
+        const [ax, ay] = points[index];
+        const [bx, by] = points[(index + 1) % points.length];
+        area += ax * by - bx * ay;
+    }
+    return area / 2;
+}
+const oriented = (points) => (signedArea(points) < 0 ? [...points].reverse() : points);
+function convexHull(points) {
+    const sorted = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    if (sorted.length < 3)
+        return sorted;
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lower = [];
+    for (const point of sorted) {
+        while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], point) <= 0)
+            lower.pop();
+        lower.push(point);
+    }
+    const upper = [];
+    for (let index = sorted.length - 1; index >= 0; index--) {
+        const point = sorted[index];
+        while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], point) <= 0)
+            upper.pop();
+        upper.push(point);
+    }
+    return [...lower.slice(0, -1), ...upper.slice(0, -1)];
+}
+function runsOf(flags, want) {
+    const count = flags.length;
+    const runs = [];
+    const start = flags.findIndex((flag, index) => flag !== flags[(index + count - 1) % count]);
+    if (start < 0)
+        return flags[0] === want ? [Array.from({ length: count + 1 }, (_, index) => index % count)] : [];
+    let run = null;
+    for (let step = 0; step < count; step++) {
+        const index = (start + step) % count;
+        if (flags[index] === want) {
+            if (!run)
+                run = [index];
+            run.push((index + 1) % count);
+        }
+        else if (run) {
+            runs.push(run);
+            run = null;
+        }
+    }
+    if (run)
+        runs.push(run);
+    return runs;
+}
+function extrude(ring, z, height, projection, options = {}) {
+    const convex = options.convex ?? true;
+    const count = ring.length;
+    const counter = signedArea(ring) > 0;
+    const [vx, vy] = towardViewer(projection);
+    const { sinA, cosA } = cameraOf(projection);
+    const normals = ring.map(([ax, ay], index) => {
+        const [bx, by] = ring[(index + 1) % count];
+        const dx = bx - ax;
+        const dy = by - ay;
+        const length = Math.hypot(dx, dy) || 1;
+        return (counter ? [dy / length, -dx / length] : [-dy / length, dx / length]);
+    });
+    const facing = normals.map(([nx, ny]) => nx * vx + ny * vy > 1e-9);
+    const top = ring.map(([x, y]) => iso([x, y, z + height], projection));
+    const bottom = ring.map(([x, y]) => iso([x, y, z], projection));
+    const outline = [];
+    const crease = [];
+    for (const run of runsOf(facing, false))
+        outline.push(pathOf(run.map((index) => top[index])));
+    for (const run of runsOf(facing, true)) {
+        crease.push(pathOf(run.map((index) => top[index])));
+        if (height > 0)
+            outline.push(pathOf(run.map((index) => bottom[index])));
+    }
+    if (height > 0) {
+        for (let index = 0; index < count; index++) {
+            if (facing[(index + count - 1) % count] !== facing[index])
+                outline.push(pathOf([top[index], bottom[index]]));
+        }
+    }
+    let fill;
+    if (convex) {
+        fill = pathOf(convexHull([...top, ...bottom]), true);
+    }
+    else {
+        const parts = [pathOf(oriented(top), true), pathOf(oriented(bottom), true)];
+        for (let index = 0; index < count; index++) {
+            if (!facing[index])
+                continue;
+            const next = (index + 1) % count;
+            parts.push(pathOf(oriented([top[index], top[next], bottom[next], bottom[index]]), true));
+        }
+        fill = parts.join("");
+    }
+    const buckets = Array.from({ length: SHADES }, () => []);
+    if (height > 0) {
+        const [lx, ly] = [-sinA, cosA];
+        for (let index = 0; index < count; index++) {
+            if (!facing[index])
+                continue;
+            const [nx, ny] = normals[index];
+            const lit = (nx * lx + ny * ly + 1) / 2;
+            const shade = Math.min(SHADES - 1, Math.max(0, Math.floor(lit * SHADES)));
+            const next = (index + 1) % count;
+            buckets[shade].push(pathOf(oriented([top[index], top[next], bottom[next], bottom[index]]), true));
+        }
+    }
+    let bevel;
+    if (options.bevel && options.bevel > 0) {
+        const by = options.bevel;
+        const inset = ring.map(([x, y], index) => {
+            const [ax, ay] = normals[(index + count - 1) % count];
+            const [bx, by2] = normals[index];
+            const mx = ax + bx;
+            const my = ay + by2;
+            const length = Math.hypot(mx, my) || 1;
+            return [x - (mx / length) * by, y - (my / length) * by];
+        });
+        const insetTop = inset.map(([x, y]) => iso([x, y, z + height], projection));
+        bevel = runsOf(facing, true)
+            .map((run) => pathOf([top[run[0]], ...run.slice(1, -1).map((index) => insetTop[index]), top[run[run.length - 1]]]))
+            .join("");
+    }
+    return {
+        fill,
+        outline: outline.join(""),
+        crease: crease.join(""),
+        top: pathOf(oriented(top), true),
+        shades: buckets.map((paths) => paths.join("")),
+        bevel,
+    };
+}
+const ringOf = (plan, steps = 8) => roundedPlan(plan, steps);
+function slabOf(plan, z, height, projection, steps = 8, bevel = 0) {
+    return extrude(ringOf(plan, steps), z, height, projection, { convex: true, bevel });
+}
+function circleRing(cx, cy, radius, steps = 40) {
+    return Array.from({ length: steps }, (_, step) => {
+        const angle = (step / steps) * Math.PI * 2;
+        return [cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)];
+    });
+}
+function cylinder(cx, cy, radius, z, height, projection, steps = 32, bevel = 0) {
+    return extrude(circleRing(cx, cy, radius, steps), z, height, projection, { convex: true, bevel });
+}
+const insetPlan = ({ x, y, w, d, r }, by) => ({ x: x + by, y: y + by, w: w - by * 2, d: d - by * 2, r: Math.max(0, r - by) });
+function onTop(points, z, projection, closed = false) {
+    return pathOf(points.map(([x, y]) => iso([x, y, z], projection)), closed);
+}
+const planOutline = (plan, z, projection, steps = 8) => onTop(ringOf(plan, steps), z, projection, true);
+const lineOnTop = (from, to, z, projection) => onTop([from, to], z, projection);
+const segment = (from, to, projection) => pathOf([iso(from, projection), iso(to, projection)]);
+const rise = (at, from, to, projection) => segment([at[0], at[1], from], [at[0], at[1], to], projection);
+const ring = (cx, cy, radius, z, projection, steps = 40) => onTop(circleRing(cx, cy, radius, steps), z, projection, true);
+const pointsAt = (points, projection) => points.map((point) => iso(point, projection));
+function dotGrid(x, y, columns, rows, gap, z, projection) {
+    const dots = [];
+    for (let row = 0; row < rows; row++) {
+        for (let column = 0; column < columns; column++)
+            dots.push(iso([x + column * gap, y + row * gap, z], projection));
+    }
+    return dots;
+}
+function corners({ x, y, w, d }, inset = 0) {
+    return [
+        [x + inset, y + inset],
+        [x + w - inset, y + inset],
+        [x + inset, y + d - inset],
+        [x + w - inset, y + d - inset],
+    ];
+}
+function boxCorners({ x, y, w, d }, z0, z1) {
+    const out = [];
+    for (const px of [x, x + w])
+        for (const py of [y, y + d])
+            for (const z of [z0, z1])
+                out.push([px, py, z]);
+    return out;
+}
+function knurl(cx, cy, radius, z0, z1, count, projection, inset = 0.4) {
+    const [vx, vy] = towardViewer(projection);
+    const lines = [];
+    for (let index = 0; index < count; index++) {
+        const angle = (index / count) * Math.PI * 2;
+        const nx = Math.cos(angle);
+        const ny = Math.sin(angle);
+        if (nx * vx + ny * vy < 0.15)
+            continue;
+        lines.push(segment([cx + radius * nx, cy + radius * ny, z0 + inset], [cx + radius * nx, cy + radius * ny, z1 - inset], projection));
+    }
+    return lines.join("");
+}
+function sideArc(cx, cy, radius, z, projection, steps = 24) {
+    const [vx, vy] = towardViewer(projection);
+    const facing = Math.atan2(vy, vx);
+    const points = [];
+    for (let step = 0; step <= steps; step++) {
+        const angle = facing - Math.PI / 2 + (step / steps) * Math.PI;
+        points.push(iso([cx + radius * Math.cos(angle), cy + radius * Math.sin(angle), z], projection));
+    }
+    return pathOf(points);
+}
+function ringSeam(ring, z, projection) {
+    const count = ring.length;
+    const counter = signedArea(ring) > 0;
+    const [vx, vy] = towardViewer(projection);
+    const facing = ring.map(([ax, ay], index) => {
+        const [bx, by] = ring[(index + 1) % count];
+        const dx = bx - ax;
+        const dy = by - ay;
+        const [nx, ny] = counter ? [dy, -dx] : [-dy, dx];
+        return nx * vx + ny * vy > 1e-9;
+    });
+    return runsOf(facing, true).map((run) => pathOf(run.map((index) => iso([ring[index][0], ring[index][1], z], projection)))).join("");
+}
+const sideSeam = (plan, z, projection, steps = 8) => ringSeam(ringOf(plan, steps), z, projection);
+function sideRing(center, radius, axis, projection, steps = 20) {
+    const [px, py, pz] = center;
+    const points = [];
+    for (let step = 0; step < steps; step++) {
+        const angle = (step / steps) * Math.PI * 2;
+        const u = radius * Math.cos(angle);
+        const v = radius * Math.sin(angle);
+        points.push(iso(axis === "x" ? [px, py + u, pz + v] : [px + u, py, pz + v], projection));
+    }
+    return pathOf(points, true);
+}
+function coil(from, to, center, radius, turns, axis, projection, perTurn = 16) {
+    const count = Math.max(1, Math.round(turns * perTurn));
+    const back = [];
+    const front = [];
+    let run = [];
+    let near = null;
+    for (let index = 0; index <= count; index++) {
+        const share = index / count;
+        const angle = share * turns * Math.PI * 2;
+        const u = radius * Math.cos(angle);
+        const v = radius * Math.sin(angle);
+        const along = from + (to - from) * share;
+        const point = axis === "x" ? [along, center[0] + u, center[1] + v] : [center[0] + u, along, center[1] + v];
+        const normal = axis === "x" ? [0, Math.cos(angle), Math.sin(angle)] : [Math.cos(angle), 0, Math.sin(angle)];
+        const facing = depthOf(normal, projection) > 0;
+        const flat = iso(point, projection);
+        if (near === null)
+            near = facing;
+        if (facing !== near) {
+            run.push(flat);
+            (near ? front : back).push(pathOf(run));
+            run = [flat];
+            near = facing;
+            continue;
+        }
+        run.push(flat);
+    }
+    if (run.length > 1)
+        (near ? front : back).push(pathOf(run));
+    return { back: back.join(""), front: front.join("") };
+}
+function topTicks(from, to, step, every, edge, z, lengths, projection, axis = "x") {
+    const minor = [];
+    const major = [];
+    const first = Math.ceil(from / step) * step;
+    for (let at = first, index = Math.round(first / step); at <= to + 1e-9; at += step, index++) {
+        const big = index % every === 0;
+        const length = big ? lengths[1] : lengths[0];
+        const a = axis === "x" ? [at, edge] : [edge, at];
+        const b = axis === "x" ? [at, edge + length] : [edge + length, at];
+        (big ? major : minor).push(lineOnTop(a, b, z, projection));
+    }
+    return { minor: minor.join(""), major: major.join("") };
+}
+function sideTicks(from, to, step, every, face, top, lengths, projection, axis = "x") {
+    const minor = [];
+    const major = [];
+    const first = Math.ceil(from / step) * step;
+    for (let at = first, index = Math.round(first / step); at <= to + 1e-9; at += step, index++) {
+        const big = index % every === 0;
+        const length = big ? lengths[1] : lengths[0];
+        const a = axis === "x" ? [at, face, top] : [face, at, top];
+        const b = axis === "x" ? [at, face, top - length] : [face, at, top - length];
+        (big ? major : minor).push(segment(a, b, projection));
+    }
+    return { minor: minor.join(""), major: major.join("") };
+}
+function radialTicks(cx, cy, radius, count, every, z, lengths, projection, from = 0, span = Math.PI * 2) {
+    const minor = [];
+    const major = [];
+    const closed = Math.abs(span - Math.PI * 2) < 1e-9;
+    const steps = closed ? count : count + 1;
+    for (let index = 0; index < steps; index++) {
+        const angle = from + (index / count) * span;
+        const big = index % every === 0;
+        const inner = radius - (big ? lengths[1] : lengths[0]);
+        const sx = Math.sin(angle);
+        const sy = -Math.cos(angle);
+        (big ? major : minor).push(lineOnTop([cx + sx * inner, cy + sy * inner], [cx + sx * radius, cy + sy * radius], z, projection));
+    }
+    return { minor: minor.join(""), major: major.join("") };
+}
+const haloOf = (plan, z, height, projection) => slabOf(plan, z, height, projection).fill;
+function axisVector(projection, [dx, dy, dz]) {
+    const origin = iso([0, 0, 0], projection);
+    const moved = iso([dx, dy, dz], projection);
+    return [moved[0] - origin[0], moved[1] - origin[1]];
+}
+const fine = (value) => Math.round(value * 100) / 100;
+function translateAlong(projection, by) {
+    const [x, y] = axisVector(projection, by);
+    return `translate(${fine(x)} ${fine(y)})`;
+}
+const thousandth = (value) => Math.round(value * 1000) / 1000;
+function axesAt(at, z, projection) {
+    const origin = iso([at[0], at[1], z], projection);
+    const along = (point) => {
+        const [px, py] = iso(point, projection);
+        return [px - origin[0], py - origin[1]];
+    };
+    return { origin, x: along([at[0] + 1, at[1], z]), y: along([at[0], at[1] + 1, z]), z: along([at[0], at[1], z + 1]) };
+}
+const matrixOf = (u, v, origin) => `matrix(${thousandth(u[0])} ${thousandth(u[1])} ${thousandth(v[0])} ${thousandth(v[1])} ${thousandth(origin[0])} ${thousandth(origin[1])})`;
+function holdStill(element, [dx, dy]) {
+    const text = dx || dy ? `translate(${-dx} ${-dy})` : "";
+    element.querySelectorAll("[data-hold]").forEach((node) => (text ? node.setAttribute("transform", text) : node.removeAttribute("transform")));
+}
+function topMatrix(at, z, projection, along = "x") {
+    const { origin, x, y } = axesAt(at, z, projection);
+    return along === "x" ? matrixOf(x, y, origin) : matrixOf([-y[0], -y[1]], x, origin);
+}
+function sideMatrix(at, z, projection, face) {
+    const { origin, x, y, z: up } = axesAt(at, z, projection);
+    const down = [-up[0], -up[1]];
+    return face === "left" ? matrixOf(x, down, origin) : matrixOf([-y[0], -y[1]], down, origin);
+}
+function screenRise(height, projection) {
+    const { cosE, k } = cameraOf(projection);
+    return height * cosE * k;
+}
+function fitProjection(points, width, height, { pad = 24, headroom = 0, azimuth = AZIMUTH, elevation = ELEVATION } = {}) {
+    const unit = { origin: [0, 0], scale: 1, azimuth, elevation };
+    const flat = points.map((point) => iso(point, unit));
+    const xs = flat.map(([x]) => x);
+    const ys = flat.map(([, y]) => y);
+    const left = Math.min(...xs);
+    const right = Math.max(...xs);
+    const up = Math.min(...ys);
+    const down = Math.max(...ys);
+    const scale = Math.min((width - pad * 2) / (right - left), (height - pad * 2 - headroom) / (down - up));
+    return {
+        origin: [width / 2 - ((left + right) / 2) * scale, headroom + (height - headroom) / 2 - ((up + down) / 2) * scale],
+        scale,
+        azimuth,
+        elevation,
+    };
+}
+const escape = (text) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const attrs = (pairs) => Object.entries(pairs)
+    .filter(([, value]) => value !== undefined && value !== false)
+    .map(([key, value]) => ` ${key}="${escape(String(value))}"`)
+    .join("");
+function solidSvg(paths, { tone = "hi", crease = "faint", halo = false, lit = false, flat = false, className, inner = "" } = {}) {
+    const parts = [];
+    if (halo)
+        parts.push(`<path class="iso-halo" d="${paths.fill}"/>`);
+    parts.push(`<path class="iso-fill" d="${paths.fill}"/>`);
+    if (!flat) {
+        paths.shades.forEach((d, shade) => {
+            if (d)
+                parts.push(`<path class="iso-shade" data-shade="${shade}" d="${d}"/>`);
+        });
+        parts.push(`<path class="iso-top" d="${paths.top}"/>`);
+    }
+    if (crease !== "none" && paths.crease)
+        parts.push(`<path class="iso-line iso-crease" data-tone="${crease}" d="${paths.crease}"/>`);
+    if (crease !== "none" && paths.bevel)
+        parts.push(`<path class="iso-line iso-bevel" data-tone="${crease}" d="${paths.bevel}"/>`);
+    if (inner)
+        parts.push(inner);
+    parts.push(`<path class="iso-line iso-edge" data-tone="${tone}" d="${paths.outline}"/>`);
+    return `<g${attrs({ class: className ? `iso-solid ${className}` : "iso-solid", "data-lit": lit ? "" : undefined, "data-seamless": paths.seamless ? "" : undefined })}>${parts.join("")}</g>`;
+}
+function lineSvg(d, { tone = "lo", dotted = false, dashed = false, flow = false, className, free } = {}) {
+    if (!d)
+        return "";
+    return `<path${attrs({
+        class: className ? `iso-line ${className}` : "iso-line",
+        "data-tone": tone,
+        "data-free": free === true ? "" : free || undefined,
+        "data-dotted": dotted ? "" : undefined,
+        "data-dashed": dashed ? "" : undefined,
+        "data-flow": flow ? "" : undefined,
+        d,
+    })}/>`;
+}
+function dotsSvg(points, { size = 0.5, tone = "mid", pulse = false } = {}) {
+    const dots = points
+        .map(([x, y, alpha], index) => `<circle cx="${tenth(x)}" cy="${tenth(y)}" r="${size}"${alpha !== undefined && alpha < 1 ? ` fill-opacity="${Math.max(0, alpha).toFixed(2)}"` : ""}${pulse ? ` data-pulse="" style="--pulse-at:${(index * 137) % 1600}ms"` : ""}/>`)
+        .join("");
+    return `<g class="iso-dots" data-tone="${tone}">${dots}</g>`;
+}
+function fadedSvg(list, style = {}) {
+    const groups = new Map();
+    for (const entry of list) {
+        const [d, alpha] = Array.isArray(entry) ? entry : [entry.d, entry.alpha];
+        if (!d || !(alpha > 0.02))
+            continue;
+        const level = Math.min(1, Math.round(alpha * 20) / 20);
+        groups.set(level, (groups.get(level) ?? "") + d);
+    }
+    return [...groups].map(([alpha, d]) => (alpha >= 1 ? lineSvg(d, style) : `<g opacity="${alpha.toFixed(2)}">${lineSvg(d, style)}</g>`)).join("");
+}
+function fadeLineSvg(points, { fade = [0, 0], tone = "lo", className, stops = 6 } = {}) {
+    if (points.length < 2)
+        return "";
+    const ease = (t) => t * t * (3 - 2 * t);
+    const hashOf = (text) => {
+        let hash = 2166136261;
+        for (let index = 0; index < text.length; index++)
+            hash = Math.imul(hash ^ text.charCodeAt(index), 16777619);
+        return (hash >>> 0).toString(36);
+    };
+    const lengths = [0];
+    for (let index = 1; index < points.length; index++)
+        lengths.push(lengths[index - 1] + Math.hypot(points[index][0] - points[index - 1][0], points[index][1] - points[index - 1][1]));
+    const at = (length) => {
+        let index = 1;
+        while (index < points.length - 1 && lengths[index] < length)
+            index++;
+        const span = lengths[index] - lengths[index - 1] || 1;
+        const t = Math.max(0, Math.min(1, (length - lengths[index - 1]) / span));
+        return [points[index - 1][0] + (points[index][0] - points[index - 1][0]) * t, points[index - 1][1] + (points[index][1] - points[index - 1][1]) * t];
+    };
+    const pieceOf = (from, to) => [at(from), ...points.filter((_, index) => lengths[index] > from + 1e-6 && lengths[index] < to - 1e-6), at(to)];
+    const total = lengths[lengths.length - 1];
+    if (total < 1e-6)
+        return "";
+    let [start, end] = Array.isArray(fade) ? fade : [fade, fade];
+    if (start + end > total) {
+        const share = total / (start + end);
+        start *= share;
+        end *= share;
+    }
+    const paint = `var(--anatomy-${tone})`;
+    const ramp = (piece, rising) => {
+        const d = pathOf(piece);
+        const [x1, y1] = piece[0];
+        const [x2, y2] = piece[piece.length - 1];
+        const id = `iso-fade-${hashOf(`${d}|${tone}|${rising}`)}`;
+        const marks = Array.from({ length: stops + 1 }, (_, index) => {
+            const t = index / stops;
+            const alpha = ease(rising ? t : 1 - t);
+            return `<stop offset="${t.toFixed(3)}" stop-opacity="${alpha.toFixed(3)}" style="stop-color:${paint}"/>`;
+        }).join("");
+        const gradient = `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${tenth(x1)}" y1="${tenth(y1)}" x2="${tenth(x2)}" y2="${tenth(y2)}">${marks}</linearGradient>`;
+        return `<defs>${gradient}</defs><path${attrs({ class: className ? `iso-line ${className}` : "iso-line", "data-tone": tone, "data-free": rising ? "start" : "end", d, style: `stroke:url(#${id})` })}/>`;
+    };
+    const parts = [];
+    if (start > 0.05)
+        parts.push(ramp(pieceOf(0, start), true));
+    if (total - end - start > 0.05)
+        parts.push(lineSvg(pathOf(pieceOf(start, total - end)), { tone, className }));
+    if (end > 0.05)
+        parts.push(ramp(pieceOf(total - end, total), false));
+    return `<g class="iso-fade">${parts.join("")}</g>`;
+}
+function wireSvg(from, to, { via = [], tone = "lo", dotted = false, dashed = false, flow = false, ends = "both", size = 1.2 } = {}) {
+    const d = pathOf([from, ...via, to]);
+    const end = ([x, y]) => `<circle class="iso-wire-end" cx="${tenth(x)}" cy="${tenth(y)}" r="${size}"/>`;
+    return `<g class="iso-wire" data-tone="${tone}">${lineSvg(d, { tone, dotted, dashed, flow })}${ends === "both" || ends === "from" ? end(from) : ""}${ends === "both" || ends === "to" ? end(to) : ""}</g>`;
+}
+function faceTextSvg(transform, text, { size = 3, tone = "mid", anchor = "start" } = {}) {
+    return `<text class="iso-face-text" data-tone="${tone}" transform="${transform}" font-size="${size}" text-anchor="${anchor}">${escape(text)}</text>`;
+}
+function groupSvg(children, extra = {}) {
+    return `<g${attrs(extra)}>${Array.isArray(children) ? children.join("") : children}</g>`;
+}
+function figureSvg({ width, height, label, body, standalone = false, className }) {
+    const style = standalone ? `<style>${ISO_CSS}</style>` : "";
+    return `<svg${attrs({
+        xmlns: "http://www.w3.org/2000/svg",
+        class: `iso-svg${standalone ? " iso" : ""}${className ? ` ${className}` : ""}`,
+        "data-theme": standalone || undefined,
+        viewBox: `0 0 ${width} ${height}`,
+        role: "img",
+        "aria-label": label,
+    })}>${style}${Array.isArray(body) ? body.join("") : body}</svg>`;
+}
+function swatchSvg(mark) {
+    if (mark === "raised" || mark === "flat" || mark === "lit") {
+        const body = mark === "flat" ? "M2 6.5 8 3.5 14 6.5 8 9.5Z" : "M2 4.5 8 1.5 14 4.5 14 6 8 9 2 6Z";
+        const crease = mark === "flat" ? "" : `<path class="iso-swatch-crease" d="M2 4.5 8 7.5 14 4.5"/>`;
+        return `<svg class="iso-swatch" data-mark="${mark}" viewBox="0 0 16 10" aria-hidden="true"><path d="${body}"/>${crease}</svg>`;
+    }
+    return `<svg class="iso-swatch" data-mark="${mark}" viewBox="0 0 16 10" aria-hidden="true"><path d="M1.5 5h13"/></svg>`;
+}
+function plateHtml({ fig, title, hint, readout = "", keys = [], caption, body }) {
+    const corner = (name, text, extra = "") => `<span class="iso-plate-corner" data-corner="${name}"${extra}>${escape(text)}</span>`;
+    const legend = keys.length || caption
+        ? `<figcaption class="iso-legend">${keys.length ? `<span class="iso-keys">${keys.map((key) => `<span class="iso-key">${swatchSvg(key.mark)}${escape(key.label)}</span>`).join("")}</span>` : ""}${caption ? `<span class="iso-caption">${escape(caption)}</span>` : ""}</figcaption>`
+        : "";
+    return `<figure class="iso-figure"><div class="iso-plate"><div class="iso-plate-corners" aria-hidden="true">${corner("fig", fig)}${title ? corner("title", title) : ""}${hint ? corner("hint", hint) : ""}${corner("readout", readout, " data-readout")}</div>${body}</div>${legend}</figure>`;
+}
+function pageHtml({ title, theme = "dark", body, script = "", width = 650 }) {
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(title)}</title><style>${ISO_CSS}${PAGE_CSS.replace("__WIDTH__", String(width))}</style></head><body class="iso" data-theme="${theme}"><main class="iso-page">${body}</main>${script ? `<script type="module">${script.replace(/<\/(script)/gi, "<\\/$1")}<\/script>` : ""}</body></html>`;
+}
+const PAGE_CSS = `
+*{box-sizing:border-box}
+html{color-scheme:dark}
+body[data-theme="light"]{color-scheme:light}
+body{margin:0;background:var(--anatomy-page);color:var(--anatomy-text);font:14px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.iso-page{width:min(__WIDTH__px,100% - 32px);margin:64px auto 96px}
+`;
+const ISO_CSS = `
+.iso{
+  --anatomy-page:#0b0b0b;--anatomy-card:#131313;--anatomy-text:#a3a3a3;--anatomy-strong:#e6e6e6;--anatomy-muted:#6e6e6e;
+  --anatomy-paper:#131313;--anatomy-face:#1b1b1b;--anatomy-top:#1c1c1c;
+  --anatomy-shade-0:#0f0f0f;--anatomy-shade-1:#121212;--anatomy-shade-2:#151515;--anatomy-shade-3:#181818;
+  --anatomy-lit-top:#262626;--anatomy-lit-shade:#1d1d1d;
+  --anatomy-hi:#d4d4d4;--anatomy-mid:#6a6a6a;--anatomy-lo:#3e3e3e;--anatomy-faint:#2a2a2a;--anatomy-lit:#ffffff;
+  --anatomy-halo:#050505;--anatomy-halo-opacity:.9;--anatomy-dot:#e6e6e6;
+  --anatomy-red:#ff6b6b;--anatomy-green:#6be0a0;--anatomy-blue:#6b9bff;
+  --anatomy-weight:.6px;--anatomy-ease:cubic-bezier(.32,.72,0,1);
+  --anatomy-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff0a,inset 0 0 0 1px #ffffff06,0 0 0 1px #00000026,0 1px 1px -.5px #00000014,0 3px 3px -1.5px #00000014,0 6px 6px -3px #00000014,0 12px 12px -6px #00000014;
+}
+.iso[data-theme="light"]{
+  --anatomy-page:#f2f2ef;--anatomy-card:#fbfbfa;--anatomy-text:#57575a;--anatomy-strong:#18181a;--anatomy-muted:#8c8c90;
+  --anatomy-paper:#fbfbfa;--anatomy-face:#ffffff;--anatomy-top:#ffffff;
+  --anatomy-shade-0:#dcdcd9;--anatomy-shade-1:#e5e5e2;--anatomy-shade-2:#ededea;--anatomy-shade-3:#f4f4f1;
+  --anatomy-lit-top:#ffffff;--anatomy-lit-shade:#eeeeeb;
+  --anatomy-hi:#26262a;--anatomy-mid:#8a8a8f;--anatomy-lo:#b4b4b8;--anatomy-faint:#d4d4d6;--anatomy-lit:#000000;
+  --anatomy-halo:#8a8a80;--anatomy-halo-opacity:.32;--anatomy-dot:#3a3a3e;
+  --anatomy-red:#e5484d;--anatomy-green:#30a46c;--anatomy-blue:#3e63dd;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff,0 0 0 1px #0000000f,0 1px 1px -.5px #0000000a,0 3px 3px -1.5px #0000000a,0 6px 6px -3px #0000000a,0 12px 12px -6px #0000000a;
+}
+.iso-svg{display:block;width:100%;height:auto;overflow:visible}
+.iso-svg path,.iso-svg circle{vector-effect:non-scaling-stroke}
+.iso-fill{fill:var(--anatomy-paper);stroke:none}
+.iso-solid[data-lit]>.iso-fill{fill:var(--anatomy-face)}
+.iso-shade,.iso-top{stroke:none}
+.iso-shade[data-shade="0"]{fill:var(--anatomy-shade-0)}
+.iso-shade[data-shade="1"]{fill:var(--anatomy-shade-1)}
+.iso-shade[data-shade="2"]{fill:var(--anatomy-shade-2)}
+.iso-shade[data-shade="3"]{fill:var(--anatomy-shade-3)}
+.iso-top{fill:var(--anatomy-top)}
+.iso-solid[data-lit]>.iso-top{fill:var(--anatomy-lit-top)}
+.iso-solid[data-lit]>.iso-shade{fill:var(--anatomy-lit-shade)}
+.iso-solid[data-seamless]>.iso-shade,.iso-solid[data-seamless]>.iso-top{stroke-width:.4;stroke-linejoin:round}
+.iso-solid[data-seamless]>.iso-shade[data-shade="0"]{stroke:var(--anatomy-shade-0)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="1"]{stroke:var(--anatomy-shade-1)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="2"]{stroke:var(--anatomy-shade-2)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="3"]{stroke:var(--anatomy-shade-3)}
+.iso-solid[data-seamless]>.iso-top{stroke:var(--anatomy-top)}
+.iso-solid[data-seamless][data-lit]>.iso-top{stroke:var(--anatomy-lit-top)}
+.iso-solid[data-seamless][data-lit]>.iso-shade{stroke:var(--anatomy-lit-shade)}
+.iso-solid[data-lit]>.iso-edge{stroke:var(--anatomy-lit)}
+.iso-halo{fill:var(--anatomy-halo);stroke:none;filter:blur(9px);opacity:var(--anatomy-halo-opacity);transform:translateY(3px)}
+.iso-line{fill:none;stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight);stroke-linecap:round;stroke-linejoin:round}
+.iso-line[data-tone="hi"]{stroke:var(--anatomy-hi)}
+.iso-line[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.iso-line[data-tone="lo"]{stroke:var(--anatomy-lo)}
+.iso-line[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.iso-line[data-tone="lit"]{stroke:var(--anatomy-lit)}
+.iso-line[data-tone="red"]{stroke:var(--anatomy-red)}
+.iso-line[data-tone="green"]{stroke:var(--anatomy-green)}
+.iso-line[data-tone="blue"]{stroke:var(--anatomy-blue)}
+.iso-line[data-dotted]{stroke-dasharray:.01 3.5;stroke-width:1}
+.iso-line[data-dashed]{stroke-dasharray:3 3}
+.iso-line[data-flow]{stroke-dasharray:2 6}
+.iso-wire-end{fill:var(--anatomy-paper);stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight)}
+.iso-wire[data-tone="hi"] .iso-wire-end{stroke:var(--anatomy-hi)}
+.iso-wire[data-tone="mid"] .iso-wire-end{stroke:var(--anatomy-mid)}
+.iso-wire[data-tone="faint"] .iso-wire-end{stroke:var(--anatomy-faint)}
+.iso-wire[data-tone="lit"] .iso-wire-end{stroke:var(--anatomy-lit)}
+.iso-dots circle{fill:var(--anatomy-dot);stroke:none;opacity:.32}
+.iso-dots[data-tone="hi"] circle{opacity:.85}
+.iso-dots[data-tone="mid"] circle{opacity:.45}
+.iso-dots[data-tone="lo"] circle{opacity:.22}
+.iso-dots[data-tone="faint"] circle{opacity:.12}
+.iso-face-text{fill:var(--anatomy-mid);font-family:var(--anatomy-mono);letter-spacing:.04em}
+.iso-face-text[data-tone="hi"]{fill:var(--anatomy-hi)}
+.iso-face-text[data-tone="lo"]{fill:var(--anatomy-lo)}
+.iso-face-text[data-tone="faint"]{fill:var(--anatomy-faint)}
+.tb-body{fill:var(--anatomy-shade-2);stroke:none}
+.tb-shine{fill:var(--anatomy-top);stroke:none}
+.tb-shade{fill:var(--anatomy-shade-0);stroke:none}
+.tb-ring{fill:none;stroke:var(--anatomy-lo);stroke-width:.45;stroke-linecap:butt;stroke-linejoin:round}
+.tb-ring[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.tb-ring[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.tb-ring[data-tone="hi"]{stroke:var(--anatomy-hi)}
+@keyframes iso-flow{to{stroke-dashoffset:-32}}
+@keyframes iso-pulse{0%,100%{opacity:.18}12%{opacity:1}40%{opacity:.18}}
+.iso-line[data-flow]{animation:iso-flow 1600ms linear infinite}
+.iso-dots circle[data-pulse]{animation:iso-pulse 1600ms steps(1,end) infinite;animation-delay:var(--pulse-at,0ms)}
+.iso-figure{margin:32px 0 36px}
+.iso-plate{position:relative;padding:52px 24px;border-radius:0;background:var(--anatomy-card);box-shadow:0 0 0 1px var(--anatomy-mid);--anatomy-paper:var(--anatomy-card)}
+.iso-plate-corners{position:absolute;inset:18px 20px;pointer-events:none}
+.iso-plate-corner{position:absolute;color:var(--anatomy-muted);font-family:var(--anatomy-mono);font-size:10.5px;line-height:1;letter-spacing:.04em;white-space:nowrap}
+.iso-plate-corner[data-corner="fig"]{top:0;left:0;color:var(--anatomy-text)}
+.iso-plate-corner[data-corner="title"]{top:0;right:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="hint"]{bottom:0;left:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="readout"]{right:0;bottom:0;color:var(--anatomy-text);font-variant-numeric:tabular-nums}
+.iso-plate .iso-svg{margin:0 auto}
+.iso-legend{display:grid;gap:8px;margin-top:12px;color:var(--anatomy-muted);font-size:13px;line-height:1.55}
+.iso-keys{display:flex;flex-wrap:wrap;gap:6px 18px}
+.iso-key{display:inline-flex;align-items:center;gap:7px}
+.iso-swatch{width:16px;height:10px;flex:none;overflow:visible}
+.iso-swatch path{fill:none;stroke:var(--anatomy-hi);stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+.iso-swatch[data-mark="raised"] path,.iso-swatch[data-mark="flat"] path{stroke:var(--anatomy-mid)}
+.iso-swatch[data-mark="lit"] path{stroke:var(--anatomy-lit)}
+.iso-swatch[data-mark="dim"] path{stroke:var(--anatomy-lo)}
+.iso-swatch[data-mark="dotted"] path{stroke-dasharray:.01 3;stroke-width:1.4}
+.iso-swatch[data-mark="dashed"] path{stroke-dasharray:3 2.5}
+.iso-swatch[data-mark="red"] path{stroke:var(--anatomy-red)}
+.iso-swatch[data-mark="green"] path{stroke:var(--anatomy-green)}
+.iso-swatch[data-mark="blue"] path{stroke:var(--anatomy-blue)}
+.iso-swatch-crease{stroke:var(--anatomy-lo)!important}
+@media (max-width:560px){.iso-plate{padding:48px 12px 70px}.iso-plate-corner[data-corner="hint"]{bottom:18px}}
+@media (prefers-reduced-motion:reduce){.iso-line[data-flow],.iso-dots circle[data-pulse]{animation:none}}
+`;
+
+// Tiny solid renderer: prisms (a 2D ring pushed out along one axis), shaded by face normal, painter-sorted.
+// Shared by the build (static parts) and the page (anything that moves or changes colour).
+function solids(project, depthOf) {
+  const o = depthOf([0, 0, 0]);
+  const VIEW = [depthOf([1, 0, 0]) - o, depthOf([0, 1, 0]) - o, depthOf([0, 0, 1]) - o];
+  const LIGHT = (() => { const v = [0.35, 0.7, 1]; const n = Math.hypot(...v); return v.map((a) => a / n); })();
+  const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const fx = (v) => (Math.round(v * 10) / 10).toString();
+  // ring in its own 2D plane, axis is the direction it is pushed out along
+  const toXYZ = (axis, u, v, w) => (axis === "z" ? [u, v, w] : axis === "y" ? [u, w, v] : [w, u, v]);
+  function prism(ring, axis, w0, w1, col, opts = {}) {
+    return { ring, axis, w0, w1, col, ...opts };
+  }
+  const box = (x0, x1, y0, y1, z0, z1, col, opts) => prism([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], "z", z0, z1, col, opts);
+  const circle = (cu, cv, r, n = 24, a0 = 0) => Array.from({ length: n }, (_, i) => [cu + r * Math.cos(a0 + (i / n) * Math.PI * 2), cv + r * Math.sin(a0 + (i / n) * Math.PI * 2)]);
+  const cyl = (cx, cy, r, z0, z1, col, n = 24, opts) => prism(circle(cx, cy, r, n), "z", z0, z1, col, opts);
+  function faces(part, xf) {
+    const n = part.ring.length;
+    const A = part.ring.map(([u, v]) => xf(toXYZ(part.axis, u, v, part.w0))), B = part.ring.map(([u, v]) => xf(toXYZ(part.axis, u, v, part.w1)));
+    const c = [0, 1, 2].map((k) => (A.reduce((s, p) => s + p[k], 0) + B.reduce((s, p) => s + p[k], 0)) / (2 * n));
+    const out = [];
+    const add = (pts, cap) => {
+      const cf = [0, 1, 2].map((k) => pts.reduce((s, p) => s + p[k], 0) / pts.length);
+      let nn = [0, 0, 0];
+      for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; nn[0] += (p[1] - q[1]) * (p[2] + q[2]); nn[1] += (p[2] - q[2]) * (p[0] + q[0]); nn[2] += (p[0] - q[0]) * (p[1] + q[1]); }
+      const len = Math.hypot(...nn); if (len < 1e-9) return;
+      nn = nn.map((v) => v / len);
+      if (dot(nn, [cf[0] - c[0], cf[1] - c[1], cf[2] - c[2]]) < 0) nn = nn.map((v) => -v);
+      if (dot(nn, VIEW) <= 1e-4) return;
+      out.push({ pts, n: nn, depth: dot(cf, VIEW), cap });
+    };
+    add(A, true); add(B, true);
+    if (part.w1 !== part.w0) for (let i = 0; i < n; i++) { const j = (i + 1) % n; add([A[i], A[j], B[j], B[i]], false); }
+    return out;
+  }
+  function shade(part, f) {
+    let base = rgb(f.cap && part.cap ? part.cap : part.col);
+    if (part.glow) base = mix(base, rgb(part.glow[0]), part.glow[1]);
+    const d = Math.max(0, dot(f.n, LIGHT)), k = part.flat ? 1 : 0.48 + 0.62 * d;
+    let c = base.map((v) => v * k);
+    if (part.emit) c = mix(c, rgb(part.emit[0]), part.emit[1]);
+    return "rgb(" + c.map((v) => Math.round(Math.min(255, Math.max(0, v)))).join(",") + ")";
+  }
+  // objects: { parts, xf?, key? }, sorted back to front by key (default: depth of the first part's centre)
+  function render(objects, { stroke = "rgba(0,0,0,.35)", width = 0.35 } = {}) {
+    const items = objects.map((ob) => {
+      const xf = ob.xf || ((p) => p);
+      let key = ob.key;
+      if (key === undefined) { const p = ob.parts[0]; const r = p.ring; const cu = r.reduce((s, q) => s + q[0], 0) / r.length, cv = r.reduce((s, q) => s + q[1], 0) / r.length; key = dot(xf(toXYZ(p.axis, cu, cv, (p.w0 + p.w1) / 2)), VIEW); }
+      return { ob, xf, key };
+    }).sort((a, b) => a.key - b.key);
+    let s = "";
+    for (const { ob, xf } of items) {
+      if (ob.svg !== undefined) { s += ob.svg; continue; }
+      const fs = [];
+      ob.parts.forEach((part, pi) => { for (const f of faces(part, xf)) fs.push({ f, part, layer: part.layer || 0, pi }); });
+      fs.sort((a, b) => a.layer - b.layer || a.f.depth - b.f.depth);
+      let g = "";
+      for (const { f, part } of fs) g += '<path d="M' + f.pts.map((p) => { const q = project(p); return fx(q[0]) + " " + fx(q[1]); }).join("L") + 'Z" fill="' + shade(part, f) + '"' + (part.opacity !== undefined ? ' fill-opacity="' + part.opacity + '"' : "") + "/>";
+      s += ob.cls ? '<g class="' + ob.cls + '">' + g + "</g>" : g;
+    }
+    return '<g stroke="' + stroke + '" stroke-width="' + width + '" stroke-linejoin="round">' + s + "</g>";
+  }
+  return { prism, box, cyl, circle, render, VIEW, rgb };
+}
+
+const D = {"W":680,"H":470,"P":{"origin":[340,233.2845333406012],"scale":39.25012939228355,"azimuth":45,"elevation":30}};
+const PR = D.P;
+const stage = document.querySelector(".fx-stage");
+const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const readout = document.querySelector("[data-readout]");
+const still = matchMedia("(prefers-reduced-motion: reduce)");
+const clamp = (a, lo, hi) => Math.min(hi, Math.max(lo, a));
+const R = solids((p) => iso(p, PR), (p) => depthOf(p, PR));
+const { box, prism } = R;
+const svgEl = stage.querySelector("svg"), cv = stage.querySelector(".fx-smoke"), ctx = cv.getContext("2d");
+const mcv = stage.querySelector(".m-cv"), mctx = mcv.getContext("2d");
+const sceneG = q("scene");
+const fx1 = (v) => v.toFixed(1);
+const sp = (p) => { const a = iso(p, PR); return fx1(a[0]) + " " + fx1(a[1]); };
+const PX = (() => { const a = iso([0, 0, 0], PR), b = iso([1, 0, 0], PR); return Math.hypot(b[0] - a[0], b[1] - a[1]); })();
+let seed = 11; const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+
+// ---------------- the circuit: straights and corners (radius m, turn in degrees, + is left) ----------------
+const TRACK = [["S", 820, "Main straight"], ["C", 17, 150, "Hairpin"], ["S", 260], ["C", 130, 75, "Fast sweeper"], ["S", 240], ["C", 45, 55, "Esses"], ["C", 45, -55], ["S", 680, "Back straight"], ["C", 24, 45, "Chicane"], ["C", 24, -45], ["S", 210], ["C", 75, 135, "Last corner"], ["S", 140]];
+const DS = 2, G = 9.81, RHO = 1.2;
+let pts = [];
+(function () { let x = 0, y = 0, h = 0, s = 0, seg = 0; for (const t of TRACK) { const len = t[0] === "S" ? t[1] : t[1] * Math.abs(t[2]) * Math.PI / 180; const kap = t[0] === "S" ? 0 : Math.sign(t[2]) / t[1]; const n = Math.round(len / DS); for (let i = 0; i < n; i++) { pts.push({ s, x, y, kap, seg, straight: t[0] === "S" && t[1] > 200 }); h += kap * DS; x += Math.cos(h) * DS; y += Math.sin(h) * DS; s += DS; } seg++; }
+  // close the drawing (spread the gap along the lap) for the map
+  const ex = x, ey = y, N = pts.length; pts.forEach((p, i) => { p.mx = p.x - ex * i / N; p.my = p.y - ey * i / N; }); })();
+const N = pts.length, LAP = N * DS;
+
+// ---------------- the car ----------------
+const MASS = 800; // 768 kg minimum plus some fuel
+let wing = 0.5, aeroAuto = true, follow = 0, ducts = true, slow = false;
+const aero = (straightMode) => { const cla = 2.4 + 1.8 * wing, cda = 0.95 + 0.4 * wing; return straightMode ? { cla: cla * 0.5, cda: cda * 0.62 } : { cla, cda }; };
+const MU = 1.7;
+function dirtyLoss() { return follow === 0 ? 0 : follow === 1 ? 0.18 : 0.38; }
+function power(v, overtake) { const kmh = v * 3.6, top = overtake ? 337 : 290, end = overtake ? 345 : 340; const kK = kmh < top ? 1 : clamp((end - kmh) / (end - top), 0, 1); return 400e3 + 350e3 * kK; }
+let prof = null;
+function simulate() {
+  const loss = dirtyLoss(), tow = follow === 0 ? 0 : follow === 1 ? 0.06 : 0.14, ot = follow > 0;
+  const vmax = new Float64Array(N), v = new Float64Array(N), mode = new Uint8Array(N);
+  for (let i = 0; i < N; i++) { const p = pts[i]; mode[i] = aeroAuto && p.straight ? 1 : 0; const a = aero(false), cla = a.cla * (p.kap ? 1 - loss * 0.7 : 1); const k = Math.abs(p.kap); if (!k) { vmax[i] = 120; continue; } const den = k - MU * RHO * cla / (2 * MASS); vmax[i] = den <= 0 ? 120 : Math.min(120, Math.sqrt(MU * G / den)); }
+  const latFrac = (i, vv) => { const k = Math.abs(pts[i].kap); if (!k) return 0; const a = aero(false); const amax = MU * (G + RHO * a.cla * (1 - loss * 0.7) * vv * vv / (2 * MASS)); return clamp(vv * vv * k / amax, 0, 1); };
+  // forward pass (accelerate), twice round so the start speed is right
+  let vv = 40;
+  for (let lap = 0; lap < 2; lap++) for (let i = 0; i < N; i++) {
+    vv = Math.min(vv, vmax[i]); v[i] = vv;
+    const a = aero(mode[i] === 1), cda = a.cda * (1 - (pts[i].straight ? tow : 0));
+    const drag = 0.5 * RHO * cda * vv * vv + 0.015 * MASS * G;
+    const trac = MU * 0.75 * (G + 0.5 * RHO * a.cla * vv * vv / MASS) * Math.sqrt(1 - latFrac(i, vv) ** 2);
+    const acc = Math.min(trac, (power(vv, ot && pts[i].straight) / Math.max(vv, 5) - drag) / MASS);
+    vv = Math.sqrt(Math.max(1, vv * vv + 2 * acc * DS));
+  }
+  // backward pass (brake), Corner Mode: the flaps shut as soon as the driver brakes
+  const brake = new Float64Array(N);
+  vv = v[0];
+  for (let lap = 0; lap < 2; lap++) for (let i = N - 1; i >= 0; i--) {
+    const a = aero(false), drag = 0.5 * RHO * a.cda * vv * vv;
+    const dec = (0.88 * MU * (MASS * G + 0.5 * RHO * a.cla * vv * vv) * Math.sqrt(1 - latFrac(i, vv) ** 2) + drag) / MASS;
+    const vb = Math.sqrt(vv * vv + 2 * dec * DS);
+    if (vb < v[i]) { v[i] = vb; mode[i] = 0; }
+    vv = v[i];
+  }
+  for (let i = 0; i < N; i++) { const a2 = v[i], b2 = v[(i + 1) % N]; brake[i] = a2 > b2 + 0.01 ? (a2 * a2 - b2 * b2) / (2 * DS) : 0; if (brake[i] > 0.5 * G) mode[i] = 0; }
+  const tm = new Float64Array(N + 1); for (let i = 0; i < N; i++) tm[i + 1] = tm[i] + DS / Math.max(1, (v[i] + v[(i + 1) % N]) / 2);
+  let top = 0, low = 999, latPk = 0, brPk = 0; for (let i = 0; i < N; i++) { top = Math.max(top, v[i]); low = Math.min(low, v[i]); latPk = Math.max(latPk, v[i] * v[i] * Math.abs(pts[i].kap) / G); brPk = Math.max(brPk, brake[i] / G); }
+  prof = { v, mode, brake, tm, lap: tm[N], top, low, latPk, brPk, loss };
+}
+// ---------------- state ----------------
+let sPos = 0, vNow = 40, now = 0, last = 0, frame = 0, visible = false, touring = true, tourClock = 0, tourStep = -1, actions = [], lastShot = "", lastEvent = "", lastEventAt = -10;
+let discT = 450, discWear = 0, discGone = false, tyreT = 95, wingGone = false, wingArmed = false, lapCount = 0, lapStart = 0, lastLap = 0;
+let bulletUntil = -1, crash = null, flying = [], parts = [], air = [], scroll = 0, yawNow = 0, steer = 0, pitch = 0, latG = 0, lonG = 0, df = 0, dfF = 0, dfR = 0, drag = 0, modeNow = 0;
+const event = (tx) => { lastEvent = tx; lastEventAt = now; };
+function reset() { sPos = 0; vNow = prof.v[0]; discT = 450; discWear = 0; discGone = false; tyreT = 95; wingGone = false; wingArmed = false; crash = null; flying = []; parts = []; lapCount = 0; lapStart = now; lastEvent = ""; }
+const idx = (s) => ((Math.floor(s / DS) % N) + N) % N;
+const CX = -1.2; // where the car sits on the plate
+function physics(dt) {
+  if (crash) return crashStep(dt);
+  const i = idx(sPos), j = (i + 1) % N, f = (sPos / DS) % 1;
+  let v = prof.v[i] + (prof.v[j] - prof.v[i]) * f;
+  const brk = prof.brake[i];
+  // what goes wrong
+  if (wingArmed && v > 80) { wingArmed = false; wingGone = true; launchWing(v); event("The rear wing's let go at " + Math.round(v * 3.6) + " km/h. Half the rear downforce just left the building, and there's a braking zone coming."); }
+  if (wingGone && brk > 1.5 * G) return startCrash("spin", v);
+  if (discGone && brk > 1.5 * G) return startCrash("straight", v);
+  const old = vNow; vNow = v;
+  lonG = dt > 0 ? clamp((v - old) / dt / G, -6, 3) : 0;
+  sPos += v * dt; if (sPos >= LAP) { sPos -= LAP; lapCount++; lastLap = now - lapStart; lapStart = now; }
+  const p = pts[i]; latG = v * v * p.kap / G; steer = clamp(Math.atan(3.4 * p.kap) * 1.8, -0.35, 0.35);
+  modeNow = prof.mode[i];
+  const a = aero(modeNow === 1), q2 = 0.5 * RHO * v * v, loss = p.kap ? prof.loss * 0.7 : 0;
+  dfF = q2 * a.cla * 0.42 * (1 - loss * 1.6) / G; dfR = q2 * a.cla * 0.58 * (wingGone ? 0.35 : 1) / G; df = dfF + dfR; drag = q2 * a.cda / 1000;
+  pitch = clamp(-lonG * 0.006 - df / 2400 * 0.01, -0.04, 0.03);
+  // brakes: the front discs take a bit over half the braking that the MGU-K doesn't harvest
+  const Pb = brk > 0 ? Math.max(0, (MASS * brk - 0.5 * RHO * a.cda * v * v) * v - 350e3) : 0;
+  const heat = Pb * 0.56 / 2, cool = (0.12 + 0.016 * v) * (ducts ? 1 : 0.12);
+  discT += (heat / 300 - cool * (discT - 120)) * dt;
+  if (discT > 1100) discWear += (discT - 1100) / 100 * dt * 0.5;
+  if (!discGone && discWear > 1) { discGone = true; event("The front-left disc has cooked past 1,100 °C for too long and oxidised away. The next big stop is going to be a problem."); }
+  // front tyres: heat from cornering load and sliding (worse in dirty air), cooling with speed
+  const target = 82 + 7 * Math.abs(latG) * (1 + prof.loss * 4.5);
+  tyreT += (target - tyreT) * dt / 5;
+  // carbon dust and sparks from the plank
+  if (brk > 3 * G && rnd() < 0.5) spawnDust();
+  if (v > 75 && rnd() < 0.08 * (df / 1500)) spawnSpark();
+}
+function startCrash(kind, v) {
+  const runoff = kind === "spin" ? 200 : 170, a = kind === "spin" ? 1.6 * G : 2.2 * G;
+  const vi = Math.sqrt(Math.max(0, v * v - 2 * a * runoff));
+  const gpk = vi * vi / (2 * G * 2.1);
+  crash = { kind, t: 0, v0: v, vi, gpk, x: 0, y: 0, yaw: 0, vx: kind === "spin" ? 6.5 : 7.5, hit: false, wallRise: 0, done: false, noHit: vi < 8 };
+  event(kind === "spin" ? "No rear wing, so the moment the brakes bite the rear goes light and it swaps ends at " + Math.round(v * 3.6) + " km/h." : "Brake pedal to the floor at " + Math.round(v * 3.6) + " km/h and nothing much happens. Straight on.");
+}
+function crashStep(dt) {
+  const c = crash; c.t += dt; vNow = c.hit ? 0 : Math.max(c.vi, c.v0 - (c.v0 - c.vi) * c.t / 1.6);
+  c.wallRise = Math.min(1, c.wallRise + dt * 2.5);
+  if (!c.hit) {
+    c.x += c.vx * dt; c.vx = c.noHit ? Math.max(0, c.vx - dt * 7.5 * 7.5 / 6) : Math.max(2.5, c.vx - dt * 2.2);
+    if (c.noHit && c.vx === 0) { c.hit = true; c.hitAt = c.t; event("Beached in the gravel trap, short of the wall. Lucky: it was a slow corner."); return; }
+    if (c.kind === "spin") { c.yaw += dt * (2.2 + c.t * 1.2); c.y += dt * 0.9; if (rnd() < 0.9) spawnSmoke(); }
+    else if (rnd() < 0.5) spawnSmoke(0.4);
+    if (c.noHit && rnd() < 0.6) spawnGravel();
+    if (rnd() < 0.5) spawnSpark();
+    // the leading point of the car against the tyre wall
+    const ca = Math.cos(c.yaw), sa = Math.sin(c.yaw);
+    let lead = -9; for (const [lx, ly] of [[2.9, 0.95], [2.9, -0.95], [-2.7, 0.55], [-2.7, -0.55]]) lead = Math.max(lead, CX + c.x + lx * ca - ly * sa);
+    if (lead >= WALL - 0.1) { c.hit = true; c.hitAt = c.t; for (let n = 0; n < 70; n++) spawnDebris(lead); for (let n = 0; n < 12; n++) spawnSmoke(0.6, lead); const sev = c.gpk > 50 ? "a big one" : "a hard one"; event("Into the tyres at about " + Math.round(c.vi * 3.6) + " km/h: " + sev + ", around " + Math.round(c.gpk) + " g. The survival cell and the halo did their job (Grosjean walked away from 67 g at 192 km/h in 2020)."); }
+  } else if (c.t - c.hitAt > 6 && !touring) { reset(); }
+}
+const WALL = 5.6;
+// ---------------- particles ----------------
+function launchWing(v) { flying.push({ p: [CX - 2.4, 0, 0.9], v: [-2.6, 0.9, 4.2], rot: 0, w: 3.5, life: 0 }); bulletUntil = now + 1.2; for (let n = 0; n < 25; n++) parts.push({ k: "deb", p: [CX - 2.4, (rnd() - 0.5) * 1, 0.9], v: [-5 - rnd() * 6, (rnd() - 0.5) * 4, rnd() * 4], life: 0, max: 2, s: 0.8 + rnd(), c: rnd() < 0.5 ? "#1b1d22" : "#e5e7ea" }); }
+function spawnGravel() { const c = crash; parts.push({ k: "deb", p: [CX + c.x + 1.7, c.y + (rnd() - 0.5) * 1.8, 0.05], v: [-1 - rnd() * 2, (rnd() - 0.5) * 3, 1 + rnd() * 2], life: 0, max: 1.2, s: 0.6 + rnd() * 0.6, c: "#b9a27a" }); }
+function spawnDust() { for (const yy of [-0.62, 0.62]) parts.push({ k: "dust", p: [CX + 1.7, yy, 0.3], v: [-6 - rnd() * 4, (rnd() - 0.5) * 0.6, 0.3 + rnd() * 0.4], r: 0.08, life: 0, max: 0.5 + rnd() * 0.4 }); }
+function spawnSpark() { const c = crash; const cx = CX + (c ? c.x : 0), cy = c ? c.y : 0; parts.push({ k: "spark", p: [cx - 0.5 + rnd() * 1.5, cy + (rnd() - 0.5) * 0.6, 0.03], v: [-9 - rnd() * 6, (rnd() - 0.5) * 2, 0.5 + rnd() * 1.5], life: 0, max: 0.25 + rnd() * 0.25 }); }
+function spawnSmoke(a = 1, at) { const c = crash; const cx = at ?? CX + (c ? c.x : 0) - 1.6, cy = c ? c.y : 0; parts.push({ k: "smoke", p: [cx + (rnd() - 0.5), cy + (rnd() - 0.5) * 1.2, 0.2], v: [-0.6 + rnd() * 0.4, (rnd() - 0.5) * 0.6, 0.3 + rnd() * 0.4], r: 0.3, life: 0, max: 2.5 + rnd() * 2, a }); }
+function spawnDebris(x) { const c = crash; parts.push({ k: "deb", p: [x - 0.2, c.y + (rnd() - 0.5) * 1.6, 0.2 + rnd() * 0.6], v: [-1 - rnd() * 5, (rnd() - 0.5) * 7, 1 + rnd() * 5], life: 0, max: 3 + rnd() * 2, s: 0.8 + rnd() * 1.6, c: ["#1b1d22", "#20406e", "#f2c230", "#2a2c30", "#e5e7ea"][Math.floor(rnd() * 5)] }); }
+
+// ---------------- the car model (local: x forward, y left, z up) ----------------
+const LIV = "#1f4e8c", LIV2 = "#f2c230", CARB = "#1b1d22", RIM = "#2b2e33";
+function carParts() {
+  const objs = [];
+  const add = (parts, key, xf) => objs.push({ parts: Array.isArray(parts) ? parts : [parts], key, xf });
+  const a = aero(modeNow === 1);
+  const fa = modeNow === 1 ? 0.12 : 0.42, ra = modeNow === 1 ? 0.08 : 0.62; // flap angles
+  const c = crash, hitFront = c && c.hit && c.kind === "straight", hitRear = c && c.hit && c.kind === "spin";
+  // floor and plank
+  add(prism([[1.25, -0.3], [1.25, 0.3], [0.8, 0.88], [-1.3, 0.88], [-1.95, 0.55], [-2.3, 0.5], [-2.3, -0.5], [-1.95, -0.55], [-1.3, -0.88], [0.8, -0.88]], "z", 0.04, 0.08, CARB), -1e6);
+  // diffuser
+  add(prism([[-1.9, 0.08], [-2.35, 0.32], [-2.35, 0.08]], "y", -0.5, 0.5, CARB), -9e5);
+  // sidepods
+  for (const sg of [-1, 1]) add(prism([[0.55, 0.33], [0.55, 0.8], [-0.35, 0.82], [-1.45, 0.45], [-1.45, 0.33]].map(([x, y]) => [x, y * sg]), "z", 0.08, 0.52, LIV, { cap: "#2a64ab" }), undefined);
+  for (const sg of [-1, 1]) add(box(0.53, 0.56, sg > 0 ? 0.4 : -0.74, sg > 0 ? 0.74 : -0.4, 0.28, 0.48, "#0c0d10"), undefined);
+  // survival cell and cockpit
+  add(prism([[1.25, 0.12], [1.25, 0.55], [0.75, 0.62], [0.2, 0.66], [-0.38, 0.66], [-0.38, 0.12]], "y", -0.33, 0.33, LIV, { cap: "#173d70" }), undefined);
+  // engine cover and airbox, with a yellow stripe
+  add(prism([[-0.38, 0.12], [-0.38, 0.95], [-0.56, 1.02], [-0.86, 0.95], [-1.9, 0.5], [-2.05, 0.3], [-2.05, 0.12]], "y", -0.27, 0.27, LIV, { cap: "#173d70" }), undefined);
+  add(prism([[-0.4, 0.955], [-0.56, 1.025], [-0.86, 0.955], [-1.9, 0.505], [-1.9, 0.52], [-0.86, 0.97], [-0.56, 1.04], [-0.4, 0.97]], "y", -0.06, 0.06, LIV2), undefined);
+  add(prism([[-0.36, 0.84], [-0.36, 0.95], [-0.4, 0.95], [-0.4, 0.84]], "y", -0.1, 0.1, "#0c0d10"), undefined);
+  // nose
+  if (!hitFront) add(prism([[1.25, 0.16], [2.78, 0.16], [2.78, 0.26], [1.25, 0.55]], "y", -0.17, 0.17, LIV, { cap: "#173d70" }), undefined);
+  // front wing: main plane, two flaps, endplates
+  if (!hitFront) {
+    add(prism([[2.4, 0.1], [2.98, 0.08], [2.98, 0.11], [2.42, 0.13]], "y", -0.95, 0.95, CARB), undefined);
+    for (const [lx, lz, ch] of [[2.66, 0.14, 0.3], [2.45, 0.2, 0.26]]) { const ca = Math.cos(fa), sa = Math.sin(fa); const r = [[0, 0], [ch, 0], [ch, 0.025], [0, 0.03]].map(([u, w]) => [lx - u * ca + w * sa * 0, lz + u * sa + w]); add(prism(r, "y", -0.93, 0.93, LIV2), undefined); }
+    for (const yy of [-0.97, 0.95]) add(prism([[2.3, 0.07], [2.98, 0.07], [2.98, 0.22], [2.4, 0.34]], "y", yy, yy + 0.02, LIV), undefined);
+  }
+  // rear wing: endplates, main plane, flap; beam wing and pylon
+  if (!wingGone) {
+    for (const yy of [-0.53, 0.51]) add(prism([[-1.98, 0.42], [-2.66, 0.42], [-2.66, 1.02], [-2.05, 0.98]], "y", yy, yy + 0.02, LIV), undefined);
+    add(prism([[-2.22, 0.84], [-2.6, 0.86], [-2.6, 0.89], [-2.24, 0.88]], "y", -0.51, 0.51, CARB), undefined);
+    const ca = Math.cos(ra), sa = Math.sin(ra);
+    add(prism([[0, 0], [0.24, 0], [0.24, 0.022], [0, 0.03]].map(([u, w]) => [-2.42 - u * ca, 0.92 + u * sa + w]), "y", -0.51, 0.51, LIV2), undefined);
+  }
+  add(prism([[-2.2, 0.4], [-2.48, 0.42], [-2.48, 0.45], [-2.22, 0.44]], "y", -0.45, 0.45, CARB), undefined);
+  add(prism([[-2.05, 0.3], [-2.3, 0.3], [-2.4, 0.86], [-2.3, 0.86]], "y", -0.03, 0.03, CARB), undefined);
+  // wheels: tyre, rim (glows with the brake disc on the front), compound stripe
+  const glowT = clamp((discT - 650) / 550, 0, 1);
+  for (const [wx, wr, ww] of [[1.7, 0.36, 0.3], [-1.7, 0.36, 0.38]]) for (const sg of [-1, 1]) {
+    const y0 = sg > 0 ? 0.95 - ww : -0.95, y1 = y0 + ww, front = wx > 0;
+    if (hitFront && front && sg > 0) continue;
+    const em = front ? ["#ff6a1a", glowT * (sg > 0 ? 1 : 0.85)] : null;
+    const tyre = prism(R.circle(wx, wr, wr, 22), "y", y0, y1, "#16171a");
+    const rimY = sg > 0 ? y1 + 0.003 : y0 - 0.003;
+    const rim = prism(R.circle(wx, wr, wr * 0.62, 18), "y", rimY, rimY + sg * 0.002, RIM, { flat: true, emit: em || undefined });
+    const stripe = prism(R.circle(wx, wr, wr * 0.8, 22), "y", rimY - sg * 0.001, rimY - sg * 0.0005, "#e8c22a", { flat: true });
+    const xf = front ? (p) => { const dx = p[0] - wx, dy = p[1]; const cs = Math.cos(steer), sn = Math.sin(steer); return Wc([wx + dx * cs - dy * sn * 0.2, dy + dx * sn, p[2]]); } : Wc;
+    add([tyre, stripe, rim], kOf([wx, sg * 0.8, wr]) + (sg > 0 ? 40 : -40), xf);
+  }
+  return objs;
+}
+const kOf = (p) => depthOf(Wc(p), PR);
+// local to plate, with the crash slide, yaw and a little pitch
+function Wc(p) { const c = crash; const yaw = c ? c.yaw : 0, ox = CX + (c ? c.x : 0), oy = c ? c.y : 0; const z = p[2] + p[0] * pitch; const cs = Math.cos(yaw), sn = Math.sin(yaw); return [ox + p[0] * cs - p[1] * sn, oy + p[1] * cs + p[0] * sn, z]; }
+function draw(dt) {
+  const objs = carParts().map((o) => ({ ...o, xf: o.xf || Wc, key: o.key ?? (() => { const pa = o.parts[0], r = pa.ring; const cu = r.reduce((s, q2) => s + q2[0], 0) / r.length, cv2 = r.reduce((s, q2) => s + q2[1], 0) / r.length; const pp = pa.axis === "z" ? [cu, cv2, (pa.w0 + pa.w1) / 2] : pa.axis === "y" ? [cu, (pa.w0 + pa.w1) / 2, cv2] : [(pa.w0 + pa.w1) / 2, cu, cv2]; return kOf(pp); })() }));
+  // driver's helmet, the halo and the suspension, as lines
+  let dv = "";
+  const H2 = iso(Wc([-0.12, 0, 0.8]), PR);
+  dv += '<circle cx="' + fx1(H2[0]) + '" cy="' + fx1(H2[1]) + '" r="' + fx1(0.13 * PX) + '" fill="#f2c230" stroke="#3a2d08" stroke-width=".6"/>';
+  const V = iso(Wc([-0.04, 0.02, 0.83]), PR); dv += '<path d="M' + fx1(V[0] - 0.09 * PX) + " " + fx1(V[1]) + "l" + fx1(0.16 * PX) + " " + fx1(0.05 * PX) + '" stroke="#111" stroke-width="' + fx1(0.05 * PX) + '" stroke-linecap="round"/>';
+  objs.push({ svg: dv, key: kOf([-0.12, 0, 0.75]) });
+  let halo = "M" + sp(Wc([0.42, 0, 0.66])) + "L" + sp(Wc([0.3, 0, 0.88]));
+  for (let i = 0; i <= 12; i++) { const a = -Math.PI / 2 + Math.PI * i / 12; halo += "L" + sp(Wc([0.3 - 0.0 - 0.45 * Math.sin(Math.PI * i / 12) * 1, 0.27 * -Math.cos(Math.PI * i / 12) * (i < 6 ? 1 : 1), 0.88 - 0.0 * i])); }
+  halo = "M" + sp(Wc([0.42, 0, 0.66])) + "L" + sp(Wc([0.28, 0, 0.88]));
+  let ring = ""; for (let i = 0; i <= 16; i++) { const t = Math.PI * i / 16; ring += (i ? "L" : "M") + sp(Wc([0.28 - 0.5 * Math.sin(t), 0.28 * Math.cos(t), 0.88 - 0.05 * Math.sin(t)])); }
+  const legs = "M" + sp(Wc([-0.2, 0.28, 0.88])) + "L" + sp(Wc([-0.28, 0.3, 0.66])) + "M" + sp(Wc([-0.2, -0.28, 0.88])) + "L" + sp(Wc([-0.28, -0.3, 0.66]));
+  objs.push({ svg: '<path d="' + halo + ring + legs + '" stroke="#2a2c31" stroke-width="' + fx1(0.05 * PX) + '" fill="none" stroke-linecap="round" stroke-linejoin="round"/>', key: kOf([-0.1, 0, 0.88]) + 2 });
+  let sus = "";
+  for (const [wx, sg] of [[1.7, 1], [1.7, -1], [-1.7, 1], [-1.7, -1]]) { const ox = wx > 0 ? 1.1 : -1.4; sus += "M" + sp(Wc([ox, sg * 0.3, 0.45])) + "L" + sp(Wc([wx, sg * 0.62, 0.42])) + "M" + sp(Wc([ox, sg * 0.3, 0.2])) + "L" + sp(Wc([wx, sg * 0.62, 0.22])); }
+  objs.push({ svg: '<path d="' + sus + '" stroke="#26282d" stroke-width="' + fx1(0.025 * PX) + '" fill="none"/>', key: kOf([0, 0.2, 0.3]) - 30 });
+  // downforce and drag arrows
+  if (!crash) {
+    const arr = (x, kg, cls) => { const l = clamp(kg / 900, 0, 1.6); if (l < 0.05) return ""; const a0 = Wc([x, 0, 1.25 + l]), a1 = Wc([x, 0, 1.12]); const P0 = iso(a0, PR), P1 = iso(a1, PR); return '<path class="' + cls + '" d="M' + fx1(P0[0]) + " " + fx1(P0[1]) + "L" + fx1(P1[0]) + " " + fx1(P1[1]) + "M" + fx1(P1[0] - 4) + " " + fx1(P1[1] - 6) + "L" + fx1(P1[0]) + " " + fx1(P1[1]) + "L" + fx1(P1[0] + 4) + " " + fx1(P1[1] - 6) + '"/><text class="arrtx" x="' + fx1(P0[0] + 5) + '" y="' + fx1(P0[1] + 3) + '">' + Math.round(kg) + " kg</text>"; };
+    objs.push({ svg: arr(1.7, dfF, "arrF") + arr(-1.8, dfR, "arrR"), key: 1e9 });
+  }
+  // the rear wing flying off
+  for (const fl of flying) {
+    const ca = Math.cos(fl.rot), sa = Math.sin(fl.rot);
+    const xf = (p) => { const dx = p[0] + 2.4, dz = p[2] - 0.9; return [fl.p[0] + dx * ca - dz * sa, fl.p[1] + p[1], fl.p[2] + dx * sa + dz * ca]; };
+    objs.push({ parts: [prism([[-2.22, 0.84], [-2.6, 0.86], [-2.6, 0.89], [-2.24, 0.88]], "y", -0.51, 0.51, CARB), prism([[-2.42, 0.92], [-2.66, 0.94], [-2.66, 0.96], [-2.42, 0.95]], "y", -0.51, 0.51, LIV2), prism([[-1.98, 0.6], [-2.66, 0.6], [-2.66, 1.02], [-2.05, 0.98]], "y", 0.51, 0.53, LIV), prism([[-1.98, 0.6], [-2.66, 0.6], [-2.66, 1.02], [-2.05, 0.98]], "y", -0.53, -0.51, LIV)], xf, key: depthOf(fl.p, PR) });
+  }
+  let html = "";
+  // kerbs on the corners, and the track lines scrolling under the car
+  const i0 = idx(sPos), kap = pts[i0].kap;
+  scroll = (scroll + (crash ? 0 : vNow * dt * 0.16)) % 2.4;
+  let dash = "";
+  for (let x = -6.4 - scroll + 2.4; x < 6.4; x += 2.4) { const a = Math.max(-6.4, x), b = Math.min(6.4, x + 1.0); if (b > a) dash += "M" + sp([a, 0, 0.01]) + "L" + sp([b, 0, 0.01]); }
+  html += '<path class="dash" d="' + dash + '"/>';
+  if (kap && !crash) { const side = kap > 0 ? 1 : -1; for (let x = -6.4 - (scroll % 0.8); x < 6.4; x += 0.8) { const a = Math.max(-6.4, x), b = Math.min(6.4, x + 0.4); if (b <= a) continue; const yy = side * 2.3; const quad = [[a, yy, 0.012], [b, yy, 0.012], [b, yy + side * 0.32, 0.012], [a, yy + side * 0.32, 0.012]]; html += '<path fill="#d8302c" d="M' + quad.map(sp).join("L") + 'Z"/>'; } }
+  // tyre wall rising out of the run-off when it all goes wrong
+  if (crash) {
+    const h = 0.9 * crash.wallRise, push = crash.hit ? Math.min(0.35, (crash.t - crash.hitAt) * 2) : 0, wall = [];
+    for (let yy = -2.4; yy <= 2.41; yy += 0.6) { const near = crash.hit && Math.abs(yy - crash.y) < 1.4; for (let zz = 0; zz < 3; zz++) if ((zz + 1) * 0.3 <= h + 0.01) wall.push({ parts: [prism(R.circle(yy, zz * 0.3 + 0.15, 0.28, 14), "x", WALL + (near ? push : 0), WALL + 0.3 + (near ? push : 0), "#1a1b1e")], key: kOf([0, 0, 0]) * 0 + depthOf([WALL, yy, zz * 0.3], PR) - 5 }); }
+    wall.push({ parts: [box(WALL - 0.03 + push * 0.5, WALL, -2.6, 2.6, 0.05, Math.max(0.06, h - 0.05), "#c7272b", { opacity: 0.9 })], key: depthOf([WALL, 0, 0.4], PR) });
+    objs.push(...wall);
+  }
+  html += R.render(objs);
+  sceneG.innerHTML = html;
+  drawFx(dt);
+  drawMap();
+  const text = crash ? (crash.hit ? "RED FLAG" : Math.round(vNow * 3.6) + " km/h · OFF") : Math.round(vNow * 3.6) + " km/h · " + (modeNow ? "STRAIGHT MODE" : "CORNER MODE") + " · " + Math.abs(latG).toFixed(1) + " g";
+  if (readout.textContent !== text) readout.textContent = text;
+}
+// air: streaks flowing over the car, pushed up by the wings
+function flowAt(p) {
+  const v = [-1, 0, 0], x = p[0] - (CX), y = p[1], z = p[2];
+  const s = clamp(df / 1500, 0.2, 1.6), fl = modeNow ? 0.4 : 1;
+  if (Math.abs(y) < 1 && z < 0.5 && x > 2.2 && x < 3.2) v[2] += 0.35 * s * fl;
+  if (Math.abs(y) < 0.5 && z > 0.6 && z < 1.25 && x < -2.2 && x > -3.4) v[2] += 0.55 * s * fl;
+  if (Math.abs(y) < 0.5 && z < 0.35 && x < -1.9 && x > -2.9) v[2] += 0.25 * s;
+  if (x < 0.8 && x > -2.3 && Math.abs(y) < 0.9 && z < 1.05) v[2] += 0.18 * (x > -0.4 ? 1 : -0.6);
+  for (const sg of [-1, 1]) { const dy = y - sg * 0.52, dz = z - 0.98; const r2 = dy * dy + dz * dz; if (x < -2.4 && r2 < 0.12) { v[1] += -dz * 1.6 * sg * s; v[2] += dy * 1.6 * sg * s; } }
+  return v;
+}
+function drawFx(dt) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const r2 = svgEl.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1), cw = Math.max(1, Math.round(r2.width * dpr)), ch = Math.max(1, Math.round(r2.height * dpr)); if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
+  ctx.clearRect(0, 0, cv.width, cv.height); ctx.setTransform(cv.width / D.W, 0, 0, cv.height / D.H, 0, 0);
+  const light = document.body.dataset.theme === "light";
+  // the air
+  const U = crash ? 0 : 3 + vNow * 0.09, dirty = follow > 0;
+  const fill = air.length === 0; if (U > 0) while (air.length < 110) air.push({ p: [6.4 - rnd() * (fill ? 12.8 : 0.4), (rnd() - 0.5) * 2.6, 0.06 + rnd() * 1.3], tr: [] });
+  ctx.lineCap = "round";
+  air = air.filter((a) => {
+    if (!U) return false;
+    const f = flowAt(a.p), jit = dirty ? (follow === 2 ? 1.6 : 0.8) : 0;
+    a.p[0] += f[0] * U * dt; a.p[1] += (f[1] * U + (rnd() - 0.5) * jit * 3) * dt; a.p[2] = Math.max(0.03, a.p[2] + (f[2] * U + (rnd() - 0.5) * jit * 2) * dt);
+    a.tr.push(iso(a.p, PR)); if (a.tr.length > 7) a.tr.shift();
+    if (a.p[0] < -6.4) return false;
+    ctx.strokeStyle = dirty ? (light ? "rgba(214,110,40,.5)" : "rgba(255,160,90,.45)") : light ? "rgba(40,110,190,.45)" : "rgba(150,205,255,.42)"; ctx.lineWidth = 1;
+    ctx.beginPath(); a.tr.forEach((q2, i) => (i ? ctx.lineTo(q2[0], q2[1]) : ctx.moveTo(q2[0], q2[1]))); ctx.stroke();
+    return true;
+  });
+  // brake glow round the front wheels
+  if (discT > 600 && !(crash && crash.hit && crash.kind === "straight")) for (const sg of [1, -1]) { const P2 = iso(Wc([1.7, sg * 0.75, 0.36]), PR), g = clamp((discT - 600) / 600, 0, 1), r = 0.45 * PX * (0.6 + g * 0.6); const gr = ctx.createRadialGradient(P2[0], P2[1], 0, P2[0], P2[1], r); gr.addColorStop(0, "rgba(255,150,60," + (0.55 * g * (sg > 0 ? 1 : 0.4)) + ")"); gr.addColorStop(1, "rgba(255,90,20,0)"); ctx.fillStyle = gr; ctx.fillRect(P2[0] - r, P2[1] - r, r * 2, r * 2); }
+  // particles
+  for (const fl of flying) { fl.life += dt; fl.v[2] -= 9.8 * dt * 0.35; for (let i = 0; i < 3; i++) fl.p[i] += fl.v[i] * dt; fl.rot += fl.w * dt; }
+  flying = flying.filter((fl) => fl.p[0] > -9 && fl.life < 4 && fl.p[2] > -0.5);
+  parts = parts.filter((p) => {
+    p.life += dt; if (p.life > p.max) return false;
+    if (p.k === "smoke" || p.k === "dust") { p.r += dt * (p.k === "dust" ? 0.5 : 0.7); for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * dt; const P2 = iso(p.p, PR), a = (p.k === "dust" ? 0.35 : 0.3 * (p.a || 1)) * (1 - p.life / p.max), R2 = p.r * PX; const gr = ctx.createRadialGradient(P2[0], P2[1], 0, P2[0], P2[1], R2); const col = p.k === "dust" ? "40,36,34" : light ? "150,150,150" : "215,215,215"; gr.addColorStop(0, "rgba(" + col + "," + a + ")"); gr.addColorStop(1, "rgba(" + col + ",0)"); ctx.fillStyle = gr; ctx.fillRect(P2[0] - R2, P2[1] - R2, R2 * 2, R2 * 2); return true; }
+    p.v[2] -= 9.8 * dt; const o = iso(p.p, PR); for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * dt; if (p.p[2] < 0.01) { p.p[2] = 0.01; p.v = [p.v[0] * 0.5, p.v[1] * 0.5, -p.v[2] * 0.3]; }
+    const P2 = iso(p.p, PR);
+    if (p.k === "spark") { ctx.strokeStyle = "rgba(255," + Math.round(200 - 120 * p.life / p.max) + ",80," + (1 - p.life / p.max) + ")"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(o[0], o[1]); ctx.lineTo(P2[0], P2[1]); ctx.stroke(); return true; }
+    ctx.fillStyle = p.c; ctx.fillRect(P2[0] - p.s, P2[1] - p.s * 0.6, p.s * 2, p.s * 1.2); return true;
+  });
+}
+// inset: track map coloured by speed, with the car on it, and the lap's speed trace
+function drawMap() {
+  const r = mcv.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1), w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr)); if (mcv.width !== w || mcv.height !== h) { mcv.width = w; mcv.height = h; }
+  const light = document.body.dataset.theme === "light";
+  mctx.setTransform(1, 0, 0, 1, 0, 0); mctx.fillStyle = light ? "#eef2f6" : "#0f1418"; mctx.fillRect(0, 0, w, h);
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (const p of pts) { x0 = Math.min(x0, p.mx); x1 = Math.max(x1, p.mx); y0 = Math.min(y0, p.my); y1 = Math.max(y1, p.my); }
+  const box2 = h - 10 * dpr, sc = Math.min(box2 / (x1 - x0), box2 / (y1 - y0)), ox = 5 * dpr + (box2 - (x1 - x0) * sc) / 2, oy = 5 * dpr + (box2 - (y1 - y0) * sc) / 2;
+  const M = (p) => [ox + (p.mx - x0) * sc, oy + (y1 - p.my) * sc];
+  mctx.lineWidth = 2.6 * dpr; mctx.lineCap = "round";
+  for (let i = 0; i < N; i += 3) { const a = M(pts[i]), b = M(pts[(i + 3) % N]); const t = clamp((prof.v[i] - 18) / 75, 0, 1); mctx.strokeStyle = "hsl(" + Math.round(10 + 190 * t) + ",75%," + (light ? 45 : 58) + "%)"; mctx.beginPath(); mctx.moveTo(a[0], a[1]); mctx.lineTo(b[0], b[1]); mctx.stroke(); }
+  const c = M(pts[idx(sPos)]); mctx.fillStyle = light ? "#111" : "#fff"; mctx.beginPath(); mctx.arc(c[0], c[1], 3.5 * dpr, 0, 7); mctx.fill();
+  // speed trace
+  const gx = h + 4 * dpr, gw = w - gx - 6 * dpr, gy = 14 * dpr, gh = h - gy - 6 * dpr;
+  mctx.font = Math.round(9 * dpr) + "px ui-monospace,monospace"; mctx.fillStyle = light ? "#3a4048" : "#aab3bc"; mctx.fillText("speed round the lap", gx, 10 * dpr);
+  mctx.strokeStyle = light ? "#2a6db0" : "#8cc8ff"; mctx.lineWidth = 1.4 * dpr; mctx.beginPath();
+  for (let i = 0; i < N; i += 4) { const X = gx + gw * i / N, Y = gy + gh * (1 - prof.v[i] / 100); i ? mctx.lineTo(X, Y) : mctx.moveTo(X, Y); } mctx.stroke();
+  mctx.strokeStyle = light ? "#111" : "#fff"; mctx.lineWidth = 1 * dpr; const cx2 = gx + gw * idx(sPos) / N; mctx.beginPath(); mctx.moveTo(cx2, gy); mctx.lineTo(cx2, gy + gh); mctx.stroke();
+}
+
+// ---------------- UI ----------------
+const ui = {
+  wing: document.querySelector("#wing"), wingOut: document.querySelector("#wing-out"), aero: document.querySelector("#aero"), fol: [...document.querySelectorAll("[data-follow]")], ducts: document.querySelector("#ducts"), snap: document.querySelector("#snap"), reset: document.querySelector("#reset"),
+  slow: document.querySelector("#slow"), tour: document.querySelector("#tour"), shot: document.querySelector("#shot"), stats: document.querySelector("#stats"),
+  sF: document.querySelector("#s-fill"), sO: document.querySelector("#s-out"), dF: document.querySelector("#d-fill"), dO: document.querySelector("#d-out"), bF: document.querySelector("#b-fill"), bO: document.querySelector("#b-out"), tF: document.querySelector("#t-fill"), tO: document.querySelector("#t-out"),
+};
+const say = (tx) => { if (tx !== lastShot) { ui.shot.textContent = tx; lastShot = tx; } };
+const lapStr = (t) => Math.floor(t / 60) + ":" + (t % 60).toFixed(1).padStart(4, "0");
+function syncUi() {
+  if (document.activeElement !== ui.wing) ui.wing.value = String(Math.round(wing * 100));
+  ui.wingOut.textContent = wing < 0.25 ? "Monza (low)" : wing > 0.75 ? "Monaco (high)" : "Medium";
+  ui.aero.setAttribute("aria-pressed", String(aeroAuto)); ui.aero.firstChild.textContent = aeroAuto ? "Active aero on" : "Stuck in Corner Mode";
+  ui.fol.forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.follow === follow)));
+  ui.ducts.setAttribute("aria-pressed", String(!ducts)); ui.ducts.firstChild.textContent = ducts ? "Brake ducts open" : "Brake ducts taped";
+  ui.snap.disabled = wingGone || !!crash; ui.snap.firstChild.textContent = wingArmed ? "Rear wing: waiting for 290 km/h" : wingGone ? "Rear wing: gone" : "Snap the rear wing";
+  const kmh = vNow * 3.6; ui.sF.style.width = clamp(kmh / 360 * 100, 0, 100).toFixed(1) + "%"; ui.sF.dataset.state = "ok"; ui.sO.textContent = Math.round(kmh) + " km/h";
+  ui.dF.style.width = clamp(df / 2200 * 100, 0, 100).toFixed(1) + "%"; ui.dF.dataset.state = df > 768 ? "lit" : "ok"; ui.dO.textContent = Math.round(df).toLocaleString("en-AU") + " kg";
+  ui.bF.style.width = clamp(discT / 1300 * 100, 0, 100).toFixed(1) + "%"; ui.bF.dataset.state = discT > 1100 ? "bad" : discT > 950 ? "warn" : "ok"; ui.bO.textContent = discGone ? "gone" : Math.round(discT) + " °C";
+  ui.tF.style.width = clamp((tyreT - 50) / 100 * 100, 0, 100).toFixed(1) + "%"; ui.tF.dataset.state = tyreT > 120 ? "bad" : tyreT > 110 ? "warn" : "ok"; ui.tO.textContent = Math.round(tyreT) + " °C";
+  const v250 = 250 / 3.6, dfk = 0.5 * RHO * aero(false).cla * v250 * v250 / G;
+  ui.stats.innerHTML = "Lap <b>" + lapStr(prof.lap) + "</b> · top <b>" + Math.round(prof.top * 3.6) + " km/h</b> · slowest " + Math.round(prof.low * 3.6) + " km/h · " + prof.latPk.toFixed(1) + " g cornering, " + prof.brPk.toFixed(1) + " g braking · " + Math.round(dfk).toLocaleString("en-AU") + " kg downforce at 250 km/h";
+  ui.slow.setAttribute("aria-pressed", String(slow)); ui.tour.setAttribute("aria-pressed", String(touring));
+}
+function story() {
+  if (now - lastEventAt < 7 && lastEvent) return say(lastEvent);
+  if (touring && tourStep >= 0 && TOUR[tourStep].say) return say(TOUR[tourStep].say);
+  const kmh = vNow * 3.6, seg = TRACK[pts[idx(sPos)].seg], nm = seg[seg.length - 1];
+  if (crash) return say("Red flag. Press Reset.");
+  if (prof.brake[idx(sPos)] > 2 * G) return say("Braking: " + (prof.brake[idx(sPos)] / G).toFixed(1) + " g. The flaps snap shut into Corner Mode for the grip, the MGU-K harvests up to 350 kW, and the carbon discs take the rest and glow.");
+  if (modeNow) return say("Straight Mode: front and rear flaps flatten out to dump drag" + (follow ? ", and being within a second of the car ahead gives Overtake Mode: the MGU-K keeps pushing to 337 km/h." : ". The MGU-K's 350 kW tapers off from about 290 km/h."));
+  if (follow && pts[idx(sPos)].kap) return say("Dirty air: the wake of the car ahead robs the front wing, so the front washes wide and the front tyres slide and cook.");
+  if (typeof nm === "string" && pts[idx(sPos)].kap) return say(nm + ": " + Math.round(kmh) + " km/h, " + Math.abs(latG).toFixed(1) + " g sideways. " + (df > 768 ? "It's making more downforce than it weighs." : "Slow enough that most grip here is mechanical, not aero."));
+  return say("Downforce grows with speed squared: at 250 km/h this car is pushed into the track with about twice its own weight. It costs drag, which is why the wings open up on the straights.");
+}
+const TOUR = [
+  { say: "A lap in clean air, medium wing. Watch the flaps flatten on the straights (Straight Mode) and snap shut for the corners.", acts: [[0, () => { set({ wing: 0.5, aeroAuto: true, follow: 0, ducts: true }); }], [22, null]] },
+  { say: "Active aero switched off: stuck in Corner Mode. Same grip in the corners, but all that drag on the straights costs top speed and lap time.", acts: [[0, () => set({ aeroAuto: false })], [16, null]] },
+  { say: "Now 0.4 s behind another car. The front wing is eating dirty air: less front grip, slower corners, cooking front tyres. Overtake Mode gives a bit back on the straights.", acts: [[0, () => set({ aeroAuto: true, follow: 2 })], [20, null]] },
+  { say: "Clean air again, but someone's taped over the brake ducts. Watch the front discs.", acts: [[0, () => set({ follow: 0, ducts: false })], [32, null]] },
+  { say: "Fixed the ducts. Now let's see what happens when the rear wing lets go at the end of the main straight.", acts: [[0, () => { set({ ducts: true }); }], [6, () => { wingArmed = true; }], [26, null]] },
+];
+function set(o) { if ("wing" in o) wing = o.wing; if ("aeroAuto" in o) aeroAuto = o.aeroAuto; if ("follow" in o) follow = o.follow; if ("ducts" in o) ducts = o.ducts; simulate(); if (crash || discGone || wingGone) { const s0 = sPos; reset(); sPos = s0 * 0; } }
+function tourTick() {
+  if (tourStep < 0 || !actions.length) { tourStep = (tourStep + 1) % TOUR.length; actions = TOUR[tourStep].acts.map(([w2, fn]) => [tourClock + w2, fn]); }
+  while (actions.length && tourClock >= actions[0][0]) { const fn = actions.shift()[1]; if (fn) fn(); else actions = []; }
+}
+function tick(tm) {
+  const dt = last ? Math.min((tm - last) / 1000, 1 / 30) : 1 / 60;
+  last = tm;
+  const sdt = dt * (slow ? 0.25 : 1) * (crash && !crash.hit ? 0.5 : 1) * (now < bulletUntil ? 0.3 : 1);
+  now += sdt;
+  if (touring) { tourClock += sdt; tourTick(); }
+  physics(sdt); draw(sdt); syncUi(); story();
+  frame = visible ? requestAnimationFrame(tick) : 0;
+}
+const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
+const takeOver = () => { if (touring) { touring = false; actions = []; tourStep = -1; } };
+const act = (fn) => (...a) => { takeOver(); fn(...a); syncUi(); run(); };
+ui.wing.addEventListener("input", act(() => set({ wing: +ui.wing.value / 100 })));
+ui.aero.addEventListener("click", act(() => set({ aeroAuto: !aeroAuto })));
+ui.fol.forEach((b) => b.addEventListener("click", act(() => set({ follow: +b.dataset.follow }))));
+ui.ducts.addEventListener("click", act(() => set({ ducts: !ducts })));
+ui.snap.addEventListener("click", act(() => { if (!wingGone && !crash) wingArmed = true; }));
+ui.reset.addEventListener("click", act(() => reset()));
+ui.slow.addEventListener("click", () => { slow = !slow; run(); });
+ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; actions = []; } syncUi(); run(); });
+stage.addEventListener("keydown", (ev) => {
+  const map = { a: () => set({ aeroAuto: !aeroAuto }), d: () => set({ ducts: !ducts }), w: () => { if (!wingGone && !crash) wingArmed = true; }, f: () => set({ follow: (follow + 1) % 3 }), r: () => reset(), ArrowUp: () => set({ wing: clamp(wing + 0.1, 0, 1) }), ArrowDown: () => set({ wing: clamp(wing - 0.1, 0, 1) }) };
+  if (map[ev.key]) { ev.preventDefault(); act(map[ev.key])(); }
+});
+new IntersectionObserver((es) => { visible = es[es.length - 1].isIntersecting; if (visible) run(); }, { rootMargin: "120px 0px" }).observe(stage);
+if (still.matches) touring = false;
+window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+simulate(); reset(); draw(0); syncUi(); story();
+</script></body></html>

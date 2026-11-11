@@ -30,6 +30,7 @@ Interactive engineering toys you can break. Poke them, push them past the limit,
 | [Aeroplane wing](wing/) · [play](https://dizzyfer.github.io/Anatomy/wing/) | A 787-size wing: real potential flow round the section (no equal transit time), stall, flaps and ice, bending and the 2.5 g / 3.75 g rules, fatigue cracks, and flutter. |
 | [Power transformer](transformer/) · [play](https://dizzyfer.github.io/Anatomy/transformer/) | A 60 MVA 132/33 kV unit with the tank cut away: hot-spot and paper ageing, ONAN/ONAF, through-faults, lightning and arresters, Buchholz and differential, and a tank rupture with an oil fire. |
 | [Car crash](crash/) · [play](https://dizzyfer.github.io/Anatomy/crash/) | A 1959-style and a 2009-style sedan into the same offset barrier, side cut away: crumple zone, safety cage, belt and airbag, chest g and HIC, tuned to the IIHS Bel Air vs Malibu test. |
+| [F1 car](f1/) · [play](https://dizzyfer.github.io/Anatomy/f1/) | A 2026-style car lapping a made-up circuit: downforce and drag, Straight and Corner Mode, airflow, brakes past 1,000 °C, dirty air, and losing the rear wing at 340 km/h. |
 
 All built with [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22), an open-source kit for interactive isometric figures. The drawing kit, isometric camera and WebGL layer are his work.
 
