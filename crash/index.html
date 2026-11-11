@@ -1,0 +1,1155 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Car crash</title><style>
+.iso{
+  --anatomy-page:#0b0b0b;--anatomy-card:#131313;--anatomy-text:#a3a3a3;--anatomy-strong:#e6e6e6;--anatomy-muted:#6e6e6e;
+  --anatomy-paper:#131313;--anatomy-face:#1b1b1b;--anatomy-top:#1c1c1c;
+  --anatomy-shade-0:#0f0f0f;--anatomy-shade-1:#121212;--anatomy-shade-2:#151515;--anatomy-shade-3:#181818;
+  --anatomy-lit-top:#262626;--anatomy-lit-shade:#1d1d1d;
+  --anatomy-hi:#d4d4d4;--anatomy-mid:#6a6a6a;--anatomy-lo:#3e3e3e;--anatomy-faint:#2a2a2a;--anatomy-lit:#ffffff;
+  --anatomy-halo:#050505;--anatomy-halo-opacity:.9;--anatomy-dot:#e6e6e6;
+  --anatomy-red:#ff6b6b;--anatomy-green:#6be0a0;--anatomy-blue:#6b9bff;
+  --anatomy-weight:.6px;--anatomy-ease:cubic-bezier(.32,.72,0,1);
+  --anatomy-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff0a,inset 0 0 0 1px #ffffff06,0 0 0 1px #00000026,0 1px 1px -.5px #00000014,0 3px 3px -1.5px #00000014,0 6px 6px -3px #00000014,0 12px 12px -6px #00000014;
+}
+.iso[data-theme="light"]{
+  --anatomy-page:#f2f2ef;--anatomy-card:#fbfbfa;--anatomy-text:#57575a;--anatomy-strong:#18181a;--anatomy-muted:#8c8c90;
+  --anatomy-paper:#fbfbfa;--anatomy-face:#ffffff;--anatomy-top:#ffffff;
+  --anatomy-shade-0:#dcdcd9;--anatomy-shade-1:#e5e5e2;--anatomy-shade-2:#ededea;--anatomy-shade-3:#f4f4f1;
+  --anatomy-lit-top:#ffffff;--anatomy-lit-shade:#eeeeeb;
+  --anatomy-hi:#26262a;--anatomy-mid:#8a8a8f;--anatomy-lo:#b4b4b8;--anatomy-faint:#d4d4d6;--anatomy-lit:#000000;
+  --anatomy-halo:#8a8a80;--anatomy-halo-opacity:.32;--anatomy-dot:#3a3a3e;
+  --anatomy-red:#e5484d;--anatomy-green:#30a46c;--anatomy-blue:#3e63dd;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff,0 0 0 1px #0000000f,0 1px 1px -.5px #0000000a,0 3px 3px -1.5px #0000000a,0 6px 6px -3px #0000000a,0 12px 12px -6px #0000000a;
+}
+.iso-svg{display:block;width:100%;height:auto;overflow:visible}
+.iso-svg path,.iso-svg circle{vector-effect:non-scaling-stroke}
+.iso-fill{fill:var(--anatomy-paper);stroke:none}
+.iso-solid[data-lit]>.iso-fill{fill:var(--anatomy-face)}
+.iso-shade,.iso-top{stroke:none}
+.iso-shade[data-shade="0"]{fill:var(--anatomy-shade-0)}
+.iso-shade[data-shade="1"]{fill:var(--anatomy-shade-1)}
+.iso-shade[data-shade="2"]{fill:var(--anatomy-shade-2)}
+.iso-shade[data-shade="3"]{fill:var(--anatomy-shade-3)}
+.iso-top{fill:var(--anatomy-top)}
+.iso-solid[data-lit]>.iso-top{fill:var(--anatomy-lit-top)}
+.iso-solid[data-lit]>.iso-shade{fill:var(--anatomy-lit-shade)}
+.iso-solid[data-seamless]>.iso-shade,.iso-solid[data-seamless]>.iso-top{stroke-width:.4;stroke-linejoin:round}
+.iso-solid[data-seamless]>.iso-shade[data-shade="0"]{stroke:var(--anatomy-shade-0)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="1"]{stroke:var(--anatomy-shade-1)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="2"]{stroke:var(--anatomy-shade-2)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="3"]{stroke:var(--anatomy-shade-3)}
+.iso-solid[data-seamless]>.iso-top{stroke:var(--anatomy-top)}
+.iso-solid[data-seamless][data-lit]>.iso-top{stroke:var(--anatomy-lit-top)}
+.iso-solid[data-seamless][data-lit]>.iso-shade{stroke:var(--anatomy-lit-shade)}
+.iso-solid[data-lit]>.iso-edge{stroke:var(--anatomy-lit)}
+.iso-halo{fill:var(--anatomy-halo);stroke:none;filter:blur(9px);opacity:var(--anatomy-halo-opacity);transform:translateY(3px)}
+.iso-line{fill:none;stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight);stroke-linecap:round;stroke-linejoin:round}
+.iso-line[data-tone="hi"]{stroke:var(--anatomy-hi)}
+.iso-line[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.iso-line[data-tone="lo"]{stroke:var(--anatomy-lo)}
+.iso-line[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.iso-line[data-tone="lit"]{stroke:var(--anatomy-lit)}
+.iso-line[data-tone="red"]{stroke:var(--anatomy-red)}
+.iso-line[data-tone="green"]{stroke:var(--anatomy-green)}
+.iso-line[data-tone="blue"]{stroke:var(--anatomy-blue)}
+.iso-line[data-dotted]{stroke-dasharray:.01 3.5;stroke-width:1}
+.iso-line[data-dashed]{stroke-dasharray:3 3}
+.iso-line[data-flow]{stroke-dasharray:2 6}
+.iso-wire-end{fill:var(--anatomy-paper);stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight)}
+.iso-wire[data-tone="hi"] .iso-wire-end{stroke:var(--anatomy-hi)}
+.iso-wire[data-tone="mid"] .iso-wire-end{stroke:var(--anatomy-mid)}
+.iso-wire[data-tone="faint"] .iso-wire-end{stroke:var(--anatomy-faint)}
+.iso-wire[data-tone="lit"] .iso-wire-end{stroke:var(--anatomy-lit)}
+.iso-dots circle{fill:var(--anatomy-dot);stroke:none;opacity:.32}
+.iso-dots[data-tone="hi"] circle{opacity:.85}
+.iso-dots[data-tone="mid"] circle{opacity:.45}
+.iso-dots[data-tone="lo"] circle{opacity:.22}
+.iso-dots[data-tone="faint"] circle{opacity:.12}
+.iso-face-text{fill:var(--anatomy-mid);font-family:var(--anatomy-mono);letter-spacing:.04em}
+.iso-face-text[data-tone="hi"]{fill:var(--anatomy-hi)}
+.iso-face-text[data-tone="lo"]{fill:var(--anatomy-lo)}
+.iso-face-text[data-tone="faint"]{fill:var(--anatomy-faint)}
+.tb-body{fill:var(--anatomy-shade-2);stroke:none}
+.tb-shine{fill:var(--anatomy-top);stroke:none}
+.tb-shade{fill:var(--anatomy-shade-0);stroke:none}
+.tb-ring{fill:none;stroke:var(--anatomy-lo);stroke-width:.45;stroke-linecap:butt;stroke-linejoin:round}
+.tb-ring[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.tb-ring[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.tb-ring[data-tone="hi"]{stroke:var(--anatomy-hi)}
+@keyframes iso-flow{to{stroke-dashoffset:-32}}
+@keyframes iso-pulse{0%,100%{opacity:.18}12%{opacity:1}40%{opacity:.18}}
+.iso-line[data-flow]{animation:iso-flow 1600ms linear infinite}
+.iso-dots circle[data-pulse]{animation:iso-pulse 1600ms steps(1,end) infinite;animation-delay:var(--pulse-at,0ms)}
+.iso-figure{margin:32px 0 36px}
+.iso-plate{position:relative;padding:52px 24px;border-radius:0;background:var(--anatomy-card);box-shadow:0 0 0 1px var(--anatomy-mid);--anatomy-paper:var(--anatomy-card)}
+.iso-plate-corners{position:absolute;inset:18px 20px;pointer-events:none}
+.iso-plate-corner{position:absolute;color:var(--anatomy-muted);font-family:var(--anatomy-mono);font-size:10.5px;line-height:1;letter-spacing:.04em;white-space:nowrap}
+.iso-plate-corner[data-corner="fig"]{top:0;left:0;color:var(--anatomy-text)}
+.iso-plate-corner[data-corner="title"]{top:0;right:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="hint"]{bottom:0;left:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="readout"]{right:0;bottom:0;color:var(--anatomy-text);font-variant-numeric:tabular-nums}
+.iso-plate .iso-svg{margin:0 auto}
+.iso-legend{display:grid;gap:8px;margin-top:12px;color:var(--anatomy-muted);font-size:13px;line-height:1.55}
+.iso-keys{display:flex;flex-wrap:wrap;gap:6px 18px}
+.iso-key{display:inline-flex;align-items:center;gap:7px}
+.iso-swatch{width:16px;height:10px;flex:none;overflow:visible}
+.iso-swatch path{fill:none;stroke:var(--anatomy-hi);stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+.iso-swatch[data-mark="raised"] path,.iso-swatch[data-mark="flat"] path{stroke:var(--anatomy-mid)}
+.iso-swatch[data-mark="lit"] path{stroke:var(--anatomy-lit)}
+.iso-swatch[data-mark="dim"] path{stroke:var(--anatomy-lo)}
+.iso-swatch[data-mark="dotted"] path{stroke-dasharray:.01 3;stroke-width:1.4}
+.iso-swatch[data-mark="dashed"] path{stroke-dasharray:3 2.5}
+.iso-swatch[data-mark="red"] path{stroke:var(--anatomy-red)}
+.iso-swatch[data-mark="green"] path{stroke:var(--anatomy-green)}
+.iso-swatch[data-mark="blue"] path{stroke:var(--anatomy-blue)}
+.iso-swatch-crease{stroke:var(--anatomy-lo)!important}
+@media (max-width:560px){.iso-plate{padding:48px 12px 70px}.iso-plate-corner[data-corner="hint"]{bottom:18px}}
+@media (prefers-reduced-motion:reduce){.iso-line[data-flow],.iso-dots circle[data-pulse]{animation:none}}
+
+*{box-sizing:border-box}
+html{color-scheme:dark}
+body[data-theme="light"]{color-scheme:light}
+body{margin:0;background:var(--anatomy-page);color:var(--anatomy-text);font:14px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.iso-page{width:min(720px,100% - 32px);margin:64px auto 96px}
+</style></head><body class="iso" data-theme="dark"><main class="iso-page"><style>.fx-stage{position:relative;overflow:hidden}
+.fx-stage svg{display:block;position:relative}
+.fx-smoke{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.g-wrap{position:absolute;left:2.5%;top:3%;width:38%;aspect-ratio:2/1;border:1px solid var(--anatomy-lo);border-radius:6px;overflow:hidden;pointer-events:none}
+.g-cv{width:100%;height:100%;display:block}
+.lane{fill:none;stroke:#e9e4c8;stroke-width:1.2;opacity:.5}
+.nearbody{stroke:rgba(0,0,0,.4);stroke-width:.5}.cutedge{fill:none;stroke:#d9c9a6;stroke-width:1.4}.nearcab{fill:rgba(160,190,210,.12);stroke:rgba(0,0,0,.45);stroke-width:.8}
+.fold{fill:none;stroke:rgba(0,0,0,.5);stroke-width:1.2}.chrome{stroke:#e8ebee;stroke-width:3;stroke-linecap:round}
+.torso{stroke:#e0b04a;stroke-width:9;stroke-linecap:round}.leg{fill:none;stroke:#d39e3a;stroke-width:6;stroke-linecap:round;stroke-linejoin:round}.arm{stroke:#c99536;stroke-width:4;stroke-linecap:round}.head{fill:#e8bc58;stroke:#5c4520;stroke-width:.8}
+.wheelS{stroke:#141518;stroke-width:3.5;stroke-linecap:round}.belt{fill:none;stroke:#2b4f8a;stroke-width:2.6;stroke-linecap:round}.bag{fill:rgba(240,242,245,.92);stroke:#b9bfc6;stroke-width:.6}
+.fx-stage path{stroke-linejoin:round}
+.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
+.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ctl-label{min-width:72px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
+.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
+.ctl button:disabled{opacity:.5;cursor:default}
+.ctl button:hover{border-color:var(--anatomy-mid)}
+.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
+.ctl #go{color:#ff6a3d;border-color:#ff6a3d}
+.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
+.ctl output{min-width:96px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
+.slide{position:relative;flex:1;min-width:120px}.slide input{width:100%;accent-color:var(--anatomy-lit);margin:0}
+.meter{position:relative;flex:1;min-width:110px;height:10px;margin-top:14px;border:1px solid var(--anatomy-lo);border-radius:5px}
+.meter .fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .1s;background:#3ddc84}
+.meter .fill[data-state="warn"]{background:#ffb347}.meter .fill[data-state="bad"]{background:#ff5a2a}
+.mark{position:absolute;top:-14px;bottom:-3px;width:0;border-left:1px dashed #ff6a3d;pointer-events:none}
+.mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:#ff6a3d}
+#stats{font-size:12px;color:var(--anatomy-mid);line-height:1.5}#stats b{color:var(--anatomy-hi,var(--anatomy-mid));font-weight:600}
+#shot{min-height:3.6em;font-size:12px;line-height:1.4}
+@media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:80px}.ctl button small{display:none}.g-wrap{width:48%}}</style><figure class="iso-figure"><div class="iso-plate"><div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 26</span><span class="iso-plate-corner" data-corner="title">Car crash</span><span class="iso-plate-corner" data-corner="hint">Same crash, fifty years apart</span><span class="iso-plate-corner" data-corner="readout" data-readout></span></div><div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Car crash: space to crash, O and N pick the old or new car, B the belt, A the airbag, up and down the speed"><svg xmlns="http://www.w3.org/2000/svg" class="iso-svg" viewBox="0 0 680 470" role="img" aria-label="A sedan driving into an offset crash barrier on a test track, with its side cut away to show the crash dummy, the seat, the steering wheel and the dashboard. The car can be a 1959-style sedan or a 2009-style one."><path class="iso-halo" d="M20.6 201.5L21.1 199L22.6 196.6L24.9 194.4L28.1 192.5L216.7 98.2L220.6 96.6L225 95.4L229.8 94.7L234.8 94.4L239.8 94.7L244.6 95.4L249.1 96.6L253 98.2L651.9 297.6L655.1 299.6L657.4 301.8L658.9 304.2L659.4 306.7L659.4 328.9L658.9 331.4L657.4 333.8L655.1 336L651.9 338L463.3 432.2L459.4 433.8L455 435L450.2 435.8L445.2 436L440.2 435.8L435.4 435L430.9 433.8L427 432.2L28.1 232.8L24.9 230.8L22.6 228.6L21.1 226.2L20.6 223.7Z"/><g class="iso-solid"><path class="iso-fill" d="M222.5 137.7L222.9 136.1L224.2 134.6L226.1 133.3L228.7 132.3L231.6 131.7L234.8 131.5L238 131.7L241 132.3L243.5 133.3L245.5 134.6L246.7 136.1L247.1 137.7L247.1 140.3L246.7 141.9L245.5 143.4L243.5 144.7L241 145.6L238 146.3L234.8 146.5L231.6 146.3L228.7 145.6L226.1 144.7L224.2 143.4L222.9 141.9L222.5 140.3Z"/><path class="iso-shade" data-shade="0" d="M243.5 144.7L241 145.6L241 143L243.5 142ZM247.1 140.3L246.7 141.9L246.7 139.2L247.1 137.7ZM246.7 141.9L245.5 143.4L245.5 140.7L246.7 139.2ZM245.5 143.4L243.5 144.7L243.5 142L245.5 140.7Z"/><path class="iso-shade" data-shade="1" d="M241 145.6L238 146.3L238 143.6L241 143ZM238 146.3L234.8 146.5L234.8 143.8L238 143.6Z"/><path class="iso-shade" data-shade="2" d="M234.8 146.5L231.6 146.3L231.6 143.6L234.8 143.8ZM231.6 146.3L228.7 145.6L228.7 143L231.6 143.6Z"/><path class="iso-shade" data-shade="3" d="M228.7 145.6L226.1 144.7L226.1 142L228.7 143ZM226.1 144.7L224.2 143.4L224.2 140.7L226.1 142ZM224.2 143.4L222.9 141.9L222.9 139.2L224.2 140.7ZM222.9 141.9L222.5 140.3L222.5 137.7L222.9 139.2Z"/><path class="iso-top" d="M243.5 142L241 143L238 143.6L234.8 143.8L231.6 143.6L228.7 143L226.1 142L224.2 140.7L222.9 139.2L222.5 137.7L222.9 136.1L224.2 134.6L226.1 133.3L228.7 132.3L231.6 131.7L234.8 131.5L238 131.7L241 132.3L243.5 133.3L245.5 134.6L246.7 136.1L247.1 137.7L246.7 139.2L245.5 140.7Z"/><path class="iso-line iso-crease" data-tone="faint" d="M247.1 137.7L246.7 139.2L245.5 140.7L243.5 142L241 143L238 143.6L234.8 143.8L231.6 143.6L228.7 143L226.1 142L224.2 140.7L222.9 139.2L222.5 137.7"/><path class="iso-line iso-edge" data-tone="lo" d="M222.5 137.7L222.9 136.1L224.2 134.6L226.1 133.3L228.7 132.3L231.6 131.7L234.8 131.5L238 131.7L241 132.3L243.5 133.3L245.5 134.6L246.7 136.1L247.1 137.7M247.1 140.3L246.7 141.9L245.5 143.4L243.5 144.7L241 145.6L238 146.3L234.8 146.5L231.6 146.3L228.7 145.6L226.1 144.7L224.2 143.4L222.9 141.9L222.5 140.3M222.5 137.7L222.5 140.3M247.1 137.7L247.1 140.3"/></g><g class="iso-solid"><path class="iso-fill" d="M225.1 129.2L225.4 128L226.4 126.8L227.9 125.8L230 125L232.3 124.5L234.8 124.3L237.4 124.5L239.7 125L241.7 125.8L243.3 126.8L244.2 128L244.6 129.2L244.6 137.7L244.2 138.9L243.3 140.1L241.7 141.1L239.7 141.9L237.4 142.4L234.8 142.5L232.3 142.4L230 141.9L227.9 141.1L226.4 140.1L225.4 138.9L225.1 137.7Z"/><path class="iso-shade" data-shade="0" d="M241.7 141.1L239.7 141.9L239.7 133.4L241.7 132.7ZM244.6 137.7L244.2 138.9L244.2 130.5L244.6 129.2ZM244.2 138.9L243.3 140.1L243.3 131.7L244.2 130.5ZM243.3 140.1L241.7 141.1L241.7 132.7L243.3 131.7Z"/><path class="iso-shade" data-shade="1" d="M239.7 141.9L237.4 142.4L237.4 133.9L239.7 133.4ZM237.4 142.4L234.8 142.5L234.8 134.1L237.4 133.9Z"/><path class="iso-shade" data-shade="2" d="M234.8 142.5L232.3 142.4L232.3 133.9L234.8 134.1ZM232.3 142.4L230 141.9L230 133.4L232.3 133.9Z"/><path class="iso-shade" data-shade="3" d="M230 141.9L227.9 141.1L227.9 132.7L230 133.4ZM227.9 141.1L226.4 140.1L226.4 131.7L227.9 132.7ZM226.4 140.1L225.4 138.9L225.4 130.5L226.4 131.7ZM225.4 138.9L225.1 137.7L225.1 129.2L225.4 130.5Z"/><path class="iso-top" d="M241.7 132.7L239.7 133.4L237.4 133.9L234.8 134.1L232.3 133.9L230 133.4L227.9 132.7L226.4 131.7L225.4 130.5L225.1 129.2L225.4 128L226.4 126.8L227.9 125.8L230 125L232.3 124.5L234.8 124.3L237.4 124.5L239.7 125L241.7 125.8L243.3 126.8L244.2 128L244.6 129.2L244.2 130.5L243.3 131.7Z"/><path class="iso-line iso-crease" data-tone="faint" d="M244.6 129.2L244.2 130.5L243.3 131.7L241.7 132.7L239.7 133.4L237.4 133.9L234.8 134.1L232.3 133.9L230 133.4L227.9 132.7L226.4 131.7L225.4 130.5L225.1 129.2"/><path class="iso-line iso-edge" data-tone="mid" d="M225.1 129.2L225.4 128L226.4 126.8L227.9 125.8L230 125L232.3 124.5L234.8 124.3L237.4 124.5L239.7 125L241.7 125.8L243.3 126.8L244.2 128L244.6 129.2M244.6 137.7L244.2 138.9L243.3 140.1L241.7 141.1L239.7 141.9L237.4 142.4L234.8 142.5L232.3 142.4L230 141.9L227.9 141.1L226.4 140.1L225.4 138.9L225.1 137.7M225.1 129.2L225.1 137.7M244.6 129.2L244.6 137.7"/></g><g class="iso-solid"><path class="iso-fill" d="M55.7 221.1L56.1 219.5L57.4 218L59.3 216.7L61.9 215.7L64.8 215.1L68 214.9L71.2 215.1L74.2 215.7L76.7 216.7L78.7 218L79.9 219.5L80.3 221.1L80.3 223.7L79.9 225.3L78.7 226.8L76.7 228.1L74.2 229.1L71.2 229.7L68 229.9L64.8 229.7L61.9 229.1L59.3 228.1L57.4 226.8L56.1 225.3L55.7 223.7Z"/><path class="iso-shade" data-shade="0" d="M76.7 228.1L74.2 229.1L74.2 226.4L76.7 225.4ZM80.3 223.7L79.9 225.3L79.9 222.7L80.3 221.1ZM79.9 225.3L78.7 226.8L78.7 224.1L79.9 222.7ZM78.7 226.8L76.7 228.1L76.7 225.4L78.7 224.1Z"/><path class="iso-shade" data-shade="1" d="M74.2 229.1L71.2 229.7L71.2 227L74.2 226.4ZM71.2 229.7L68 229.9L68 227.2L71.2 227Z"/><path class="iso-shade" data-shade="2" d="M68 229.9L64.8 229.7L64.8 227L68 227.2ZM64.8 229.7L61.9 229.1L61.9 226.4L64.8 227Z"/><path class="iso-shade" data-shade="3" d="M61.9 229.1L59.3 228.1L59.3 225.4L61.9 226.4ZM59.3 228.1L57.4 226.8L57.4 224.1L59.3 225.4ZM57.4 226.8L56.1 225.3L56.1 222.7L57.4 224.1ZM56.1 225.3L55.7 223.7L55.7 221.1L56.1 222.7Z"/><path class="iso-top" d="M76.7 225.4L74.2 226.4L71.2 227L68 227.2L64.8 227L61.9 226.4L59.3 225.4L57.4 224.1L56.1 222.7L55.7 221.1L56.1 219.5L57.4 218L59.3 216.7L61.9 215.7L64.8 215.1L68 214.9L71.2 215.1L74.2 215.7L76.7 216.7L78.7 218L79.9 219.5L80.3 221.1L79.9 222.7L78.7 224.1Z"/><path class="iso-line iso-crease" data-tone="faint" d="M80.3 221.1L79.9 222.7L78.7 224.1L76.7 225.4L74.2 226.4L71.2 227L68 227.2L64.8 227L61.9 226.4L59.3 225.4L57.4 224.1L56.1 222.7L55.7 221.1"/><path class="iso-line iso-edge" data-tone="lo" d="M55.7 221.1L56.1 219.5L57.4 218L59.3 216.7L61.9 215.7L64.8 215.1L68 214.9L71.2 215.1L74.2 215.7L76.7 216.7L78.7 218L79.9 219.5L80.3 221.1M80.3 223.7L79.9 225.3L78.7 226.8L76.7 228.1L74.2 229.1L71.2 229.7L68 229.9L64.8 229.7L61.9 229.1L59.3 228.1L57.4 226.8L56.1 225.3L55.7 223.7M55.7 221.1L55.7 223.7M80.3 221.1L80.3 223.7"/></g><g class="iso-solid"><path class="iso-fill" d="M58.3 212.6L58.6 211.4L59.6 210.2L61.1 209.2L63.1 208.4L65.5 207.9L68 207.7L70.5 207.9L72.9 208.4L74.9 209.2L76.5 210.2L77.4 211.4L77.8 212.6L77.8 221.1L77.4 222.3L76.5 223.5L74.9 224.5L72.9 225.3L70.5 225.8L68 225.9L65.5 225.8L63.1 225.3L61.1 224.5L59.6 223.5L58.6 222.3L58.3 221.1Z"/><path class="iso-shade" data-shade="0" d="M74.9 224.5L72.9 225.3L72.9 216.8L74.9 216.1ZM77.8 221.1L77.4 222.3L77.4 213.9L77.8 212.6ZM77.4 222.3L76.5 223.5L76.5 215.1L77.4 213.9ZM76.5 223.5L74.9 224.5L74.9 216.1L76.5 215.1Z"/><path class="iso-shade" data-shade="1" d="M72.9 225.3L70.5 225.8L70.5 217.3L72.9 216.8ZM70.5 225.8L68 225.9L68 217.5L70.5 217.3Z"/><path class="iso-shade" data-shade="2" d="M68 225.9L65.5 225.8L65.5 217.3L68 217.5ZM65.5 225.8L63.1 225.3L63.1 216.8L65.5 217.3Z"/><path class="iso-shade" data-shade="3" d="M63.1 225.3L61.1 224.5L61.1 216.1L63.1 216.8ZM61.1 224.5L59.6 223.5L59.6 215.1L61.1 216.1ZM59.6 223.5L58.6 222.3L58.6 213.9L59.6 215.1ZM58.6 222.3L58.3 221.1L58.3 212.6L58.6 213.9Z"/><path class="iso-top" d="M74.9 216.1L72.9 216.8L70.5 217.3L68 217.5L65.5 217.3L63.1 216.8L61.1 216.1L59.6 215.1L58.6 213.9L58.3 212.6L58.6 211.4L59.6 210.2L61.1 209.2L63.1 208.4L65.5 207.9L68 207.7L70.5 207.9L72.9 208.4L74.9 209.2L76.5 210.2L77.4 211.4L77.8 212.6L77.4 213.9L76.5 215.1Z"/><path class="iso-line iso-crease" data-tone="faint" d="M77.8 212.6L77.4 213.9L76.5 215.1L74.9 216.1L72.9 216.8L70.5 217.3L68 217.5L65.5 217.3L63.1 216.8L61.1 216.1L59.6 215.1L58.6 213.9L58.3 212.6"/><path class="iso-line iso-edge" data-tone="mid" d="M58.3 212.6L58.6 211.4L59.6 210.2L61.1 209.2L63.1 208.4L65.5 207.9L68 207.7L70.5 207.9L72.9 208.4L74.9 209.2L76.5 210.2L77.4 211.4L77.8 212.6M77.8 221.1L77.4 222.3L76.5 223.5L74.9 224.5L72.9 225.3L70.5 225.8L68 225.9L65.5 225.8L63.1 225.3L61.1 224.5L59.6 223.5L58.6 222.3L58.3 221.1M58.3 212.6L58.3 221.1M77.8 212.6L77.8 221.1"/></g><g class="iso-solid"><path class="iso-fill" d="M599.7 326.2L600.1 324.6L601.3 323.1L603.3 321.9L605.8 320.9L608.8 320.3L612 320.1L615.2 320.3L618.1 320.9L620.7 321.9L622.6 323.1L623.9 324.6L624.3 326.2L624.3 328.9L623.9 330.5L622.6 332L620.7 333.2L618.1 334.2L615.2 334.8L612 335L608.8 334.8L605.8 334.2L603.3 333.2L601.3 332L600.1 330.5L599.7 328.9Z"/><path class="iso-shade" data-shade="0" d="M620.7 333.2L618.1 334.2L618.1 331.6L620.7 330.6ZM624.3 328.9L623.9 330.5L623.9 327.8L624.3 326.2ZM623.9 330.5L622.6 332L622.6 329.3L623.9 327.8ZM622.6 332L620.7 333.2L620.7 330.6L622.6 329.3Z"/><path class="iso-shade" data-shade="1" d="M618.1 334.2L615.2 334.8L615.2 332.2L618.1 331.6ZM615.2 334.8L612 335L612 332.4L615.2 332.2Z"/><path class="iso-shade" data-shade="2" d="M612 335L608.8 334.8L608.8 332.2L612 332.4ZM608.8 334.8L605.8 334.2L605.8 331.6L608.8 332.2Z"/><path class="iso-shade" data-shade="3" d="M605.8 334.2L603.3 333.2L603.3 330.6L605.8 331.6ZM603.3 333.2L601.3 332L601.3 329.3L603.3 330.6ZM601.3 332L600.1 330.5L600.1 327.8L601.3 329.3ZM600.1 330.5L599.7 328.9L599.7 326.2L600.1 327.8Z"/><path class="iso-top" d="M620.7 330.6L618.1 331.6L615.2 332.2L612 332.4L608.8 332.2L605.8 331.6L603.3 330.6L601.3 329.3L600.1 327.8L599.7 326.2L600.1 324.6L601.3 323.1L603.3 321.9L605.8 320.9L608.8 320.3L612 320.1L615.2 320.3L618.1 320.9L620.7 321.9L622.6 323.1L623.9 324.6L624.3 326.2L623.9 327.8L622.6 329.3Z"/><path class="iso-line iso-crease" data-tone="faint" d="M624.3 326.2L623.9 327.8L622.6 329.3L620.7 330.6L618.1 331.6L615.2 332.2L612 332.4L608.8 332.2L605.8 331.6L603.3 330.6L601.3 329.3L600.1 327.8L599.7 326.2"/><path class="iso-line iso-edge" data-tone="lo" d="M599.7 326.2L600.1 324.6L601.3 323.1L603.3 321.9L605.8 320.9L608.8 320.3L612 320.1L615.2 320.3L618.1 320.9L620.7 321.9L622.6 323.1L623.9 324.6L624.3 326.2M624.3 328.9L623.9 330.5L622.6 332L620.7 333.2L618.1 334.2L615.2 334.8L612 335L608.8 334.8L605.8 334.2L603.3 333.2L601.3 332L600.1 330.5L599.7 328.9M599.7 326.2L599.7 328.9M624.3 326.2L624.3 328.9"/></g><g class="iso-solid"><path class="iso-fill" d="M602.2 317.8L602.6 316.5L603.5 315.4L605.1 314.3L607.1 313.6L609.5 313.1L612 312.9L614.5 313.1L616.9 313.6L618.9 314.3L620.4 315.4L621.4 316.5L621.7 317.8L621.7 326.2L621.4 327.5L620.4 328.7L618.9 329.7L616.9 330.4L614.5 330.9L612 331.1L609.5 330.9L607.1 330.4L605.1 329.7L603.5 328.7L602.6 327.5L602.2 326.2Z"/><path class="iso-shade" data-shade="0" d="M618.9 329.7L616.9 330.4L616.9 322L618.9 321.2ZM621.7 326.2L621.4 327.5L621.4 319L621.7 317.8ZM621.4 327.5L620.4 328.7L620.4 320.2L621.4 319ZM620.4 328.7L618.9 329.7L618.9 321.2L620.4 320.2Z"/><path class="iso-shade" data-shade="1" d="M616.9 330.4L614.5 330.9L614.5 322.5L616.9 322ZM614.5 330.9L612 331.1L612 322.7L614.5 322.5Z"/><path class="iso-shade" data-shade="2" d="M612 331.1L609.5 330.9L609.5 322.5L612 322.7ZM609.5 330.9L607.1 330.4L607.1 322L609.5 322.5Z"/><path class="iso-shade" data-shade="3" d="M607.1 330.4L605.1 329.7L605.1 321.2L607.1 322ZM605.1 329.7L603.5 328.7L603.5 320.2L605.1 321.2ZM603.5 328.7L602.6 327.5L602.6 319L603.5 320.2ZM602.6 327.5L602.2 326.2L602.2 317.8L602.6 319Z"/><path class="iso-top" d="M618.9 321.2L616.9 322L614.5 322.5L612 322.7L609.5 322.5L607.1 322L605.1 321.2L603.5 320.2L602.6 319L602.2 317.8L602.6 316.5L603.5 315.4L605.1 314.3L607.1 313.6L609.5 313.1L612 312.9L614.5 313.1L616.9 313.6L618.9 314.3L620.4 315.4L621.4 316.5L621.7 317.8L621.4 319L620.4 320.2Z"/><path class="iso-line iso-crease" data-tone="faint" d="M621.7 317.8L621.4 319L620.4 320.2L618.9 321.2L616.9 322L614.5 322.5L612 322.7L609.5 322.5L607.1 322L605.1 321.2L603.5 320.2L602.6 319L602.2 317.8"/><path class="iso-line iso-edge" data-tone="mid" d="M602.2 317.8L602.6 316.5L603.5 315.4L605.1 314.3L607.1 313.6L609.5 313.1L612 312.9L614.5 313.1L616.9 313.6L618.9 314.3L620.4 315.4L621.4 316.5L621.7 317.8M621.7 326.2L621.4 327.5L620.4 328.7L618.9 329.7L616.9 330.4L614.5 330.9L612 331.1L609.5 330.9L607.1 330.4L605.1 329.7L603.5 328.7L602.6 327.5L602.2 326.2M602.2 317.8L602.2 326.2M621.7 317.8L621.7 326.2"/></g><g class="iso-solid"><path class="iso-fill" d="M432.9 409.6L433.3 408L434.5 406.6L436.5 405.3L439 404.3L442 403.7L445.2 403.5L448.4 403.7L451.3 404.3L453.9 405.3L455.8 406.6L457.1 408L457.5 409.6L457.5 412.3L457.1 413.9L455.8 415.4L453.9 416.6L451.3 417.6L448.4 418.2L445.2 418.5L442 418.2L439 417.6L436.5 416.6L434.5 415.4L433.3 413.9L432.9 412.3Z"/><path class="iso-shade" data-shade="0" d="M453.9 416.6L451.3 417.6L451.3 415L453.9 414ZM457.5 412.3L457.1 413.9L457.1 411.2L457.5 409.6ZM457.1 413.9L455.8 415.4L455.8 412.7L457.1 411.2ZM455.8 415.4L453.9 416.6L453.9 414L455.8 412.7Z"/><path class="iso-shade" data-shade="1" d="M451.3 417.6L448.4 418.2L448.4 415.6L451.3 415ZM448.4 418.2L445.2 418.5L445.2 415.8L448.4 415.6Z"/><path class="iso-shade" data-shade="2" d="M445.2 418.5L442 418.2L442 415.6L445.2 415.8ZM442 418.2L439 417.6L439 415L442 415.6Z"/><path class="iso-shade" data-shade="3" d="M439 417.6L436.5 416.6L436.5 414L439 415ZM436.5 416.6L434.5 415.4L434.5 412.7L436.5 414ZM434.5 415.4L433.3 413.9L433.3 411.2L434.5 412.7ZM433.3 413.9L432.9 412.3L432.9 409.6L433.3 411.2Z"/><path class="iso-top" d="M453.9 414L451.3 415L448.4 415.6L445.2 415.8L442 415.6L439 415L436.5 414L434.5 412.7L433.3 411.2L432.9 409.6L433.3 408L434.5 406.6L436.5 405.3L439 404.3L442 403.7L445.2 403.5L448.4 403.7L451.3 404.3L453.9 405.3L455.8 406.6L457.1 408L457.5 409.6L457.1 411.2L455.8 412.7Z"/><path class="iso-line iso-crease" data-tone="faint" d="M457.5 409.6L457.1 411.2L455.8 412.7L453.9 414L451.3 415L448.4 415.6L445.2 415.8L442 415.6L439 415L436.5 414L434.5 412.7L433.3 411.2L432.9 409.6"/><path class="iso-line iso-edge" data-tone="lo" d="M432.9 409.6L433.3 408L434.5 406.6L436.5 405.3L439 404.3L442 403.7L445.2 403.5L448.4 403.7L451.3 404.3L453.9 405.3L455.8 406.6L457.1 408L457.5 409.6M457.5 412.3L457.1 413.9L455.8 415.4L453.9 416.6L451.3 417.6L448.4 418.2L445.2 418.5L442 418.2L439 417.6L436.5 416.6L434.5 415.4L433.3 413.9L432.9 412.3M432.9 409.6L432.9 412.3M457.5 409.6L457.5 412.3"/></g><g class="iso-solid"><path class="iso-fill" d="M435.4 401.2L435.8 399.9L436.7 398.8L438.3 397.7L440.3 397L442.6 396.5L445.2 396.3L447.7 396.5L450 397L452.1 397.7L453.6 398.8L454.6 399.9L454.9 401.2L454.9 409.6L454.6 410.9L453.6 412.1L452.1 413.1L450 413.9L447.7 414.3L445.2 414.5L442.6 414.3L440.3 413.9L438.3 413.1L436.7 412.1L435.8 410.9L435.4 409.6Z"/><path class="iso-shade" data-shade="0" d="M452.1 413.1L450 413.9L450 405.4L452.1 404.6ZM454.9 409.6L454.6 410.9L454.6 402.5L454.9 401.2ZM454.6 410.9L453.6 412.1L453.6 403.6L454.6 402.5ZM453.6 412.1L452.1 413.1L452.1 404.6L453.6 403.6Z"/><path class="iso-shade" data-shade="1" d="M450 413.9L447.7 414.3L447.7 405.9L450 405.4ZM447.7 414.3L445.2 414.5L445.2 406.1L447.7 405.9Z"/><path class="iso-shade" data-shade="2" d="M445.2 414.5L442.6 414.3L442.6 405.9L445.2 406.1ZM442.6 414.3L440.3 413.9L440.3 405.4L442.6 405.9Z"/><path class="iso-shade" data-shade="3" d="M440.3 413.9L438.3 413.1L438.3 404.6L440.3 405.4ZM438.3 413.1L436.7 412.1L436.7 403.6L438.3 404.6ZM436.7 412.1L435.8 410.9L435.8 402.5L436.7 403.6ZM435.8 410.9L435.4 409.6L435.4 401.2L435.8 402.5Z"/><path class="iso-top" d="M452.1 404.6L450 405.4L447.7 405.9L445.2 406.1L442.6 405.9L440.3 405.4L438.3 404.6L436.7 403.6L435.8 402.5L435.4 401.2L435.8 399.9L436.7 398.8L438.3 397.7L440.3 397L442.6 396.5L445.2 396.3L447.7 396.5L450 397L452.1 397.7L453.6 398.8L454.6 399.9L454.9 401.2L454.6 402.5L453.6 403.6Z"/><path class="iso-line iso-crease" data-tone="faint" d="M454.9 401.2L454.6 402.5L453.6 403.6L452.1 404.6L450 405.4L447.7 405.9L445.2 406.1L442.6 405.9L440.3 405.4L438.3 404.6L436.7 403.6L435.8 402.5L435.4 401.2"/><path class="iso-line iso-edge" data-tone="mid" d="M435.4 401.2L435.8 399.9L436.7 398.8L438.3 397.7L440.3 397L442.6 396.5L445.2 396.3L447.7 396.5L450 397L452.1 397.7L453.6 398.8L454.6 399.9L454.9 401.2M454.9 409.6L454.6 410.9L453.6 412.1L452.1 413.1L450 413.9L447.7 414.3L445.2 414.5L442.6 414.3L440.3 413.9L438.3 413.1L436.7 412.1L435.8 410.9L435.4 409.6M435.4 401.2L435.4 409.6M454.9 401.2L454.9 409.6"/></g><g class="iso-solid"><path class="iso-fill" d="M20.6 190.4L21.1 187.9L22.6 185.5L24.9 183.3L28.1 181.3L216.7 87.1L220.6 85.5L225 84.3L229.8 83.6L234.8 83.3L239.8 83.6L244.6 84.3L249.1 85.5L253 87.1L651.9 286.5L655.1 288.5L657.4 290.7L658.9 293.1L659.4 295.6L659.4 317.8L658.9 320.3L657.4 322.7L655.1 324.9L651.9 326.9L463.3 421.1L459.4 422.7L455 423.9L450.2 424.6L445.2 424.9L440.2 424.6L435.4 423.9L430.9 422.7L427 421.1L28.1 221.7L24.9 219.7L22.6 217.5L21.1 215.1L20.6 212.6Z"/><path class="iso-shade" data-shade="0" d="M659.4 317.8L658.9 320.3L658.9 298.1L659.4 295.6ZM658.9 320.3L657.4 322.7L657.4 300.5L658.9 298.1ZM657.4 322.7L655.1 324.9L655.1 302.7L657.4 300.5ZM655.1 324.9L651.9 326.9L651.9 304.6L655.1 302.7ZM651.9 326.9L463.3 421.1L463.3 398.9L651.9 304.6ZM463.3 421.1L459.4 422.7L459.4 400.5L463.3 398.9Z"/><path class="iso-shade" data-shade="1" d="M459.4 422.7L455 423.9L455 401.7L459.4 400.5ZM455 423.9L450.2 424.6L450.2 402.4L455 401.7ZM450.2 424.6L445.2 424.9L445.2 402.7L450.2 402.4Z"/><path class="iso-shade" data-shade="2" d="M445.2 424.9L440.2 424.6L440.2 402.4L445.2 402.7ZM440.2 424.6L435.4 423.9L435.4 401.7L440.2 402.4ZM435.4 423.9L430.9 422.7L430.9 400.5L435.4 401.7Z"/><path class="iso-shade" data-shade="3" d="M430.9 422.7L427 421.1L427 398.9L430.9 400.5ZM427 421.1L28.1 221.7L28.1 199.5L427 398.9ZM28.1 221.7L24.9 219.7L24.9 197.5L28.1 199.5ZM24.9 219.7L22.6 217.5L22.6 195.3L24.9 197.5ZM22.6 217.5L21.1 215.1L21.1 192.9L22.6 195.3ZM21.1 215.1L20.6 212.6L20.6 190.4L21.1 192.9Z"/><path class="iso-top" d="M651.9 286.5L655.1 288.5L657.4 290.7L658.9 293.1L659.4 295.6L658.9 298.1L657.4 300.5L655.1 302.7L651.9 304.6L463.3 398.9L459.4 400.5L455 401.7L450.2 402.4L445.2 402.7L440.2 402.4L435.4 401.7L430.9 400.5L427 398.9L28.1 199.5L24.9 197.5L22.6 195.3L21.1 192.9L20.6 190.4L21.1 187.9L22.6 185.5L24.9 183.3L28.1 181.3L216.7 87.1L220.6 85.5L225 84.3L229.8 83.6L234.8 83.3L239.8 83.6L244.6 84.3L249.1 85.5L253 87.1Z"/><path class="iso-line iso-crease" data-tone="faint" d="M659.4 295.6L658.9 298.1L657.4 300.5L655.1 302.7L651.9 304.6L463.3 398.9L459.4 400.5L455 401.7L450.2 402.4L445.2 402.7L440.2 402.4L435.4 401.7L430.9 400.5L427 398.9L28.1 199.5L24.9 197.5L22.6 195.3L21.1 192.9L20.6 190.4"/><path class="iso-line iso-bevel" data-tone="faint" d="M659.4 295.6L655.9 297.8L654.6 299.9L652.5 301.8L649.6 303.6L461.2 397.8L457.7 399.2L453.8 400.3L449.6 400.9L445.2 401.1L440.8 400.9L436.5 400.3L432.6 399.2L429.1 397.8L30.4 198.4L27.5 196.7L25.4 194.7L24.1 192.6L20.6 190.4"/><path class="iso-line" data-tone="faint" d="M659.4 306.7L658.9 309.2L657.4 311.6L655.1 313.8L651.9 315.7L463.3 410L459.4 411.6L455 412.8L450.2 413.5L445.2 413.8L440.2 413.5L435.4 412.8L430.9 411.6L427 410L28.1 210.6L24.9 208.6L22.6 206.4L21.1 204L20.6 201.5"/><path class="iso-line iso-edge" data-tone="mid" d="M20.6 190.4L21.1 187.9L22.6 185.5L24.9 183.3L28.1 181.3L216.7 87.1L220.6 85.5L225 84.3L229.8 83.6L234.8 83.3L239.8 83.6L244.6 84.3L249.1 85.5L253 87.1L651.9 286.5L655.1 288.5L657.4 290.7L658.9 293.1L659.4 295.6M659.4 317.8L658.9 320.3L657.4 322.7L655.1 324.9L651.9 326.9L463.3 421.1L459.4 422.7L455 423.9L450.2 424.6L445.2 424.9L440.2 424.6L435.4 423.9L430.9 422.7L427 421.1L28.1 221.7L24.9 219.7L22.6 217.5L21.1 215.1L20.6 212.6M659.4 295.6L659.4 317.8M20.6 190.4L20.6 212.6"/></g><path class="lane" d="M213.1 102.9L238.5 115.6M97 161L122.4 173.7M263.8 128.3L289.2 141M147.8 186.3L173.2 199M314.6 153.7L340 166.4M198.6 211.7L224 224.4M365.4 179.1L390.8 191.8M249.3 237.1L274.7 249.8M416.2 204.5L441.5 217.2M300.1 262.5L325.5 275.2M466.9 229.9L492.3 242.6M350.9 287.9L376.3 300.6M517.7 255.2L543.1 267.9M401.6 313.3L427 326"/><g data-part="scene"></g></svg><canvas class="fx-smoke" aria-hidden="true"></canvas><div class="g-wrap" aria-hidden="true"><canvas class="g-cv"></canvas></div></div></div><div class="ctl" role="group" aria-label="Controls">
+  <div class="ctl-row"><span class="ctl-label">Car</span><button type="button" data-car="old">1959-style<small>big, chrome, no plan</small></button><button type="button" data-car="new" aria-pressed="true">2009-style<small>crumple zone + cage</small></button></div>
+  <div class="ctl-row"><span class="ctl-label">Speed</span><div class="slide"><input id="spd" type="range" min="20" max="120" step="2" value="64" aria-label="Impact speed, km/h"></div><output id="spd-out">64 km/h</output></div>
+  <div class="ctl-row"><span class="ctl-label">Restraint</span><button type="button" id="belt" aria-pressed="true">Seatbelt on</button><button type="button" id="bag" aria-pressed="true">Airbag on</button><button type="button" id="go">Crash<small>space</small></button></div>
+  <div class="ctl-row"><span class="ctl-label">Chest</span><div class="meter"><span id="c-fill" class="fill"></span><span class="mark" style="left:54.5%" data-label="60 g"></span></div><output id="c-out">0 g</output></div>
+  <div class="ctl-row"><span class="ctl-label">Head</span><div class="meter"><span id="h-fill" class="fill"></span><span class="mark" style="left:58.3%" data-label="HIC 700"></span></div><output id="h-out">-</output></div>
+  <div class="ctl-row"><span class="ctl-label">Intrusion</span><div class="meter"><span id="i-fill" class="fill"></span></div><output id="i-out">0 cm</output></div>
+  <div class="ctl-row"><span class="ctl-label">Car</span><span id="stats"></span></div>
+  <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="slow" aria-pressed="false">Even slower</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
+  <div id="shot" aria-live="polite"></div>
+</div><figcaption class="iso-legend"><span class="iso-keys"><span class="iso-key"><svg class="iso-swatch" data-mark="lit" viewBox="0 0 16 10" aria-hidden="true"><path d="M2 4.5 8 1.5 14 4.5 14 6 8 9 2 6Z"/><path class="iso-swatch-crease" d="M2 4.5 8 7.5 14 4.5"/></svg>Live: the crush, the dummy, belt and airbag, and the g-trace (one second on screen is 25 ms)</span><span class="iso-key"><svg class="iso-swatch" data-mark="raised" viewBox="0 0 16 10" aria-hidden="true"><path d="M2 4.5 8 1.5 14 4.5 14 6 8 9 2 6Z"/><path class="iso-swatch-crease" d="M2 4.5 8 7.5 14 4.5"/></svg>Sedan into an offset barrier, near side cut away; 1959-style or 2009-style</span></span><span class="iso-caption">A crash is just getting rid of the car's energy, ½mv², over some distance. Stop over a metre and it's a few tens of g; stop over a few centimetres and it's hundreds. A modern car crushes a long front end on purpose, at a steady force, while keeping a stiff cage round the people so the dashboard and footwell don't come to meet them. The seatbelt ties you to that slowing-down from the first moment, and the airbag spreads the last of it over your chest and head. Without them you keep going at the original speed until you hit the inside of the car.</span></figcaption></figure><p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a crash simulation. Real: ½mv² against crush distance, crumple zones and safety cages, belts with pretensioners and load limiters, airbags timed to fire in about 20 ms, the 60 g chest and HIC 700 head limits (FMVSS 208), and the IIHS 2009 test of a 1959 Chevrolet Bel Air against a 2009 Chevrolet Malibu at 40 mph each. The IIHS figures quoted (chest 85 g against 41 g, footwell intrusion 62 cm against 7 cm) are from its published crash data. Made up: the cars, the force curves, the one-dimensional dummy, the injury labels and the head numbers; the barrier here stands in for the other car.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="light.html" style="color:inherit">Light version</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/crash" style="color:inherit">Source</a></p></main><script type="module">const AZIMUTH = 45;
+const ELEVATION = 30;
+const SHADES = 4;
+const RADIANS = Math.PI / 180;
+const UNIT = Math.sqrt(1.6);
+function cameraOf({ scale, azimuth = AZIMUTH, elevation = ELEVATION }) {
+    const a = azimuth * RADIANS;
+    const e = elevation * RADIANS;
+    return { sinA: Math.sin(a), cosA: Math.cos(a), sinE: Math.sin(e), cosE: Math.cos(e), k: scale * UNIT };
+}
+function iso([x, y, z], projection) {
+    const { origin } = projection;
+    const { sinA, cosA, sinE, cosE, k } = cameraOf(projection);
+    return [origin[0] + (x * sinA - y * cosA) * k, origin[1] + ((x * cosA + y * sinA) * sinE - z * cosE) * k];
+}
+function towardViewer(projection) {
+    const { sinA, cosA } = cameraOf(projection);
+    return [cosA, sinA];
+}
+function depthOf([x, y, z], projection) {
+    const { sinA, cosA, sinE, cosE } = cameraOf(projection);
+    return (x * cosA + y * sinA) * cosE + z * sinE;
+}
+const tenth = (value) => {
+    const text = (Math.round(value * 10) / 10).toFixed(1).replace(/\.0$/, "");
+    return text === "-0" ? "0" : text;
+};
+function pathOf(points, closed = false) {
+    if (!points.length)
+        return "";
+    return points.map(([x, y], at) => `${at ? "L" : "M"}${tenth(x)} ${tenth(y)}`).join("") + (closed ? "Z" : "");
+}
+const joinPaths = (paths) => paths.filter(Boolean).join("");
+function roundedPlan({ x, y, w, d, r }, steps = 8) {
+    const radius = Math.max(0, Math.min(r, w / 2, d / 2));
+    const corners = [
+        [x + w - radius, y + radius, -90],
+        [x + w - radius, y + d - radius, 0],
+        [x + radius, y + d - radius, 90],
+        [x + radius, y + radius, 180],
+    ];
+    const out = [];
+    for (const [cx, cy, start] of corners) {
+        const count = radius > 0 ? steps : 0;
+        for (let step = 0; step <= count; step++) {
+            const angle = (start + (count ? (90 * step) / count : 45)) * RADIANS;
+            out.push([cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)]);
+        }
+    }
+    return out;
+}
+function signedArea(points) {
+    let area = 0;
+    for (let index = 0; index < points.length; index++) {
+        const [ax, ay] = points[index];
+        const [bx, by] = points[(index + 1) % points.length];
+        area += ax * by - bx * ay;
+    }
+    return area / 2;
+}
+const oriented = (points) => (signedArea(points) < 0 ? [...points].reverse() : points);
+function convexHull(points) {
+    const sorted = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    if (sorted.length < 3)
+        return sorted;
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lower = [];
+    for (const point of sorted) {
+        while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], point) <= 0)
+            lower.pop();
+        lower.push(point);
+    }
+    const upper = [];
+    for (let index = sorted.length - 1; index >= 0; index--) {
+        const point = sorted[index];
+        while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], point) <= 0)
+            upper.pop();
+        upper.push(point);
+    }
+    return [...lower.slice(0, -1), ...upper.slice(0, -1)];
+}
+function runsOf(flags, want) {
+    const count = flags.length;
+    const runs = [];
+    const start = flags.findIndex((flag, index) => flag !== flags[(index + count - 1) % count]);
+    if (start < 0)
+        return flags[0] === want ? [Array.from({ length: count + 1 }, (_, index) => index % count)] : [];
+    let run = null;
+    for (let step = 0; step < count; step++) {
+        const index = (start + step) % count;
+        if (flags[index] === want) {
+            if (!run)
+                run = [index];
+            run.push((index + 1) % count);
+        }
+        else if (run) {
+            runs.push(run);
+            run = null;
+        }
+    }
+    if (run)
+        runs.push(run);
+    return runs;
+}
+function extrude(ring, z, height, projection, options = {}) {
+    const convex = options.convex ?? true;
+    const count = ring.length;
+    const counter = signedArea(ring) > 0;
+    const [vx, vy] = towardViewer(projection);
+    const { sinA, cosA } = cameraOf(projection);
+    const normals = ring.map(([ax, ay], index) => {
+        const [bx, by] = ring[(index + 1) % count];
+        const dx = bx - ax;
+        const dy = by - ay;
+        const length = Math.hypot(dx, dy) || 1;
+        return (counter ? [dy / length, -dx / length] : [-dy / length, dx / length]);
+    });
+    const facing = normals.map(([nx, ny]) => nx * vx + ny * vy > 1e-9);
+    const top = ring.map(([x, y]) => iso([x, y, z + height], projection));
+    const bottom = ring.map(([x, y]) => iso([x, y, z], projection));
+    const outline = [];
+    const crease = [];
+    for (const run of runsOf(facing, false))
+        outline.push(pathOf(run.map((index) => top[index])));
+    for (const run of runsOf(facing, true)) {
+        crease.push(pathOf(run.map((index) => top[index])));
+        if (height > 0)
+            outline.push(pathOf(run.map((index) => bottom[index])));
+    }
+    if (height > 0) {
+        for (let index = 0; index < count; index++) {
+            if (facing[(index + count - 1) % count] !== facing[index])
+                outline.push(pathOf([top[index], bottom[index]]));
+        }
+    }
+    let fill;
+    if (convex) {
+        fill = pathOf(convexHull([...top, ...bottom]), true);
+    }
+    else {
+        const parts = [pathOf(oriented(top), true), pathOf(oriented(bottom), true)];
+        for (let index = 0; index < count; index++) {
+            if (!facing[index])
+                continue;
+            const next = (index + 1) % count;
+            parts.push(pathOf(oriented([top[index], top[next], bottom[next], bottom[index]]), true));
+        }
+        fill = parts.join("");
+    }
+    const buckets = Array.from({ length: SHADES }, () => []);
+    if (height > 0) {
+        const [lx, ly] = [-sinA, cosA];
+        for (let index = 0; index < count; index++) {
+            if (!facing[index])
+                continue;
+            const [nx, ny] = normals[index];
+            const lit = (nx * lx + ny * ly + 1) / 2;
+            const shade = Math.min(SHADES - 1, Math.max(0, Math.floor(lit * SHADES)));
+            const next = (index + 1) % count;
+            buckets[shade].push(pathOf(oriented([top[index], top[next], bottom[next], bottom[index]]), true));
+        }
+    }
+    let bevel;
+    if (options.bevel && options.bevel > 0) {
+        const by = options.bevel;
+        const inset = ring.map(([x, y], index) => {
+            const [ax, ay] = normals[(index + count - 1) % count];
+            const [bx, by2] = normals[index];
+            const mx = ax + bx;
+            const my = ay + by2;
+            const length = Math.hypot(mx, my) || 1;
+            return [x - (mx / length) * by, y - (my / length) * by];
+        });
+        const insetTop = inset.map(([x, y]) => iso([x, y, z + height], projection));
+        bevel = runsOf(facing, true)
+            .map((run) => pathOf([top[run[0]], ...run.slice(1, -1).map((index) => insetTop[index]), top[run[run.length - 1]]]))
+            .join("");
+    }
+    return {
+        fill,
+        outline: outline.join(""),
+        crease: crease.join(""),
+        top: pathOf(oriented(top), true),
+        shades: buckets.map((paths) => paths.join("")),
+        bevel,
+    };
+}
+const ringOf = (plan, steps = 8) => roundedPlan(plan, steps);
+function slabOf(plan, z, height, projection, steps = 8, bevel = 0) {
+    return extrude(ringOf(plan, steps), z, height, projection, { convex: true, bevel });
+}
+function circleRing(cx, cy, radius, steps = 40) {
+    return Array.from({ length: steps }, (_, step) => {
+        const angle = (step / steps) * Math.PI * 2;
+        return [cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)];
+    });
+}
+function cylinder(cx, cy, radius, z, height, projection, steps = 32, bevel = 0) {
+    return extrude(circleRing(cx, cy, radius, steps), z, height, projection, { convex: true, bevel });
+}
+const insetPlan = ({ x, y, w, d, r }, by) => ({ x: x + by, y: y + by, w: w - by * 2, d: d - by * 2, r: Math.max(0, r - by) });
+function onTop(points, z, projection, closed = false) {
+    return pathOf(points.map(([x, y]) => iso([x, y, z], projection)), closed);
+}
+const planOutline = (plan, z, projection, steps = 8) => onTop(ringOf(plan, steps), z, projection, true);
+const lineOnTop = (from, to, z, projection) => onTop([from, to], z, projection);
+const segment = (from, to, projection) => pathOf([iso(from, projection), iso(to, projection)]);
+const rise = (at, from, to, projection) => segment([at[0], at[1], from], [at[0], at[1], to], projection);
+const ring = (cx, cy, radius, z, projection, steps = 40) => onTop(circleRing(cx, cy, radius, steps), z, projection, true);
+const pointsAt = (points, projection) => points.map((point) => iso(point, projection));
+function dotGrid(x, y, columns, rows, gap, z, projection) {
+    const dots = [];
+    for (let row = 0; row < rows; row++) {
+        for (let column = 0; column < columns; column++)
+            dots.push(iso([x + column * gap, y + row * gap, z], projection));
+    }
+    return dots;
+}
+function corners({ x, y, w, d }, inset = 0) {
+    return [
+        [x + inset, y + inset],
+        [x + w - inset, y + inset],
+        [x + inset, y + d - inset],
+        [x + w - inset, y + d - inset],
+    ];
+}
+function boxCorners({ x, y, w, d }, z0, z1) {
+    const out = [];
+    for (const px of [x, x + w])
+        for (const py of [y, y + d])
+            for (const z of [z0, z1])
+                out.push([px, py, z]);
+    return out;
+}
+function knurl(cx, cy, radius, z0, z1, count, projection, inset = 0.4) {
+    const [vx, vy] = towardViewer(projection);
+    const lines = [];
+    for (let index = 0; index < count; index++) {
+        const angle = (index / count) * Math.PI * 2;
+        const nx = Math.cos(angle);
+        const ny = Math.sin(angle);
+        if (nx * vx + ny * vy < 0.15)
+            continue;
+        lines.push(segment([cx + radius * nx, cy + radius * ny, z0 + inset], [cx + radius * nx, cy + radius * ny, z1 - inset], projection));
+    }
+    return lines.join("");
+}
+function sideArc(cx, cy, radius, z, projection, steps = 24) {
+    const [vx, vy] = towardViewer(projection);
+    const facing = Math.atan2(vy, vx);
+    const points = [];
+    for (let step = 0; step <= steps; step++) {
+        const angle = facing - Math.PI / 2 + (step / steps) * Math.PI;
+        points.push(iso([cx + radius * Math.cos(angle), cy + radius * Math.sin(angle), z], projection));
+    }
+    return pathOf(points);
+}
+function ringSeam(ring, z, projection) {
+    const count = ring.length;
+    const counter = signedArea(ring) > 0;
+    const [vx, vy] = towardViewer(projection);
+    const facing = ring.map(([ax, ay], index) => {
+        const [bx, by] = ring[(index + 1) % count];
+        const dx = bx - ax;
+        const dy = by - ay;
+        const [nx, ny] = counter ? [dy, -dx] : [-dy, dx];
+        return nx * vx + ny * vy > 1e-9;
+    });
+    return runsOf(facing, true).map((run) => pathOf(run.map((index) => iso([ring[index][0], ring[index][1], z], projection)))).join("");
+}
+const sideSeam = (plan, z, projection, steps = 8) => ringSeam(ringOf(plan, steps), z, projection);
+function sideRing(center, radius, axis, projection, steps = 20) {
+    const [px, py, pz] = center;
+    const points = [];
+    for (let step = 0; step < steps; step++) {
+        const angle = (step / steps) * Math.PI * 2;
+        const u = radius * Math.cos(angle);
+        const v = radius * Math.sin(angle);
+        points.push(iso(axis === "x" ? [px, py + u, pz + v] : [px + u, py, pz + v], projection));
+    }
+    return pathOf(points, true);
+}
+function coil(from, to, center, radius, turns, axis, projection, perTurn = 16) {
+    const count = Math.max(1, Math.round(turns * perTurn));
+    const back = [];
+    const front = [];
+    let run = [];
+    let near = null;
+    for (let index = 0; index <= count; index++) {
+        const share = index / count;
+        const angle = share * turns * Math.PI * 2;
+        const u = radius * Math.cos(angle);
+        const v = radius * Math.sin(angle);
+        const along = from + (to - from) * share;
+        const point = axis === "x" ? [along, center[0] + u, center[1] + v] : [center[0] + u, along, center[1] + v];
+        const normal = axis === "x" ? [0, Math.cos(angle), Math.sin(angle)] : [Math.cos(angle), 0, Math.sin(angle)];
+        const facing = depthOf(normal, projection) > 0;
+        const flat = iso(point, projection);
+        if (near === null)
+            near = facing;
+        if (facing !== near) {
+            run.push(flat);
+            (near ? front : back).push(pathOf(run));
+            run = [flat];
+            near = facing;
+            continue;
+        }
+        run.push(flat);
+    }
+    if (run.length > 1)
+        (near ? front : back).push(pathOf(run));
+    return { back: back.join(""), front: front.join("") };
+}
+function topTicks(from, to, step, every, edge, z, lengths, projection, axis = "x") {
+    const minor = [];
+    const major = [];
+    const first = Math.ceil(from / step) * step;
+    for (let at = first, index = Math.round(first / step); at <= to + 1e-9; at += step, index++) {
+        const big = index % every === 0;
+        const length = big ? lengths[1] : lengths[0];
+        const a = axis === "x" ? [at, edge] : [edge, at];
+        const b = axis === "x" ? [at, edge + length] : [edge + length, at];
+        (big ? major : minor).push(lineOnTop(a, b, z, projection));
+    }
+    return { minor: minor.join(""), major: major.join("") };
+}
+function sideTicks(from, to, step, every, face, top, lengths, projection, axis = "x") {
+    const minor = [];
+    const major = [];
+    const first = Math.ceil(from / step) * step;
+    for (let at = first, index = Math.round(first / step); at <= to + 1e-9; at += step, index++) {
+        const big = index % every === 0;
+        const length = big ? lengths[1] : lengths[0];
+        const a = axis === "x" ? [at, face, top] : [face, at, top];
+        const b = axis === "x" ? [at, face, top - length] : [face, at, top - length];
+        (big ? major : minor).push(segment(a, b, projection));
+    }
+    return { minor: minor.join(""), major: major.join("") };
+}
+function radialTicks(cx, cy, radius, count, every, z, lengths, projection, from = 0, span = Math.PI * 2) {
+    const minor = [];
+    const major = [];
+    const closed = Math.abs(span - Math.PI * 2) < 1e-9;
+    const steps = closed ? count : count + 1;
+    for (let index = 0; index < steps; index++) {
+        const angle = from + (index / count) * span;
+        const big = index % every === 0;
+        const inner = radius - (big ? lengths[1] : lengths[0]);
+        const sx = Math.sin(angle);
+        const sy = -Math.cos(angle);
+        (big ? major : minor).push(lineOnTop([cx + sx * inner, cy + sy * inner], [cx + sx * radius, cy + sy * radius], z, projection));
+    }
+    return { minor: minor.join(""), major: major.join("") };
+}
+const haloOf = (plan, z, height, projection) => slabOf(plan, z, height, projection).fill;
+function axisVector(projection, [dx, dy, dz]) {
+    const origin = iso([0, 0, 0], projection);
+    const moved = iso([dx, dy, dz], projection);
+    return [moved[0] - origin[0], moved[1] - origin[1]];
+}
+const fine = (value) => Math.round(value * 100) / 100;
+function translateAlong(projection, by) {
+    const [x, y] = axisVector(projection, by);
+    return `translate(${fine(x)} ${fine(y)})`;
+}
+const thousandth = (value) => Math.round(value * 1000) / 1000;
+function axesAt(at, z, projection) {
+    const origin = iso([at[0], at[1], z], projection);
+    const along = (point) => {
+        const [px, py] = iso(point, projection);
+        return [px - origin[0], py - origin[1]];
+    };
+    return { origin, x: along([at[0] + 1, at[1], z]), y: along([at[0], at[1] + 1, z]), z: along([at[0], at[1], z + 1]) };
+}
+const matrixOf = (u, v, origin) => `matrix(${thousandth(u[0])} ${thousandth(u[1])} ${thousandth(v[0])} ${thousandth(v[1])} ${thousandth(origin[0])} ${thousandth(origin[1])})`;
+function holdStill(element, [dx, dy]) {
+    const text = dx || dy ? `translate(${-dx} ${-dy})` : "";
+    element.querySelectorAll("[data-hold]").forEach((node) => (text ? node.setAttribute("transform", text) : node.removeAttribute("transform")));
+}
+function topMatrix(at, z, projection, along = "x") {
+    const { origin, x, y } = axesAt(at, z, projection);
+    return along === "x" ? matrixOf(x, y, origin) : matrixOf([-y[0], -y[1]], x, origin);
+}
+function sideMatrix(at, z, projection, face) {
+    const { origin, x, y, z: up } = axesAt(at, z, projection);
+    const down = [-up[0], -up[1]];
+    return face === "left" ? matrixOf(x, down, origin) : matrixOf([-y[0], -y[1]], down, origin);
+}
+function screenRise(height, projection) {
+    const { cosE, k } = cameraOf(projection);
+    return height * cosE * k;
+}
+function fitProjection(points, width, height, { pad = 24, headroom = 0, azimuth = AZIMUTH, elevation = ELEVATION } = {}) {
+    const unit = { origin: [0, 0], scale: 1, azimuth, elevation };
+    const flat = points.map((point) => iso(point, unit));
+    const xs = flat.map(([x]) => x);
+    const ys = flat.map(([, y]) => y);
+    const left = Math.min(...xs);
+    const right = Math.max(...xs);
+    const up = Math.min(...ys);
+    const down = Math.max(...ys);
+    const scale = Math.min((width - pad * 2) / (right - left), (height - pad * 2 - headroom) / (down - up));
+    return {
+        origin: [width / 2 - ((left + right) / 2) * scale, headroom + (height - headroom) / 2 - ((up + down) / 2) * scale],
+        scale,
+        azimuth,
+        elevation,
+    };
+}
+const escape = (text) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const attrs = (pairs) => Object.entries(pairs)
+    .filter(([, value]) => value !== undefined && value !== false)
+    .map(([key, value]) => ` ${key}="${escape(String(value))}"`)
+    .join("");
+function solidSvg(paths, { tone = "hi", crease = "faint", halo = false, lit = false, flat = false, className, inner = "" } = {}) {
+    const parts = [];
+    if (halo)
+        parts.push(`<path class="iso-halo" d="${paths.fill}"/>`);
+    parts.push(`<path class="iso-fill" d="${paths.fill}"/>`);
+    if (!flat) {
+        paths.shades.forEach((d, shade) => {
+            if (d)
+                parts.push(`<path class="iso-shade" data-shade="${shade}" d="${d}"/>`);
+        });
+        parts.push(`<path class="iso-top" d="${paths.top}"/>`);
+    }
+    if (crease !== "none" && paths.crease)
+        parts.push(`<path class="iso-line iso-crease" data-tone="${crease}" d="${paths.crease}"/>`);
+    if (crease !== "none" && paths.bevel)
+        parts.push(`<path class="iso-line iso-bevel" data-tone="${crease}" d="${paths.bevel}"/>`);
+    if (inner)
+        parts.push(inner);
+    parts.push(`<path class="iso-line iso-edge" data-tone="${tone}" d="${paths.outline}"/>`);
+    return `<g${attrs({ class: className ? `iso-solid ${className}` : "iso-solid", "data-lit": lit ? "" : undefined, "data-seamless": paths.seamless ? "" : undefined })}>${parts.join("")}</g>`;
+}
+function lineSvg(d, { tone = "lo", dotted = false, dashed = false, flow = false, className, free } = {}) {
+    if (!d)
+        return "";
+    return `<path${attrs({
+        class: className ? `iso-line ${className}` : "iso-line",
+        "data-tone": tone,
+        "data-free": free === true ? "" : free || undefined,
+        "data-dotted": dotted ? "" : undefined,
+        "data-dashed": dashed ? "" : undefined,
+        "data-flow": flow ? "" : undefined,
+        d,
+    })}/>`;
+}
+function dotsSvg(points, { size = 0.5, tone = "mid", pulse = false } = {}) {
+    const dots = points
+        .map(([x, y, alpha], index) => `<circle cx="${tenth(x)}" cy="${tenth(y)}" r="${size}"${alpha !== undefined && alpha < 1 ? ` fill-opacity="${Math.max(0, alpha).toFixed(2)}"` : ""}${pulse ? ` data-pulse="" style="--pulse-at:${(index * 137) % 1600}ms"` : ""}/>`)
+        .join("");
+    return `<g class="iso-dots" data-tone="${tone}">${dots}</g>`;
+}
+function fadedSvg(list, style = {}) {
+    const groups = new Map();
+    for (const entry of list) {
+        const [d, alpha] = Array.isArray(entry) ? entry : [entry.d, entry.alpha];
+        if (!d || !(alpha > 0.02))
+            continue;
+        const level = Math.min(1, Math.round(alpha * 20) / 20);
+        groups.set(level, (groups.get(level) ?? "") + d);
+    }
+    return [...groups].map(([alpha, d]) => (alpha >= 1 ? lineSvg(d, style) : `<g opacity="${alpha.toFixed(2)}">${lineSvg(d, style)}</g>`)).join("");
+}
+function fadeLineSvg(points, { fade = [0, 0], tone = "lo", className, stops = 6 } = {}) {
+    if (points.length < 2)
+        return "";
+    const ease = (t) => t * t * (3 - 2 * t);
+    const hashOf = (text) => {
+        let hash = 2166136261;
+        for (let index = 0; index < text.length; index++)
+            hash = Math.imul(hash ^ text.charCodeAt(index), 16777619);
+        return (hash >>> 0).toString(36);
+    };
+    const lengths = [0];
+    for (let index = 1; index < points.length; index++)
+        lengths.push(lengths[index - 1] + Math.hypot(points[index][0] - points[index - 1][0], points[index][1] - points[index - 1][1]));
+    const at = (length) => {
+        let index = 1;
+        while (index < points.length - 1 && lengths[index] < length)
+            index++;
+        const span = lengths[index] - lengths[index - 1] || 1;
+        const t = Math.max(0, Math.min(1, (length - lengths[index - 1]) / span));
+        return [points[index - 1][0] + (points[index][0] - points[index - 1][0]) * t, points[index - 1][1] + (points[index][1] - points[index - 1][1]) * t];
+    };
+    const pieceOf = (from, to) => [at(from), ...points.filter((_, index) => lengths[index] > from + 1e-6 && lengths[index] < to - 1e-6), at(to)];
+    const total = lengths[lengths.length - 1];
+    if (total < 1e-6)
+        return "";
+    let [start, end] = Array.isArray(fade) ? fade : [fade, fade];
+    if (start + end > total) {
+        const share = total / (start + end);
+        start *= share;
+        end *= share;
+    }
+    const paint = `var(--anatomy-${tone})`;
+    const ramp = (piece, rising) => {
+        const d = pathOf(piece);
+        const [x1, y1] = piece[0];
+        const [x2, y2] = piece[piece.length - 1];
+        const id = `iso-fade-${hashOf(`${d}|${tone}|${rising}`)}`;
+        const marks = Array.from({ length: stops + 1 }, (_, index) => {
+            const t = index / stops;
+            const alpha = ease(rising ? t : 1 - t);
+            return `<stop offset="${t.toFixed(3)}" stop-opacity="${alpha.toFixed(3)}" style="stop-color:${paint}"/>`;
+        }).join("");
+        const gradient = `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${tenth(x1)}" y1="${tenth(y1)}" x2="${tenth(x2)}" y2="${tenth(y2)}">${marks}</linearGradient>`;
+        return `<defs>${gradient}</defs><path${attrs({ class: className ? `iso-line ${className}` : "iso-line", "data-tone": tone, "data-free": rising ? "start" : "end", d, style: `stroke:url(#${id})` })}/>`;
+    };
+    const parts = [];
+    if (start > 0.05)
+        parts.push(ramp(pieceOf(0, start), true));
+    if (total - end - start > 0.05)
+        parts.push(lineSvg(pathOf(pieceOf(start, total - end)), { tone, className }));
+    if (end > 0.05)
+        parts.push(ramp(pieceOf(total - end, total), false));
+    return `<g class="iso-fade">${parts.join("")}</g>`;
+}
+function wireSvg(from, to, { via = [], tone = "lo", dotted = false, dashed = false, flow = false, ends = "both", size = 1.2 } = {}) {
+    const d = pathOf([from, ...via, to]);
+    const end = ([x, y]) => `<circle class="iso-wire-end" cx="${tenth(x)}" cy="${tenth(y)}" r="${size}"/>`;
+    return `<g class="iso-wire" data-tone="${tone}">${lineSvg(d, { tone, dotted, dashed, flow })}${ends === "both" || ends === "from" ? end(from) : ""}${ends === "both" || ends === "to" ? end(to) : ""}</g>`;
+}
+function faceTextSvg(transform, text, { size = 3, tone = "mid", anchor = "start" } = {}) {
+    return `<text class="iso-face-text" data-tone="${tone}" transform="${transform}" font-size="${size}" text-anchor="${anchor}">${escape(text)}</text>`;
+}
+function groupSvg(children, extra = {}) {
+    return `<g${attrs(extra)}>${Array.isArray(children) ? children.join("") : children}</g>`;
+}
+function figureSvg({ width, height, label, body, standalone = false, className }) {
+    const style = standalone ? `<style>${ISO_CSS}</style>` : "";
+    return `<svg${attrs({
+        xmlns: "http://www.w3.org/2000/svg",
+        class: `iso-svg${standalone ? " iso" : ""}${className ? ` ${className}` : ""}`,
+        "data-theme": standalone || undefined,
+        viewBox: `0 0 ${width} ${height}`,
+        role: "img",
+        "aria-label": label,
+    })}>${style}${Array.isArray(body) ? body.join("") : body}</svg>`;
+}
+function swatchSvg(mark) {
+    if (mark === "raised" || mark === "flat" || mark === "lit") {
+        const body = mark === "flat" ? "M2 6.5 8 3.5 14 6.5 8 9.5Z" : "M2 4.5 8 1.5 14 4.5 14 6 8 9 2 6Z";
+        const crease = mark === "flat" ? "" : `<path class="iso-swatch-crease" d="M2 4.5 8 7.5 14 4.5"/>`;
+        return `<svg class="iso-swatch" data-mark="${mark}" viewBox="0 0 16 10" aria-hidden="true"><path d="${body}"/>${crease}</svg>`;
+    }
+    return `<svg class="iso-swatch" data-mark="${mark}" viewBox="0 0 16 10" aria-hidden="true"><path d="M1.5 5h13"/></svg>`;
+}
+function plateHtml({ fig, title, hint, readout = "", keys = [], caption, body }) {
+    const corner = (name, text, extra = "") => `<span class="iso-plate-corner" data-corner="${name}"${extra}>${escape(text)}</span>`;
+    const legend = keys.length || caption
+        ? `<figcaption class="iso-legend">${keys.length ? `<span class="iso-keys">${keys.map((key) => `<span class="iso-key">${swatchSvg(key.mark)}${escape(key.label)}</span>`).join("")}</span>` : ""}${caption ? `<span class="iso-caption">${escape(caption)}</span>` : ""}</figcaption>`
+        : "";
+    return `<figure class="iso-figure"><div class="iso-plate"><div class="iso-plate-corners" aria-hidden="true">${corner("fig", fig)}${title ? corner("title", title) : ""}${hint ? corner("hint", hint) : ""}${corner("readout", readout, " data-readout")}</div>${body}</div>${legend}</figure>`;
+}
+function pageHtml({ title, theme = "dark", body, script = "", width = 650 }) {
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(title)}</title><style>${ISO_CSS}${PAGE_CSS.replace("__WIDTH__", String(width))}</style></head><body class="iso" data-theme="${theme}"><main class="iso-page">${body}</main>${script ? `<script type="module">${script.replace(/<\/(script)/gi, "<\\/$1")}<\/script>` : ""}</body></html>`;
+}
+const PAGE_CSS = `
+*{box-sizing:border-box}
+html{color-scheme:dark}
+body[data-theme="light"]{color-scheme:light}
+body{margin:0;background:var(--anatomy-page);color:var(--anatomy-text);font:14px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.iso-page{width:min(__WIDTH__px,100% - 32px);margin:64px auto 96px}
+`;
+const ISO_CSS = `
+.iso{
+  --anatomy-page:#0b0b0b;--anatomy-card:#131313;--anatomy-text:#a3a3a3;--anatomy-strong:#e6e6e6;--anatomy-muted:#6e6e6e;
+  --anatomy-paper:#131313;--anatomy-face:#1b1b1b;--anatomy-top:#1c1c1c;
+  --anatomy-shade-0:#0f0f0f;--anatomy-shade-1:#121212;--anatomy-shade-2:#151515;--anatomy-shade-3:#181818;
+  --anatomy-lit-top:#262626;--anatomy-lit-shade:#1d1d1d;
+  --anatomy-hi:#d4d4d4;--anatomy-mid:#6a6a6a;--anatomy-lo:#3e3e3e;--anatomy-faint:#2a2a2a;--anatomy-lit:#ffffff;
+  --anatomy-halo:#050505;--anatomy-halo-opacity:.9;--anatomy-dot:#e6e6e6;
+  --anatomy-red:#ff6b6b;--anatomy-green:#6be0a0;--anatomy-blue:#6b9bff;
+  --anatomy-weight:.6px;--anatomy-ease:cubic-bezier(.32,.72,0,1);
+  --anatomy-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff0a,inset 0 0 0 1px #ffffff06,0 0 0 1px #00000026,0 1px 1px -.5px #00000014,0 3px 3px -1.5px #00000014,0 6px 6px -3px #00000014,0 12px 12px -6px #00000014;
+}
+.iso[data-theme="light"]{
+  --anatomy-page:#f2f2ef;--anatomy-card:#fbfbfa;--anatomy-text:#57575a;--anatomy-strong:#18181a;--anatomy-muted:#8c8c90;
+  --anatomy-paper:#fbfbfa;--anatomy-face:#ffffff;--anatomy-top:#ffffff;
+  --anatomy-shade-0:#dcdcd9;--anatomy-shade-1:#e5e5e2;--anatomy-shade-2:#ededea;--anatomy-shade-3:#f4f4f1;
+  --anatomy-lit-top:#ffffff;--anatomy-lit-shade:#eeeeeb;
+  --anatomy-hi:#26262a;--anatomy-mid:#8a8a8f;--anatomy-lo:#b4b4b8;--anatomy-faint:#d4d4d6;--anatomy-lit:#000000;
+  --anatomy-halo:#8a8a80;--anatomy-halo-opacity:.32;--anatomy-dot:#3a3a3e;
+  --anatomy-red:#e5484d;--anatomy-green:#30a46c;--anatomy-blue:#3e63dd;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff,0 0 0 1px #0000000f,0 1px 1px -.5px #0000000a,0 3px 3px -1.5px #0000000a,0 6px 6px -3px #0000000a,0 12px 12px -6px #0000000a;
+}
+.iso-svg{display:block;width:100%;height:auto;overflow:visible}
+.iso-svg path,.iso-svg circle{vector-effect:non-scaling-stroke}
+.iso-fill{fill:var(--anatomy-paper);stroke:none}
+.iso-solid[data-lit]>.iso-fill{fill:var(--anatomy-face)}
+.iso-shade,.iso-top{stroke:none}
+.iso-shade[data-shade="0"]{fill:var(--anatomy-shade-0)}
+.iso-shade[data-shade="1"]{fill:var(--anatomy-shade-1)}
+.iso-shade[data-shade="2"]{fill:var(--anatomy-shade-2)}
+.iso-shade[data-shade="3"]{fill:var(--anatomy-shade-3)}
+.iso-top{fill:var(--anatomy-top)}
+.iso-solid[data-lit]>.iso-top{fill:var(--anatomy-lit-top)}
+.iso-solid[data-lit]>.iso-shade{fill:var(--anatomy-lit-shade)}
+.iso-solid[data-seamless]>.iso-shade,.iso-solid[data-seamless]>.iso-top{stroke-width:.4;stroke-linejoin:round}
+.iso-solid[data-seamless]>.iso-shade[data-shade="0"]{stroke:var(--anatomy-shade-0)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="1"]{stroke:var(--anatomy-shade-1)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="2"]{stroke:var(--anatomy-shade-2)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="3"]{stroke:var(--anatomy-shade-3)}
+.iso-solid[data-seamless]>.iso-top{stroke:var(--anatomy-top)}
+.iso-solid[data-seamless][data-lit]>.iso-top{stroke:var(--anatomy-lit-top)}
+.iso-solid[data-seamless][data-lit]>.iso-shade{stroke:var(--anatomy-lit-shade)}
+.iso-solid[data-lit]>.iso-edge{stroke:var(--anatomy-lit)}
+.iso-halo{fill:var(--anatomy-halo);stroke:none;filter:blur(9px);opacity:var(--anatomy-halo-opacity);transform:translateY(3px)}
+.iso-line{fill:none;stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight);stroke-linecap:round;stroke-linejoin:round}
+.iso-line[data-tone="hi"]{stroke:var(--anatomy-hi)}
+.iso-line[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.iso-line[data-tone="lo"]{stroke:var(--anatomy-lo)}
+.iso-line[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.iso-line[data-tone="lit"]{stroke:var(--anatomy-lit)}
+.iso-line[data-tone="red"]{stroke:var(--anatomy-red)}
+.iso-line[data-tone="green"]{stroke:var(--anatomy-green)}
+.iso-line[data-tone="blue"]{stroke:var(--anatomy-blue)}
+.iso-line[data-dotted]{stroke-dasharray:.01 3.5;stroke-width:1}
+.iso-line[data-dashed]{stroke-dasharray:3 3}
+.iso-line[data-flow]{stroke-dasharray:2 6}
+.iso-wire-end{fill:var(--anatomy-paper);stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight)}
+.iso-wire[data-tone="hi"] .iso-wire-end{stroke:var(--anatomy-hi)}
+.iso-wire[data-tone="mid"] .iso-wire-end{stroke:var(--anatomy-mid)}
+.iso-wire[data-tone="faint"] .iso-wire-end{stroke:var(--anatomy-faint)}
+.iso-wire[data-tone="lit"] .iso-wire-end{stroke:var(--anatomy-lit)}
+.iso-dots circle{fill:var(--anatomy-dot);stroke:none;opacity:.32}
+.iso-dots[data-tone="hi"] circle{opacity:.85}
+.iso-dots[data-tone="mid"] circle{opacity:.45}
+.iso-dots[data-tone="lo"] circle{opacity:.22}
+.iso-dots[data-tone="faint"] circle{opacity:.12}
+.iso-face-text{fill:var(--anatomy-mid);font-family:var(--anatomy-mono);letter-spacing:.04em}
+.iso-face-text[data-tone="hi"]{fill:var(--anatomy-hi)}
+.iso-face-text[data-tone="lo"]{fill:var(--anatomy-lo)}
+.iso-face-text[data-tone="faint"]{fill:var(--anatomy-faint)}
+.tb-body{fill:var(--anatomy-shade-2);stroke:none}
+.tb-shine{fill:var(--anatomy-top);stroke:none}
+.tb-shade{fill:var(--anatomy-shade-0);stroke:none}
+.tb-ring{fill:none;stroke:var(--anatomy-lo);stroke-width:.45;stroke-linecap:butt;stroke-linejoin:round}
+.tb-ring[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.tb-ring[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.tb-ring[data-tone="hi"]{stroke:var(--anatomy-hi)}
+@keyframes iso-flow{to{stroke-dashoffset:-32}}
+@keyframes iso-pulse{0%,100%{opacity:.18}12%{opacity:1}40%{opacity:.18}}
+.iso-line[data-flow]{animation:iso-flow 1600ms linear infinite}
+.iso-dots circle[data-pulse]{animation:iso-pulse 1600ms steps(1,end) infinite;animation-delay:var(--pulse-at,0ms)}
+.iso-figure{margin:32px 0 36px}
+.iso-plate{position:relative;padding:52px 24px;border-radius:0;background:var(--anatomy-card);box-shadow:0 0 0 1px var(--anatomy-mid);--anatomy-paper:var(--anatomy-card)}
+.iso-plate-corners{position:absolute;inset:18px 20px;pointer-events:none}
+.iso-plate-corner{position:absolute;color:var(--anatomy-muted);font-family:var(--anatomy-mono);font-size:10.5px;line-height:1;letter-spacing:.04em;white-space:nowrap}
+.iso-plate-corner[data-corner="fig"]{top:0;left:0;color:var(--anatomy-text)}
+.iso-plate-corner[data-corner="title"]{top:0;right:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="hint"]{bottom:0;left:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="readout"]{right:0;bottom:0;color:var(--anatomy-text);font-variant-numeric:tabular-nums}
+.iso-plate .iso-svg{margin:0 auto}
+.iso-legend{display:grid;gap:8px;margin-top:12px;color:var(--anatomy-muted);font-size:13px;line-height:1.55}
+.iso-keys{display:flex;flex-wrap:wrap;gap:6px 18px}
+.iso-key{display:inline-flex;align-items:center;gap:7px}
+.iso-swatch{width:16px;height:10px;flex:none;overflow:visible}
+.iso-swatch path{fill:none;stroke:var(--anatomy-hi);stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+.iso-swatch[data-mark="raised"] path,.iso-swatch[data-mark="flat"] path{stroke:var(--anatomy-mid)}
+.iso-swatch[data-mark="lit"] path{stroke:var(--anatomy-lit)}
+.iso-swatch[data-mark="dim"] path{stroke:var(--anatomy-lo)}
+.iso-swatch[data-mark="dotted"] path{stroke-dasharray:.01 3;stroke-width:1.4}
+.iso-swatch[data-mark="dashed"] path{stroke-dasharray:3 2.5}
+.iso-swatch[data-mark="red"] path{stroke:var(--anatomy-red)}
+.iso-swatch[data-mark="green"] path{stroke:var(--anatomy-green)}
+.iso-swatch[data-mark="blue"] path{stroke:var(--anatomy-blue)}
+.iso-swatch-crease{stroke:var(--anatomy-lo)!important}
+@media (max-width:560px){.iso-plate{padding:48px 12px 70px}.iso-plate-corner[data-corner="hint"]{bottom:18px}}
+@media (prefers-reduced-motion:reduce){.iso-line[data-flow],.iso-dots circle[data-pulse]{animation:none}}
+`;
+
+// Tiny solid renderer: prisms (a 2D ring pushed out along one axis), shaded by face normal, painter-sorted.
+// Shared by the build (static parts) and the page (anything that moves or changes colour).
+function solids(project, depthOf) {
+  const o = depthOf([0, 0, 0]);
+  const VIEW = [depthOf([1, 0, 0]) - o, depthOf([0, 1, 0]) - o, depthOf([0, 0, 1]) - o];
+  const LIGHT = (() => { const v = [0.35, 0.7, 1]; const n = Math.hypot(...v); return v.map((a) => a / n); })();
+  const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const fx = (v) => (Math.round(v * 10) / 10).toString();
+  // ring in its own 2D plane, axis is the direction it is pushed out along
+  const toXYZ = (axis, u, v, w) => (axis === "z" ? [u, v, w] : axis === "y" ? [u, w, v] : [w, u, v]);
+  function prism(ring, axis, w0, w1, col, opts = {}) {
+    return { ring, axis, w0, w1, col, ...opts };
+  }
+  const box = (x0, x1, y0, y1, z0, z1, col, opts) => prism([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], "z", z0, z1, col, opts);
+  const circle = (cu, cv, r, n = 24, a0 = 0) => Array.from({ length: n }, (_, i) => [cu + r * Math.cos(a0 + (i / n) * Math.PI * 2), cv + r * Math.sin(a0 + (i / n) * Math.PI * 2)]);
+  const cyl = (cx, cy, r, z0, z1, col, n = 24, opts) => prism(circle(cx, cy, r, n), "z", z0, z1, col, opts);
+  function faces(part, xf) {
+    const n = part.ring.length;
+    const A = part.ring.map(([u, v]) => xf(toXYZ(part.axis, u, v, part.w0))), B = part.ring.map(([u, v]) => xf(toXYZ(part.axis, u, v, part.w1)));
+    const c = [0, 1, 2].map((k) => (A.reduce((s, p) => s + p[k], 0) + B.reduce((s, p) => s + p[k], 0)) / (2 * n));
+    const out = [];
+    const add = (pts, cap) => {
+      const cf = [0, 1, 2].map((k) => pts.reduce((s, p) => s + p[k], 0) / pts.length);
+      let nn = [0, 0, 0];
+      for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; nn[0] += (p[1] - q[1]) * (p[2] + q[2]); nn[1] += (p[2] - q[2]) * (p[0] + q[0]); nn[2] += (p[0] - q[0]) * (p[1] + q[1]); }
+      const len = Math.hypot(...nn); if (len < 1e-9) return;
+      nn = nn.map((v) => v / len);
+      if (dot(nn, [cf[0] - c[0], cf[1] - c[1], cf[2] - c[2]]) < 0) nn = nn.map((v) => -v);
+      if (dot(nn, VIEW) <= 1e-4) return;
+      out.push({ pts, n: nn, depth: dot(cf, VIEW), cap });
+    };
+    add(A, true); add(B, true);
+    if (part.w1 !== part.w0) for (let i = 0; i < n; i++) { const j = (i + 1) % n; add([A[i], A[j], B[j], B[i]], false); }
+    return out;
+  }
+  function shade(part, f) {
+    let base = rgb(f.cap && part.cap ? part.cap : part.col);
+    if (part.glow) base = mix(base, rgb(part.glow[0]), part.glow[1]);
+    const d = Math.max(0, dot(f.n, LIGHT)), k = part.flat ? 1 : 0.48 + 0.62 * d;
+    let c = base.map((v) => v * k);
+    if (part.emit) c = mix(c, rgb(part.emit[0]), part.emit[1]);
+    return "rgb(" + c.map((v) => Math.round(Math.min(255, Math.max(0, v)))).join(",") + ")";
+  }
+  // objects: { parts, xf?, key? }, sorted back to front by key (default: depth of the first part's centre)
+  function render(objects, { stroke = "rgba(0,0,0,.35)", width = 0.35 } = {}) {
+    const items = objects.map((ob) => {
+      const xf = ob.xf || ((p) => p);
+      let key = ob.key;
+      if (key === undefined) { const p = ob.parts[0]; const r = p.ring; const cu = r.reduce((s, q) => s + q[0], 0) / r.length, cv = r.reduce((s, q) => s + q[1], 0) / r.length; key = dot(xf(toXYZ(p.axis, cu, cv, (p.w0 + p.w1) / 2)), VIEW); }
+      return { ob, xf, key };
+    }).sort((a, b) => a.key - b.key);
+    let s = "";
+    for (const { ob, xf } of items) {
+      if (ob.svg !== undefined) { s += ob.svg; continue; }
+      const fs = [];
+      ob.parts.forEach((part, pi) => { for (const f of faces(part, xf)) fs.push({ f, part, layer: part.layer || 0, pi }); });
+      fs.sort((a, b) => a.layer - b.layer || a.f.depth - b.f.depth);
+      let g = "";
+      for (const { f, part } of fs) g += '<path d="M' + f.pts.map((p) => { const q = project(p); return fx(q[0]) + " " + fx(q[1]); }).join("L") + 'Z" fill="' + shade(part, f) + '"' + (part.opacity !== undefined ? ' fill-opacity="' + part.opacity + '"' : "") + "/>";
+      s += ob.cls ? '<g class="' + ob.cls + '">' + g + "</g>" : g;
+    }
+    return '<g stroke="' + stroke + '" stroke-width="' + width + '" stroke-linejoin="round">' + s + "</g>";
+  }
+  return { prism, box, cyl, circle, render, VIEW, rgb };
+}
+
+const D = {"W":680,"H":470,"P":{"origin":[379.89010989010984,244.80994156183192],"scale":40.54408970191926,"azimuth":45,"elevation":30}};
+const PR = D.P;
+const stage = document.querySelector(".fx-stage");
+const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const readout = document.querySelector("[data-readout]");
+const still = matchMedia("(prefers-reduced-motion: reduce)");
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const R = solids((p) => iso(p, PR), (p) => depthOf(p, PR));
+const { box, cyl, prism } = R;
+const svgEl = stage.querySelector("svg"), cv = stage.querySelector(".fx-smoke"), ctx = cv.getContext("2d");
+const gcv = stage.querySelector(".g-cv"), gctx = gcv.getContext("2d");
+const sceneG = q("scene");
+const sp = (p) => { const a = iso(p, PR); return a[0].toFixed(1) + " " + a[1].toFixed(1); };
+let seed = 6; let parts = []; const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+
+// ---------------- the two cars ----------------
+const CARS = {
+  old: { name: "1959-style sedan", m: 1600, L: 5.35, front: 1.25, gap: 0.42, paint: "#45b5a8", roof: "#eeeae0",
+    F: (x) => (x < 0.05 ? 2.4e6 * x : x < 0.38 ? 120e3 + 60e3 * Math.sin(x * 40) * 0.4 : 300e3 + 120e3 * Math.sin(x * 25) * 0.3),
+    intr: (x) => Math.max(0, x - 0.38) * 0.92, col: (x) => Math.max(0, x - 0.38) * 0.5 },
+  new: { name: "2009-style sedan", m: 1550, L: 4.85, front: 1.05, gap: 0.45, paint: "#b9373a", roof: "#b9373a",
+    F: (x) => (x < 0.05 ? 4.4e6 * x : x < 0.6 ? 220e3 + 80e3 * (x - 0.05) / 0.55 : 300e3 + 2.0e6 * (x - 0.6)),
+    intr: (x) => Math.max(0, x - 0.66) * 0.35, col: (x) => Math.max(0, x - 0.7) * 0.1 },
+};
+const IIHS = { old: { chest: 85, hic: 461, intr: 62, femur: 10.9 }, new: { chest: 41, hic: 215, intr: 7, femur: 2.8 } };
+let car = "new", C = CARS.new, kmh = 64, belt = true, bag = true;
+// state of a run
+let phase = "idle", phaseAt = 0, xCar = -6, v = 0, crush = 0, t = 0, u = 0, w = 0, bagT = 0, chestPk = 0, headG = 0, headV = 0, contact = false, femur = 0, trace = [], result = null;
+let now = 0, last = 0, frame = 0, visible = false, touring = true, slow = false, tourClock = 0, tourStep = -1, actions = [], lastShot = "", lastEvent = "", lastEventAt = -10, shake = 0;
+const event = (tx) => { lastEvent = tx; lastEventAt = now; };
+const BAR = 2.9; // barrier face x
+function start() { phase = "drive"; phaseAt = now; xCar = -3.6; v = kmh / 3.6; crush = 0; t = 0; u = 0; w = 0; bagT = 0; chestPk = 0; headG = 0; headV = 0; contact = false; femur = 0; trace = []; result = null; parts = []; }
+function setCar(c) { car = c; C = CARS[c]; if (c === "old") bag = false; start(); }
+// one millisecond-ish step of the crash: the car crushing, the occupant (torso) held back by belt, bag, wheel
+function crashStep(h) {
+  const F = v > 0 ? C.F(crush) : 0, a = -F / C.m;
+  v = Math.max(-0.6, v + a * h); if (v > 0) crush += v * h; else xCar += v * h;
+  t += h;
+  // occupant moves relative to the car: u is forward travel, w its speed relative to the car
+  const intr = C.intr(crush), colIn = C.col(crush), gap = C.gap - colIn;
+  let Fr = 0;
+  if (belt) { const slack = car === "new" ? 0.01 : 0.05, kb = car === "new" ? 110e3 : 70e3, cap = car === "new" ? 4.5e3 : 11e3; if (u > slack) Fr += Math.min(cap, kb * (u - slack)) + 900 * Math.max(0, w); }
+  if (bag && t > 0.02) { bagT = Math.min(1, (t - 0.02) / 0.025); if (u > 0.18 && bagT > 0.6) Fr += Math.min(belt ? 4.2e3 : 7e3, 60e3 * (u - 0.18)) + 600 * Math.max(0, w); }
+  if (u > gap) { Fr += Math.min(52e3, 3.0e5 * (u - gap) + 2.5e3 * Math.max(0, w)); if (!contact && w > 1) { contact = true; headV = w; } }
+  const mOcc = 50;
+  const relA = -a - Fr / mOcc; // car decelerates, occupant carries on unless something pulls it back
+  w += relA * h; u = Math.max(0, u + w * h);
+  if (u === 0 && w < 0) w = 0;
+  const chest = Fr / mOcc / 9.81;
+  chestPk = Math.max(chestPk, chest);
+  femur = Math.max(femur, (intr > 0.15 ? 2 + (intr - 0.15) * 22 : 1.5 + (contact ? 1.2 : 0)));
+  return { carG: F / C.m / 9.81, chest };
+}
+function finish() {
+  const intr = C.intr(crush);
+  // head: hits the wheel or dash unless the bag got there first
+  if (contact) headG = Math.max(headG, 40 + headV * headV * 9 + (car === "old" ? 60 : 0));
+  else headG = Math.max(headG, 30 + chestPk * 0.6);
+  const hic = Math.round(Math.pow(headG / 80, 2.5) * 220);
+  const sev = chestPk > 60 || hic > 700 || intr > 0.3 ? (chestPk > 80 || hic > 1000 || intr > 0.45 ? "likely fatal" : "serious injuries") : chestPk > 45 ? "hurt, should be OK" : "walks away";
+  result = { chest: Math.round(chestPk), hic, intr: Math.round(intr * 100), femur: femur.toFixed(1), sev, crush: Math.round(crush * 100) };
+  const ref = kmh === 64 && ((car === "new" && belt && bag) || car === "old") ? IIHS[car] : null;
+  event((car === "old" ? "1959-style" : "2009-style") + " at " + kmh + " km/h: " + sev + ". Chest " + result.chest + " g, footwell pushed in " + result.intr + " cm, front crushed " + result.crush + " cm." + (ref ? " (IIHS measured chest " + ref.chest + " g, footwell " + ref.intr + " cm in the real " + (car === "old" ? "Bel Air" : "Malibu") + ".)" : ""));
+}
+function physics(dt) {
+  if (phase === "drive") {
+    // driving up to the barrier at a fixed on-screen pace, then into slow motion
+    xCar += dt * 2.4;
+    if (xCar + C.L / 2 >= BAR) { xCar = BAR - C.L / 2; phase = "crash"; phaseAt = now; for (let i = 0; i < 60; i++) glass(); for (let i = 0; i < 14; i++) dust(); }
+  } else if (phase === "crash") {
+    // 1 s on screen is 25 ms of crash
+    const sim = dt * 0.025;
+    const n = Math.max(1, Math.ceil(sim / 0.0002));
+    let last2;
+    for (let i = 0; i < n; i++) last2 = crashStep(sim / n);
+    trace.push([t * 1000, last2.carG, last2.chest]);
+    if (t > 0.17 || (v <= 0 && t > 0.1 && w <= 0.05)) { phase = "done"; phaseAt = now; finish(); }
+  } else if (phase === "done") { if (now - phaseAt > 7 && !touring) start(); }
+}
+
+// ---------------- drawing ----------------
+function glass() { const a = rnd() * Math.PI * 2, k = rnd(); parts.push({ p: [BAR - 0.1, 0.3 + rnd() * 0.7, 0.4 + rnd() * 0.5], v: [-0.5 - rnd() * 3, 0.8 + Math.cos(a) * 2.2, Math.abs(Math.sin(a)) * 3 + 0.5], life: 0, max: 2 + rnd() * 2, s: 0.7 + rnd() * 1.1, c: k < 0.5 ? "rgba(205,228,242,.9)" : k < 0.75 ? "rgba(250,245,220,.9)" : car === "old" ? "rgba(235,235,232,.95)" : "rgba(40,42,46,.95)" }); }
+function dust() { parts.push({ dust: true, p: [BAR - 0.1, rnd() * 1.4, 0.2 + rnd() * 0.5], v: [-0.3 - rnd() * 0.4, rnd() * 0.6 - 0.1, 0.15 + rnd() * 0.2], r: 0.15, life: 0, max: 2.5 + rnd() * 2 }); }
+function carObj() {}
+// local car coords: x forward (front +x), y left (driver at +y), z up. W() takes them to the world, with the car's yaw.
+let yaw = 0;
+const W = (p) => { const c = Math.cos(yaw), s = Math.sin(yaw); return [xCar + p[0] * c - p[1] * s, p[1] * c + p[0] * s, p[2]]; };
+const PX = (() => { const a = iso([0, 0, 0], PR), b = iso([1, 0, 0], PR); return Math.hypot(b[0] - a[0], b[1] - a[1]); })();
+const sp2 = (p) => sp(W(p));
+function draw(dt) {
+  const old = car === "old", Lh = C.L / 2, fw = Lh - C.front, rw = old ? -1.2 : -1.35;
+  const intr = C.intr(crush), col = C.col(crush);
+  // offset hit: the driver's side (+y) takes most of the crush, the far side less
+  const cL = crush * 0.95, cR = crush * clamp(0.15 + crush * 0.3, 0, 0.6);
+  yaw = phase === "drive" ? 0 : clamp(crush * 0.09, 0, 0.12) + (phase === "done" ? 0.02 * Math.min(1, (now - phaseAt)) : 0);
+  const fx = (y) => Lh - (cL + (cR - cL) * (0.9 - y) / 1.8); // front face x at width y
+  const glassC = "#9fc4dc", trim = old ? "#e9e9e6" : "#2a2c30", cutC = "#e7d6ad";
+  const fwI = fw - intr; // firewall, pushed back
+  const objs = [];
+  const add = (parts, key) => objs.push({ parts: Array.isArray(parts) ? parts : [parts], xf: W, key });
+  const kAt = (p) => depthOf(W(p), PR);
+  // floor pan and sills (the tub), whole width
+  add(prism([[rw, 0.28], [fwI, 0.28], [fwI, 0.42], [rw, 0.42]], "y", -0.9, 0.9, "#34373c", { cap: "#3c4046" }), -1e6);
+  // rear end: boot and rear wings, full width, beltline height
+  const rear = old ? [[-Lh, 0.32], [rw, 0.32], [rw, 0.92], [-Lh + 0.3, 0.98], [-Lh, 0.85]] : [[-Lh, 0.35], [rw, 0.35], [rw, 0.95], [-Lh + 0.35, 1.0], [-Lh, 0.88]];
+  add(prism(rear, "y", -0.9, 0.9, C.paint), kAt([rw - 0.6, 0, 0.6]));
+  if (old) for (const yy of [-0.9, 0.82]) add(prism([[-Lh + 0.1, 0.98], [-Lh + 0.9, 0.98], [-Lh + 0.05, 1.12]], "y", yy, yy + 0.08, C.paint), kAt([-Lh + 0.4, yy, 1]));
+  // far door, full height up to the beltline
+  add(prism([[rw, 0.42], [fwI, 0.42], [fwI, 0.92], [rw, 0.92]], "y", -0.9, -0.8, C.paint, { cap: cutC }), kAt([0, -0.85, 0.6]) - 50);
+  // near side: only the rear door survives the cutaway, plus the sill
+  add(prism([[rw, 0.42], [-0.85, 0.42], [-0.85, 0.92], [rw, 0.92]], "y", 0.8, 0.9, C.paint, { cap: cutC }), kAt([-1.1, 0.85, 0.6]));
+  // greenhouse: far half of the roof, far glass, pillars
+  const rf0 = old ? -0.95 : -1.05, rf1 = old ? 0.55 : 0.4, zr = old ? 1.42 : 1.45;
+  add(prism([[rf0, zr - 0.05], [rf1, zr - 0.05], [rf1, zr], [rf0, zr]], "y", -0.9, 0.05, C.roof, { cap: cutC }), kAt([0, -0.4, zr]) + 30);
+  add(prism([[rw + 0.15, 0.92], [rf0, zr - 0.05], [rf1, zr - 0.05], [fwI - 0.15, 0.92]], "y", -0.86, -0.84, glassC, { opacity: 0.35 }), kAt([0, -0.85, 1.2]) - 40);
+  for (const yy of [-0.9, 0.8]) add(prism([[rw + 0.05, 0.92], [rw + 0.3, 0.92], [rf0 + 0.15, zr - 0.05], [rf0 - 0.05, zr - 0.05]], "y", yy, yy + 0.1, C.roof), kAt([rw, yy, 1.2]));
+  add(prism([[fwI - 0.3, 0.92], [fwI - 0.15, 0.92], [rf1, zr - 0.05], [rf1 - 0.12, zr - 0.05]], "y", -0.9, -0.8, C.roof), kAt([fwI - 0.2, -0.85, 1.2]) - 30);
+  // windscreen, far half
+  add(prism([[fwI - 0.15, 0.92], [rf1, zr - 0.05], [rf1 + 0.02, zr - 0.07], [fwI - 0.1, 0.92]], "y", -0.84, 0.05, glassC, { opacity: 0.3 }), kAt([fwI, -0.4, 1.1]) - 20);
+  // rear window and parcel shelf
+  add(prism([[rw + 0.15, 0.92], [rf0, zr - 0.05], [rf0 + 0.04, zr - 0.07], [rw + 0.22, 0.92]], "y", -0.84, 0.8, glassC, { opacity: 0.3 }), kAt([rw, 0, 1.1]) - 60);
+  // seats: rear bench, driver and passenger
+  add([prism([[rw + 0.05, 0.42], [rw + 0.6, 0.42], [rw + 0.6, 0.6], [rw + 0.05, 0.6]], "y", -0.8, 0.8, old ? "#c8bfa6" : "#2b2d32"), prism([[rw + 0.05, 0.6], [rw + 0.22, 0.6], [rw + 0.22, 1.05], [rw + 0.08, 1.05]], "y", -0.8, 0.8, old ? "#c8bfa6" : "#2b2d32")], kAt([rw + 0.3, 0, 0.6]) - 80);
+  const sx = -0.45;
+  const seat = (y0, y1) => [prism([[sx - 0.3, 0.42], [sx + 0.25, 0.42], [sx + 0.25, 0.6], [sx - 0.3, 0.6]], "y", y0, y1, old ? "#c8bfa6" : "#2b2d32"), prism([[sx - 0.34, 0.6], [sx - 0.2, 0.6], [sx - 0.3, 1.2], [sx - 0.44, 1.2]], "y", y0, y1, old ? "#c8bfa6" : "#2b2d32")];
+  add(seat(-0.75, -0.15), kAt([sx, -0.45, 0.6]));
+  if (!old) add(seat(0.18, 0.72), kAt([sx - 0.3, 0.45, 0.6]) - 1); else add(seat(-0.15, 0.72), kAt([sx - 0.3, 0.45, 0.6]) - 1);
+  // dashboard and firewall
+  add(prism([[fwI - 0.55, 0.62], [fwI, 0.5], [fwI, 0.95], [fwI - 0.25, 0.98], [fwI - 0.55, 0.88]], "y", -0.8, 0.8, trim, { cap: cutC }), kAt([fwI - 0.3, -0.2, 0.8]));
+  // engine bay / bonnet: plan-view prism so the driver's corner can crush deeper than the far one
+  const zb = old ? 0.86 : 0.92, fold = clamp(crush * 0.9, 0, 0.3);
+  const nose = [[fw, -0.9], [fx(-0.9), -0.9], [fx(-0.3), -0.3], [fx(0.3), 0.3], [fx(0.9), 0.9], [fw, 0.9]];
+  add(prism(nose, "z", 0.3, zb, C.paint, { cap: C.paint }), kAt([fw + 0.6, 0, 0.6]) + 40);
+  // the crumpled bonnet rising in a peak over the driver's side
+  if (fold > 0.02) { const mx = (fw + fx(0.6)) / 2; add(prism([[fw + 0.05, zb], [mx, zb + fold], [fx(0.6) - 0.02, zb]], "y", 0.0, 0.88, C.paint), kAt([mx, 0.4, zb + 0.2]) + 41); }
+  // bumper and grille
+  const bz0 = old ? 0.3 : 0.32, bz1 = old ? 0.48 : 0.55;
+  add(prism([[fx(-0.92) - 0.02, -0.92], [fx(-0.92) + 0.08, -0.92], [fx(0.92) + 0.08, 0.92], [fx(0.92) - 0.02, 0.92]], "z", bz0, bz1, old ? "#e8ebee" : "#1e1f22", { cap: old ? "#ffffff" : "#2a2b2e" }), kAt([Lh, 0, 0.4]) + 43);
+  // headlights
+  for (const yy of [-0.65, 0.65]) add(prism([[fx(yy) - 0.02, yy - 0.18], [fx(yy) + 0.01, yy - 0.18], [fx(yy) + 0.01, yy + 0.18], [fx(yy) - 0.02, yy + 0.18]], "z", 0.62, 0.74, "#f4f0d8", { flat: true }), kAt([Lh, yy, 0.7]) + 44);
+  // wheels; the front driver's wheel gets shoved back into the footwell
+  const wb = old ? [-1.65, 1.55] : [-1.4, 1.4];
+  for (const wx0 of wb) for (const yy of [-0.92, 0.78]) {
+    const wx = wx0 > 0 ? wx0 - (yy > 0 ? Math.max(0, cL - 0.6) * 0.8 : Math.max(0, cR - 0.6) * 0.8) : wx0;
+    add([prism(R.circle(wx, 0.34, 0.34, 18), "y", yy, yy + 0.16, "#1c1d20"), prism(R.circle(wx, 0.34, 0.2, 14), "y", yy > 0 ? yy + 0.16 : yy - 0.002, yy > 0 ? yy + 0.17 : yy, old ? "#e8e8e8" : "#9aa1a8", { flat: true })], kAt([wx, yy + 0.1, 0.34]) + (yy > 0 ? 60 : -60));
+  }
+  // the dummy, steering wheel, belt and bag sit in the driver's plane
+  const yD = 0.45, hip = [sx - 0.08 + u * 0.55, yD, 0.66], lean = clamp(u * 1.5, 0, 1.15);
+  const sh = [hip[0] + 0.56 * Math.sin(0.18 + lean), yD, hip[2] + 0.56 * Math.cos(0.18 + lean)];
+  const hl = 0.18 + lean * 1.1 + (contact ? 0.35 : 0), hd = [sh[0] + 0.24 * Math.sin(hl), yD, sh[2] + 0.24 * Math.cos(hl)];
+  const wc = [fwI - 0.5 - col * 0.5, yD, 1.0 + col * 0.35];
+  const knee = [hip[0] + 0.45, yD, 0.72], foot = [Math.min(fwI - 0.1, hip[0] + 0.85), yD, 0.45 + clamp(intr * 0.5, 0, 0.25)];
+  const w2 = (k) => (k * PX / 30).toFixed(1);
+  let dm = "";
+  const ln = (a, b, w, c) => (dm += '<path d="M' + sp2(a) + "L" + sp2(b) + '" stroke="' + c + '" stroke-width="' + w2(w) + '" stroke-linecap="round" fill="none"/>');
+  ln(hip, knee, 6.5, "#c99536"); ln(knee, foot, 5.5, "#c99536");
+  ln(hip, sh, 10, "#e0b04a");
+  const hand = [wc[0] - 0.05, yD, wc[2] - 0.02];
+  ln(sh, [(sh[0] + hand[0]) / 2, yD, (sh[2] + hand[2]) / 2 - 0.08], 4.5, "#d4a240"); ln([(sh[0] + hand[0]) / 2, yD, (sh[2] + hand[2]) / 2 - 0.08], hand, 4, "#d4a240");
+  const H = iso(W(hd), PR);
+  dm += '<circle cx="' + H[0].toFixed(1) + '" cy="' + H[1].toFixed(1) + '" r="' + w2(7.2) + '" fill="#e8bc58" stroke="#5c4520" stroke-width=".8"/>';
+  // dummy targets (the yellow and black calibration marks)
+  const T = iso(W([hd[0] + 0.02, yD + 0.05, hd[2]]), PR); dm += '<circle cx="' + T[0].toFixed(1) + '" cy="' + T[1].toFixed(1) + '" r="' + w2(2.4) + '" fill="#111"/>';
+  if (belt) { dm += '<path d="M' + sp2([sh[0] - 0.04, yD + 0.08, sh[2] + 0.02]) + "L" + sp2([hip[0] + 0.1, yD + 0.1, hip[2] + 0.03]) + (old ? "" : "") + '" stroke="#2b4f8a" stroke-width="' + w2(3) + '" fill="none" stroke-linecap="round"/>'; dm += '<path d="M' + sp2([hip[0] - 0.12, yD + 0.1, hip[2] + 0.02]) + "L" + sp2([hip[0] + 0.18, yD + 0.1, hip[2] + 0.04]) + '" stroke="#2b4f8a" stroke-width="' + w2(3) + '" fill="none" stroke-linecap="round"/>'; }
+  // steering wheel: rim seen edge-on, and the column
+  dm += '<path d="M' + sp2([wc[0] + 0.3, yD, wc[2] - 0.18]) + "L" + sp2(wc) + '" stroke="#141518" stroke-width="' + w2(3) + '" stroke-linecap="round"/>';
+  dm += '<path d="M' + sp2([wc[0] - 0.06, yD, wc[2] + 0.2]) + "L" + sp2([wc[0] + 0.06, yD, wc[2] - 0.2]) + '" stroke="' + (old ? "#e8e2cc" : "#141518") + '" stroke-width="' + w2(4) + '" stroke-linecap="round"/>';
+  if (bag && bagT > 0) { const c = iso(W([wc[0] - 0.2 * bagT, yD, wc[2] + 0.02]), PR), r = 22 * bagT * (u > 0.2 ? 0.82 : 1) * PX / 30; dm += '<ellipse cx="' + c[0].toFixed(1) + '" cy="' + c[1].toFixed(1) + '" rx="' + (r * 0.75).toFixed(1) + '" ry="' + r.toFixed(1) + '" fill="rgba(240,242,245,.93)" stroke="#b9bfc6" stroke-width=".6"/>'; }
+  objs.push({ svg: dm, key: kAt([sx, yD, 0.7]) + 5 });
+  // barrier: concrete block with a crushable aluminium honeycomb face, covering the driver's side of the car
+  const hb = phase === "drive" ? 0 : clamp(cL * 0.45, 0, 0.5);
+  let html = R.render([{ parts: [box(BAR + 0.6, BAR + 2.0, 0.2, 2.6, 0, 1.55, "#9a958c", { cap: "#b0aba1" })], key: -1e9 }, { parts: [box(BAR + hb * 0.9, BAR + 0.6, 0.25, 2.5, 0.2, 0.9, "#cdb54e", { cap: "#e0cb6c" })], key: -9e8 }]);
+  html += R.render(objs);
+  sceneG.innerHTML = html;
+  // particles (glass, plastic, dust)
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const r2 = svgEl.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1), cw = Math.max(1, Math.round(r2.width * dpr)), ch = Math.max(1, Math.round(r2.height * dpr)); if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
+  ctx.clearRect(0, 0, cv.width, cv.height); ctx.setTransform(cv.width / D.W, 0, 0, cv.height / D.H, 0, 0);
+  const pdt = phase === "crash" ? dt * 0.08 : dt;
+  parts = parts.filter((p) => { p.life += pdt; if (p.life > p.max) return false; if (p.dust) { p.r += pdt * 0.7; const P2 = iso(p.p, PR); const a = 0.28 * (1 - p.life / p.max); const g = ctx.createRadialGradient(P2[0], P2[1], 0, P2[0], P2[1], p.r * PX); g.addColorStop(0, "rgba(190,180,160," + a + ")"); g.addColorStop(1, "rgba(190,180,160,0)"); ctx.fillStyle = g; ctx.fillRect(P2[0] - p.r * PX, P2[1] - p.r * PX, p.r * PX * 2, p.r * PX * 2); for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * pdt; return true; }
+    p.v[2] -= 9.8 * pdt; for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * pdt; if (p.p[2] < 0.02) { p.p[2] = 0.02; p.v = [p.v[0] * 0.3, p.v[1] * 0.3, 0]; } const P2 = iso(p.p, PR); ctx.fillStyle = p.c; ctx.fillRect(P2[0] - p.s, P2[1] - p.s, p.s * 2, p.s * 2); return true; });
+  drawGraph();
+  const text = phase === "crash" ? (t * 1000).toFixed(0) + " ms · " + Math.max(0, v * 3.6).toFixed(0) + " km/h · chest " + Math.round(trace.length ? trace[trace.length - 1][2] : 0) + " g" : phase === "done" && result ? result.sev.toUpperCase() : (old ? "1959-STYLE" : "2009-STYLE") + " · " + kmh + " km/h";
+  if (readout.textContent !== text) readout.textContent = text;
+}
+function drawGraph() {
+  const r = gcv.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1), w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr)); if (gcv.width !== w || gcv.height !== h) { gcv.width = w; gcv.height = h; }
+  const light = document.body.dataset.theme === "light";
+  gctx.setTransform(1, 0, 0, 1, 0, 0); gctx.fillStyle = light ? "#eef2f6" : "#0f1418"; gctx.fillRect(0, 0, w, h);
+  const X = (ms) => 6 * dpr + (ms / 170) * (w - 12 * dpr), Y = (g) => h - 8 * dpr - (g / 110) * (h - 22 * dpr);
+  gctx.strokeStyle = "rgba(255,90,60,0.6)"; gctx.setLineDash([4 * dpr, 4 * dpr]); gctx.beginPath(); gctx.moveTo(X(0), Y(60)); gctx.lineTo(X(170), Y(60)); gctx.stroke(); gctx.setLineDash([]);
+  gctx.font = Math.round(9 * dpr) + "px ui-monospace,monospace"; gctx.fillStyle = light ? "#3a4048" : "#aab3bc";
+  gctx.fillText("g · car (grey) · chest (orange) · 60 g limit", 6 * dpr, 11 * dpr);
+  for (const [k2, col] of [[1, light ? "#7a8088" : "#9aa1a8"], [2, "#ff8a3d"]]) { gctx.strokeStyle = col; gctx.lineWidth = 1.6 * dpr; gctx.beginPath(); trace.forEach((p, i) => (i ? gctx.lineTo(X(p[0]), Y(p[k2])) : gctx.moveTo(X(p[0]), Y(p[k2])))); gctx.stroke(); }
+}
+
+// ---------------- UI ----------------
+const ui = {
+  cars: [...document.querySelectorAll("[data-car]")], spd: document.querySelector("#spd"), spdOut: document.querySelector("#spd-out"), beltB: document.querySelector("#belt"), bagB: document.querySelector("#bag"), go: document.querySelector("#go"),
+  slow: document.querySelector("#slow"), tour: document.querySelector("#tour"), shot: document.querySelector("#shot"),
+  cF: document.querySelector("#c-fill"), cO: document.querySelector("#c-out"), hF: document.querySelector("#h-fill"), hO: document.querySelector("#h-out"), iF: document.querySelector("#i-fill"), iO: document.querySelector("#i-out"), stats: document.querySelector("#stats"),
+};
+const say = (tx) => { if (tx !== lastShot) { ui.shot.textContent = tx; lastShot = tx; } };
+function syncUi() {
+  ui.cars.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.car === car)));
+  if (document.activeElement !== ui.spd) ui.spd.value = String(kmh); ui.spdOut.textContent = kmh + " km/h";
+  ui.beltB.setAttribute("aria-pressed", String(belt)); ui.beltB.textContent = belt ? (car === "old" ? "Lap belt on" : "Seatbelt on") : "No belt";
+  ui.bagB.setAttribute("aria-pressed", String(bag)); ui.bagB.textContent = car === "old" ? "No airbag (1959)" : bag ? "Airbag on" : "Airbag off"; ui.bagB.disabled = car === "old";
+  const ch = result ? result.chest : chestPk;
+  ui.cF.style.width = clamp(ch / 110 * 100, 0, 100).toFixed(1) + "%"; ui.cF.dataset.state = ch > 60 ? "bad" : ch > 45 ? "warn" : "ok"; ui.cO.textContent = Math.round(ch) + " g";
+  const hic = result ? result.hic : 0; ui.hF.style.width = clamp(hic / 1200 * 100, 0, 100).toFixed(1) + "%"; ui.hF.dataset.state = hic > 700 ? "bad" : hic > 500 ? "warn" : "ok"; ui.hO.textContent = result ? String(hic) : "-";
+  const intr = Math.round(C.intr(crush) * 100); ui.iF.style.width = clamp(intr / 70 * 100, 0, 100).toFixed(1) + "%"; ui.iF.dataset.state = intr > 30 ? "bad" : intr > 15 ? "warn" : "ok"; ui.iO.textContent = intr + " cm";
+  const ke = 0.5 * C.m * (kmh / 3.6) ** 2 / 1000;
+  ui.stats.innerHTML = "<b>" + C.name + "</b>, " + C.m.toLocaleString("en-AU") + " kg · " + Math.round(ke) + " kJ to get rid of · front crushed <b>" + Math.round(crush * 100) + " cm</b>" + (car === "old" ? " · IIHS Bel Air: chest <b>85 g</b>, footwell <b>62 cm</b>" : " · IIHS Malibu: chest <b>41 g</b>, footwell <b>7 cm</b>");
+  ui.slow.setAttribute("aria-pressed", String(slow)); ui.tour.setAttribute("aria-pressed", String(touring));
+}
+function story() {
+  if (now - lastEventAt < 7 && lastEvent) return say(lastEvent);
+  if (touring && tourStep >= 0 && TOUR[tourStep].say) return say(TOUR[tourStep].say);
+  if (phase === "crash") return say(car === "old" ? "The front's soft and short, then the cabin starts folding: the firewall, the floor and the steering column come back at the driver." : "The front end crushes on purpose, a long, steady crumple that takes the energy, while the cage round the driver stays put.");
+  return say("A crash is getting rid of ½mv² over a distance: the more distance, the fewer g. Pick a car and press Crash.");
+}
+const TOUR = [
+  { say: "A 2009-style sedan, belted, airbag, into an offset barrier at 64 km/h: the IIHS test speed.", acts: [[0, () => { setCar("new"); belt = true; bag = true; kmh = 64; start(); }], [15, null]] },
+  { say: "Now a 1959-style sedan at the same speed, no belt, no airbag.", acts: [[0, () => { setCar("old"); belt = false; kmh = 64; start(); }], [15, null]] },
+  { say: "The modern car again, but no seatbelt. The airbag's designed to work with the belt, not instead of it.", acts: [[0, () => { setCar("new"); belt = false; bag = true; kmh = 64; start(); }], [15, null]] },
+  { say: "Belted, airbag, 100 km/h: two and a half times the energy of 64.", acts: [[0, () => { setCar("new"); belt = true; bag = true; kmh = 100; start(); }], [15, null]] },
+];
+function tourTick() {
+  if (tourStep < 0 || !actions.length) { tourStep = (tourStep + 1) % TOUR.length; actions = TOUR[tourStep].acts.map(([w2, fn]) => [tourClock + w2, fn]); }
+  while (actions.length && tourClock >= actions[0][0]) { const fn = actions.shift()[1]; if (fn) fn(); else actions = []; }
+}
+function tick(tm) {
+  const dt = last ? Math.min((tm - last) / 1000, 1 / 30) : 1 / 60;
+  last = tm;
+  const sdt = dt * (slow ? 0.25 : 1);
+  now += sdt;
+  if (touring) { tourClock += sdt; tourTick(); }
+  physics(sdt); draw(sdt); syncUi(); story();
+  frame = visible ? requestAnimationFrame(tick) : 0;
+}
+const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
+const takeOver = () => { if (touring) { touring = false; actions = []; tourStep = -1; } };
+const act = (fn) => (...a) => { takeOver(); fn(...a); syncUi(); run(); };
+ui.cars.forEach((b) => b.addEventListener("click", act(() => setCar(b.dataset.car))));
+ui.spd.addEventListener("input", act(() => { kmh = +ui.spd.value; if (phase !== "crash") start(); }));
+ui.beltB.addEventListener("click", act(() => { belt = !belt; start(); }));
+ui.bagB.addEventListener("click", act(() => { if (car === "new") { bag = !bag; start(); } }));
+ui.go.addEventListener("click", act(() => start()));
+ui.slow.addEventListener("click", () => { slow = !slow; run(); });
+ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; actions = []; } syncUi(); run(); });
+stage.addEventListener("keydown", (ev) => {
+  const map = { " ": () => start(), b: () => { belt = !belt; start(); }, a: () => { if (car === "new") { bag = !bag; start(); } }, o: () => setCar("old"), n: () => setCar("new"), ArrowUp: () => { kmh = Math.min(120, kmh + 5); start(); }, ArrowDown: () => { kmh = Math.max(20, kmh - 5); start(); } };
+  if (map[ev.key]) { ev.preventDefault(); act(map[ev.key])(); }
+});
+new IntersectionObserver((es) => { visible = es[es.length - 1].isIntersecting; if (visible) run(); }, { rootMargin: "120px 0px" }).observe(stage);
+if (still.matches) touring = false;
+window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+start(); draw(0); syncUi(); story();
+</script></body></html>
