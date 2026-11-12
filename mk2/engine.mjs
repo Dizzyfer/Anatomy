@@ -564,7 +564,7 @@ o=vec4(c.rgb+bl,clamp(c.a+max(bl.r,max(bl.g,bl.b))*1.1,0.,1.));}`;
     bindTex(0, T.col); gl.uniform1i(pRes.u("uC"), 0); bindTex(1, T.nor); gl.uniform1i(pRes.u("uN"), 1); bindTex(2, T.dep); gl.uniform1i(pRes.u("uD"), 2); bindTex(3, T.ao); gl.uniform1i(pRes.u("uA"), 3);
     gl.uniform2f(pRes.u("uTx"), 1 / T.w, 1 / T.h); gl.uniform2f(pRes.u("uTa"), 1 / T.hw, 1 / T.hh);
     gl.uniform4f(pRes.u("uInk"), lt ? 0.16 : 0, lt ? 0.16 : 0, lt ? 0.19 : 0, E.ink * (lt ? 0.75 : 1)); gl.uniform1f(pRes.u("uAo"), E.ao);
-    gl.uniform1f(pRes.u("uEd"), (0.045 / (dHalf * 2)) * (1 / view.zoom)); gl.uniform1f(pRes.u("uEw"), Math.max(1, ss * 0.75));
+    gl.uniform1f(pRes.u("uEd"), (E.inkDepth / cam.k) / (dHalf * 2)); // depth edges: a step of about 1.5 px worth of world, whatever the scene's scale gl.uniform1f(pRes.u("uEw"), Math.max(1, ss * 0.75));
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     // 5 see-through things on top: x-ray shells, glass, lines, sprites
     gl.bindFramebuffer(gl.FRAMEBUFFER, T.fB1); gl.enable(gl.DEPTH_TEST); gl.depthMask(false); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -637,7 +637,7 @@ o=vec4(c.rgb+bl,clamp(c.a+max(bl.r,max(bl.g,bl.b))*1.1,0.,1.));}`;
   const E = {
     ok: true, prism, box, cyl, circle, rrect, lathe, tube, sphere, tris, loft, roundPoly, callouts, render, line: (...a) => { if (touch()) line(...a); }, sprite: (...a) => { if (touch()) sprite(...a); },
     project, depthOf, px: () => cam.k, rgb, lin, view, goal, home, setXray, bindTools, get xrayOn() { return !!xrGoal; },
-    xray: 0, mat: opt.mat || "satin", bevel: opt.bevel ?? 1.2 / (base.scale * UNIT), ao: opt.ao ?? 0.85, aoRadius: opt.aoRadius ?? 26 / (base.scale * UNIT), ink: opt.ink ?? 0.5, bloom: opt.bloom ?? 1,
+    xray: 0, mat: opt.mat || "satin", bevel: opt.bevel ?? 1.2 / (base.scale * UNIT), ao: opt.ao ?? 0.85, aoRadius: opt.aoRadius ?? 26 / (base.scale * UNIT), ink: opt.ink ?? 0.5, inkDepth: opt.inkDepth ?? 1.5, bloom: opt.bloom ?? 1,
     plate: opt.plate || null, shadowBox: opt.shadowBox || null, ms: 0, cpu: 0, triCount: 0, get fs() { return fsNow; }, cam: () => cam,
     light: { sky: [0.4, 0.43, 0.48], gnd: [0.15, 0.145, 0.14], key: [0.98, 0.94, 0.88], skyL: [0.6, 0.61, 0.64], gndL: [0.34, 0.33, 0.32], keyL: [0.78, 0.76, 0.72] },
     get VIEW() { return cam.t; },

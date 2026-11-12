@@ -4,7 +4,7 @@ A GE9X-sized turbofan, the biggest airliner engine built, cut in half on a test 
 
 **[▶ Play with it](https://dizzyfer.github.io/Anatomy/jet/)** · [light version](https://dizzyfer.github.io/Anatomy/jet/light.html) · [all figures](https://dizzyfer.github.io/Anatomy/)
 
-![The engine at take-off power, near half cut away](docs/thumb.jpg)
+![The engine at take-off power, x-ray on](docs/thumb.jpg)
 
 ## How it works
 
@@ -34,4 +34,4 @@ Made up for the toy: the afterburner (not a thing on this engine), spool times, 
 
 ## How it's built
 
-Built with [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22). To rebuild, drop `src/build.mjs` into Anatomy as `examples/jet/build.mjs` and run `node build.mjs` (`--light` for the light theme).
+Mark II: drawn in real 3D with a small WebGL2 renderer (`mk2/engine.mjs` in this repo: soft shadows, ambient occlusion, ink outlines, bloom, x-ray), on top of the camera and page conventions of [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22). Drag to rotate, pinch or ctrl-scroll to zoom, double click to reset the view. To rebuild, copy this repo's `mk2/` folder into an Anatomy checkout, drop `src/build.mjs` in as `examples/jet/build.mjs` and run `node build.mjs` (`--light` for the light theme).
