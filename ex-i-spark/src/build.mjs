@@ -2,14 +2,11 @@ import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as k from "../../kit/iso-kit.mjs";
-import { glCamera } from "../../kit/gl.mjs";
-import { kitScript, glScript } from "../../scripts/inline-kit.mjs";
+import { engineScript, stageHtml, pageMk2, footHtml } from "../../mk2/shell.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
-
-const W = 640;
-const H = 420;
+const W = 960, H = 600;
 
 // Truth: minimum ignition energies (most easily ignited mixture in air), µJ.
 // Cable: 200 pF/m, the default IEC 60079-25 lets you assume for ordinary 2/3-core cable when the real figure is unknown.
@@ -22,8 +19,6 @@ const GASES = [
 const PF_PER_M = 200;
 const L_MAX = 5000;
 const V_MIN = 6, V_MAX = 30;
-
-const PLATE = { x: -170, y: -92, w: 330, d: 172, r: 8 };
 const PLATE_H = 12, FOOT_H = 5;
 const DIVIDE = -62;
 const REEL = [-22, 36];
@@ -35,277 +30,36 @@ const MOD_Y = [-58, -44, -30, -16];
 const OUR = 2;
 const SPARK = [PST[0] + 1.5, PST[1] + 10, 48.5];
 
-const P = k.fitProjection(
-  [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [-156, -66, 72], [PST[0], PST[1] - 18, 86], [140, -76, 56], [140, -10, 56]],
-  W, H, { pad: 22, azimuth: 45 },
-);
-
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const D = (points, style) => k.dotsSvg(points, style);
-const depth2 = ([x, y]) => k.depthOf([x, y, 0], P);
-const byDepth = (pts) => [...pts].sort((a, b) => depth2(a) - depth2(b));
-const slab = (plan, z, h, r = 1.2, bevel = 0.5) => k.slabOf({ r, ...plan }, z, h, P, 4, bevel);
-
-function plate() {
-  const out = [`<path class="iso-halo" d="${k.haloOf(PLATE, -PLATE_H - FOOT_H, PLATE_H, P)}"/>`];
-  for (const [x, y] of byDepth(k.corners(PLATE, 22))) {
-    out.push(S(k.cylinder(x, y, 7, -PLATE_H - FOOT_H, 1.6, P, 28), { tone: "lo" }));
-    out.push(S(k.cylinder(x, y, 5.4, -PLATE_H - FOOT_H + 1.6, FOOT_H - 1.6, P, 28), { tone: "mid" }));
-  }
-  out.push(S(k.slabOf(PLATE, -PLATE_H, PLATE_H, P, 8, 1.6), { tone: "mid", inner: L(k.sideSeam(PLATE, -PLATE_H / 2, P), { tone: "faint" }) }));
-  out.push(L(k.planOutline(k.insetPlan(PLATE, 5), 0, P), { tone: "lo" }));
-  const screws = k.corners(PLATE, 10);
-  out.push(L(screws.map(([x, y]) => k.ring(x, y, 2.2, 0, P, 16)).join(""), { tone: "lo" }));
-  out.push(D(screws.map(([x, y]) => at([x, y, 0])), { size: 0.5 }));
-  // the zone boundary: a hazard strip across the bench
-  const strip = { x: DIVIDE - 3, y: PLATE.y + 6, w: 6, d: PLATE.d - 12, r: 0.6 };
-  out.push(S(slab(strip, 0, 0.6, 0.6, 0), { tone: "lo", crease: "none" }));
-  const stripes = [];
-  for (let y = strip.y + 2; y < strip.y + strip.d - 6; y += 5) stripes.push(k.segment([strip.x, y, 0.6], [strip.x + strip.w, y + 4, 0.6], P));
-  out.push(L(stripes.join(""), { tone: "mid" }));
-  out.push(k.faceTextSvg(k.topMatrix([-158, 70], 0, P, "x"), "SAFE AREA", { size: 5, tone: "lo" }));
-  out.push(k.faceTextSvg(k.topMatrix([-50, 70], 0, P, "x"), "ZONE 1", { size: 5, tone: "lo" }));
-  return out.join("");
-}
-
-function panel() {
-  const out = [];
-  out.push(`<path class="iso-halo" d="${k.haloOf({ x: -164, y: -74, w: 32, d: 88, r: 2 }, 0, 0.1, P)}"/>`);
-  out.push(S(slab({ x: -160, y: -70, w: 22, d: 80 }, 0, 3, 1.5, 0.4), { tone: "mid" }));
-  out.push(D([at([-156, -66, 3]), at([-156, 6, 3]), at([-142, -66, 3]), at([-142, 6, 3])], { size: 0.45 }));
-  out.push(S(slab({ x: -158, y: -66, w: 4, d: 72 }, 3, 68, 0.6, 0.3), { tone: "mid", inner: L(k.segment([-154, -66, 64], [-154, 6, 64], P) + k.segment([-154, -66, 12], [-154, 6, 12], P), { tone: "faint" }) }));
-  out.push(D([at([-154, -62, 66]), at([-154, 2, 66]), at([-154, -62, 9]), at([-154, 2, 9])], { size: 0.5 }));
-  // DIN rail
-  out.push(S(slab({ x: -154, y: -62, w: 2, d: 64 }, 40, 4, 0.3, 0), { tone: "mid" }));
-  // modules on the rail
-  MOD_Y.forEach((y, i) => {
-    const m = { x: -152, y, w: 16, d: 12 };
-    const top = i === 0 ? 58 : 54;
-    out.push(S(slab(m, 28, top - 28, 1, 0.4), { tone: i === OUR ? "hi" : "mid", inner: L(k.segment([m.x + m.w, y, 36], [m.x + m.w, y + m.d, 36], P), { tone: "faint" }) }));
-    // terminal screws on top: two rows
-    const screws = [];
-    for (const yy of [y + 3, y + 6, y + 9]) for (const xx of [m.x + 3.5, m.x + m.w - 3.5]) screws.push([xx, yy]);
-    out.push(L(screws.map(([sx, sy]) => k.ring(sx, sy, 1, top, P, 10)).join(""), { tone: "lo" }));
-    out.push(D(screws.map(([sx, sy]) => at([sx, sy, top])), { size: 0.35 }));
-    // status LED on the front face
-    out.push(D([at([m.x + m.w + 0.05, y + 3, top - 5])], { size: 0.8, tone: i === OUR ? "hi" : "mid" }));
-    if (i !== 0) out.push(k.faceTextSvg(k.sideMatrix([m.x + m.w + 0.05, y + 11], top - 9, P, "right"), "Ex ia", { size: 2.4, tone: i === OUR ? "mid" : "lo" }));
-    else out.push(k.faceTextSvg(k.sideMatrix([m.x + m.w + 0.05, y + 11], top - 9, P, "right"), "24 V", { size: 2.4, tone: "lo" }));
-  });
-  return out.join("");
-}
-
-function bottle(b) {
-  const [x, y] = b.at;
-  const out = [];
-  out.push(S(k.cylinder(x, y, BOTTLE_R + 1.2, 0, 2.4, P, 32), { tone: "lo" }));
-  out.push(S(k.cylinder(x, y, BOTTLE_R, 2.4, BOTTLE_H, P, 40, 0.8), { tone: "hi", inner: L(k.sideArc(x, y, BOTTLE_R, 2.4 + BOTTLE_H * 0.62, P, 32) + k.sideArc(x, y, BOTTLE_R, 2.4 + BOTTLE_H * 0.78, P, 32), { tone: "faint" }) }));
-  const top = 2.4 + BOTTLE_H;
-  out.push(S(k.cylinder(x, y, 5.2, top, 3, P, 32, 0.5), { tone: "hi" }));
-  out.push(S(k.cylinder(x, y, 2.4, top + 3, 4, P, 20), { tone: "hi" }));
-  out.push(S(k.cylinder(x, y, 4.2, top + 7, 1.6, P, 28), { tone: "hi" }));
-  out.push(L(k.knurl(x, y, 4.2, top + 7, top + 8.6, 22, P), { tone: "lo" }));
-  out.push(D([at([x, y, top + 8.6])], { size: 0.55, tone: "hi" }));
-  return `<g data-bottle="${b.id}">${out.join("")}</g>`;
-}
-function tags() {
-  return BOTTLES.map((b) => {
-    const [x, y] = b.at;
-    const tag = { x: x - 36, y: y - 6, w: 24, d: 12, r: 1.4 };
-    return S(k.slabOf(tag, 0, 1, P, 3, 0.3), { tone: "lo" }) +
-      `<g data-tag="${b.id}">` + k.faceTextSvg(k.topMatrix([tag.x + 2.2, tag.y + 5], 1, P, "x"), b.id, { size: 3.8, tone: "mid" }) +
-      k.faceTextSvg(k.topMatrix([tag.x + 2.2, tag.y + 9.6], 1, P, "x"), b.group + " " + b.mie + "µJ", { size: 2.6, tone: "lo" }) + `</g>`;
-  }).join("");
-}
-
-function staticCable() {
-  // barrier → floor → across the boundary → into the drum
-  const pts = [[-136, -24, 31], [-130, -24, 22], [-124, -24, 1], [-90, -24, 1], [-70, 0, 1], [REEL[0] - REEL_R - 0.5, REEL[1], 1.5]].map(at);
-  return `<path class="iso-line iso-cable" data-tone="mid" d="${k.pathOf(pts)}"/>` + D([pts[0], pts[pts.length - 1]], { size: 1, tone: "mid" });
-}
-
-function reelBase() {
-  const [x, y] = REEL;
-  const out = [`<path class="iso-halo" d="${k.haloOf({ x: x - REEL_R - 3, y: y - REEL_R - 3, w: 2 * REEL_R + 6, d: 2 * REEL_R + 6, r: REEL_R }, 0, 0.1, P)}"/>`];
-  out.push(S(k.cylinder(x, y, REEL_R, 0, 2.2, P, 56, 0.5), { tone: "mid", inner: L(k.ring(x, y, REEL_R - 3, 2.2, P, 48), { tone: "faint" }) }));
-  out.push(S(k.cylinder(x, y, 10, 2.2, 24, P, 40), { tone: "mid" }));
-  return out.join("");
-}
-function reelTop() {
-  const [x, y] = REEL;
-  const out = [];
-  out.push(S(k.cylinder(x, y, REEL_R, 26.2, 2.2, P, 56, 0.5), { tone: "mid", inner: L(k.ring(x, y, REEL_R - 3, 28.4, P, 48), { tone: "faint" }) }));
-  const holes = [0, 1, 2, 3, 4, 5].map((i) => [x + Math.cos(i * Math.PI / 3 + 0.3) * 16, y + Math.sin(i * Math.PI / 3 + 0.3) * 16]);
-  out.push(L(holes.map(([hx, hy]) => k.ring(hx, hy, 2.4, 28.4, P, 14)).join(""), { tone: "lo" }));
-  out.push(S(k.cylinder(x, y, 3, 28.4, 4, P, 24), { tone: "mid" }));
-  out.push(S(slab({ x: x - 2, y: y - 2.4, w: 19, d: 4.8 }, 32.4, 2.4, 1.2, 0.3), { tone: "mid" }));
-  out.push(S(k.cylinder(x + 15, y, 1.8, 34.8, 9, P, 16), { tone: "mid" }));
-  out.push(L(k.knurl(x + 15, y, 1.8, 36, 43.8, 14, P), { tone: "lo" }));
-  // metre counter
-  const c = { x: x - 9, y: y + 9, w: 18, d: 8 };
-  out.push(S(slab(c, 28.4, 3.4, 1, 0.3), { tone: "hi" }));
-  out.push(`<g data-part="counter">${k.faceTextSvg(k.topMatrix([c.x + 2, c.y + 5.6], 31.8, P, "x"), "0000 m", { size: 3.6, tone: "hi" })}</g>`);
-  return out.join("");
-}
-
-function stand() {
-  const [x, y] = PST;
-  const out = [];
-  const base = { x: x - 12, y: y - 12, w: 24, d: 24 };
-  out.push(`<path class="iso-halo" d="${k.haloOf({ ...k.insetPlan({ ...base, r: 2 }, -3) }, 0, 0.1, P)}"/>`);
-  out.push(S(slab(base, 0, 2.4, 1.6, 0.4), { tone: "mid" }));
-  out.push(L(k.corners(base, 3.5).map(([bx, by]) => k.ring(bx, by, 1.6, 2.4, P, 12)).join(""), { tone: "lo" }));
-  out.push(D(k.corners(base, 3.5).map(([bx, by]) => at([bx, by, 2.4])), { size: 0.45 }));
-  // transmitter at the back of the pipe
-  out.push(S(slab({ x: x - 2, y: y - 12, w: 4, d: 9 }, 64, 4, 0.8, 0.3), { tone: "mid" }));
-  out.push(S(k.cylinder(x, y, 3.4, 2.4, 80, P, 28), { tone: "mid", inner: L(k.sideArc(x, y, 3.4, 60, P, 16) + k.sideArc(x, y, 3.4, 72, P, 16), { tone: "lo" }) }));
-  out.push(S(k.cylinder(x, y, 3.9, 82.4, 1.6, P, 28), { tone: "mid" }));
-  const tx = [x, y - 18];
-  out.push(S(k.cylinder(tx[0], tx[1], 6.5, 54, 16, P, 40, 0.6), { tone: "hi" }));
-  out.push(S(k.cylinder(tx[0], tx[1], 8, 70, 11, P, 48, 0.8), { tone: "hi", inner: L(k.sideArc(tx[0], tx[1], 8, 74, P, 32), { tone: "faint" }) }));
-  out.push(L(k.ring(tx[0], tx[1], 5.6, 81, P, 40), { tone: "lo" }));
-  out.push(k.faceTextSvg(k.topMatrix([tx[0], tx[1] + 1.4], 81, P, "x"), "12.0 mA", { size: 2.2, tone: "mid", anchor: "middle" }));
-  out.push(S(k.cylinder(tx[0], tx[1], 2.4, 48, 6, P, 6), { tone: "mid" }));
-  // U-bolts holding the JB
-  out.push(L(k.sideArc(x, y, 3.8, 32, P, 16) + k.sideArc(x, y, 3.8, 42, P, 16), { tone: "mid" }));
-  // junction box on the front of the pipe
-  const jb = { x: x - 9, y: y + 4, w: 18, d: 12 };
-  out.push(S(slab(jb, 26, 18, 1.2, 0.5), { tone: "hi", inner: L(k.sideSeam({ ...jb, r: 1.2 }, 41, P), { tone: "lo" }) }));
-  out.push(D(k.corners(jb, 1.8).map(([jx, jy]) => at([jx, jy, 44])), { size: 0.45 }));
-  // gland under the JB
-  out.push(S(k.cylinder(x, y + 10, 2.4, 22, 4, P, 6), { tone: "mid" }));
-  // terminal block on top
-  out.push(S(slab({ x: x - 6, y: y + 7, w: 12, d: 6 }, 44, 3, 0.6, 0.2), { tone: "mid" }));
-  out.push(L([[x - 3, y + 10], [x + 3, y + 10]].map(([sx, sy]) => k.ring(sx, sy, 1.2, 47, P, 12)).join(""), { tone: "lo" }));
-  out.push(D([at([x - 3, y + 10, 47]), at([x + 3, y + 10, 47])], { size: 0.45 }));
-  out.push(`<g data-part="wire"></g>`);
-  return out.join("");
-}
-
 const START = { gas: 3, v: 24, len: 150 };
-const fig = k.figureSvg({
-  width: W, height: H,
-  label: "A bench split into a safe area and Zone 1. In the safe area a zener barrier on a DIN rail feeds a cable that runs through a drum and across the bench to a junction box on a transmitter stand in Zone 1. Breaking the wire at the junction box makes a spark whose energy comes from the cable's stored charge.",
-  body: [
-    plate(),
-    tags(),
-    byDepth(BOTTLES.map((b) => b.at)).map((p) => bottle(BOTTLES.find((b) => b.at === p))).join(""),
-    panel(),
-    staticCable(),
-    `<g data-part="reel">${reelBase()}<g data-part="pack"></g>${reelTop()}</g>`,
-    `<g data-part="snake"></g>`,
-    `<g data-part="stand">${stand()}</g>`,
-  ],
-});
-
-const DATA = {
-  W, H, camera: glCamera(P), P, GASES, PF_PER_M, L_MAX, V_MIN, V_MAX, REEL, REEL_R, PST, SPARK, DIVIDE, PLATE, start: START,
-  pivots: {
-    bottles: Object.fromEntries(BOTTLES.map((b, i) => [b.id, { at: at([b.at[0] + BOTTLE_R, b.at[1], 0]), left: k.iso([b.at[0], b.at[1], 0], P)[0] < k.iso(SPARK, P)[0], order: i }])),
-    stand: at([PST[0] + 12, PST[1] + 12, 0]),
-    reel: at([REEL[0], REEL[1], 0]),
-  },
-};
-
-const GLSL = `
-uniform float uLight;
-uniform float uSpark;
-uniform float uEnergy;
-uniform float uBoom;
-uniform float uLift;
-const vec3 SP=vec3(${SPARK.map((v) => v.toFixed(2)).join(",")});
-vec4 inkFor(vec3 seen,float cover){vec3 ab=1.-seen;float a=max(max(ab.r,max(ab.g,ab.b)),cover);return vec4(vec3(a)-ab,a);}
-vec4 over(vec4 t,vec4 u){return t+u*(1.-t.a);}
-vec4 fireInk(float e,float core){
-  vec3 hue=mix(vec3(.55,.16,.06),mix(vec3(1.,.36,.08),vec3(1.,.66,.28),smoothstep(.45,1.,core)),smoothstep(0.,.5,core));
-  vec3 c=tonemap(hue*e,1.4);float a=max(c.r,max(c.g,c.b));
-  float la=1.-exp(-1.8*e);
-  vec3 seen=mix(vec3(1.),mix(vec3(.82,.28,.06),vec3(1.,.78,.4),smoothstep(.6,1.,core)*smoothstep(.5,1.,la)),la);
-  return mix(vec4(c,a),inkFor(seen,.9*smoothstep(.75,1.,la)*core)*la,uLight);
-}
-vec4 sparkInk(float e){
-  vec3 c=tonemap(vec3(.62,.78,1.)*e,1.6)+tonemap(vec3(1.)*max(0.,e-1.2),1.);
-  c=min(c,vec3(1.));float a=max(c.r,max(c.g,c.b));
-  float la=1.-exp(-1.6*e);
-  vec3 seen=mix(vec3(1.),mix(vec3(.18,.3,.85),vec3(.75,.85,1.),smoothstep(1.,2.,e)),la);
-  return mix(vec4(c,a),inkFor(seen,.85*smoothstep(1.2,2.2,e))*la,uLight);
-}
-vec4 hazeInk(float h){
-  float a=(1.-exp(-h))*mix(.22,.2,uLight);
-  return vec4(mix(vec3(.42,.66,.7),vec3(.22,.42,.46),uLight)*a,a);
-}
-float segDist(vec2 p,vec2 a,vec2 b){vec2 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h);}
-void main(){
-  vec2 vb=viewOf(gl_FragCoord.xy);
-  vec4 o=vec4(0.);
-  // gas hanging over Zone 1
-  float h=0.;
-  for(int i=0;i<6;i++){
-    float z=(float(i)+.5)*7.;
-    vec3 p=onFloor(vb,z);
-    float zone=smoothstep(${DIVIDE.toFixed(1)}+4.,${DIVIDE.toFixed(1)}+30.,p.x)*(1.-smoothstep(${(PLATE.x + PLATE.w - 30).toFixed(1)},${(PLATE.x + PLATE.w).toFixed(1)},p.x))
-              *smoothstep(${(PLATE.y).toFixed(1)},${(PLATE.y + 26).toFixed(1)},p.y)*(1.-smoothstep(${(PLATE.y + PLATE.d - 26).toFixed(1)},${(PLATE.y + PLATE.d).toFixed(1)},p.y));
-    float n=fbm2(p.xy*.022+vec2(uTime*.03,-uTime*.02)+z*.05);
-    h+=zone*smoothstep(.35,.85,n)*exp(-z/16.)*.42;
-  }
-  vec4 haze=hazeInk(h);
-  // the spark: an arc between the lifted wire and the terminal screw
-  vec4 spark=vec4(0.);
-  if(uSpark>.002){
-    vec2 a=project(SP+vec3(-1.8,0.,uLift)), b=project(SP+vec3(1.5,0.,-1.4));
-    vec2 q=vb;
-    float t=clamp(dot(q-a,b-a)/dot(b-a,b-a),0.,1.);
-    vec2 n2=normalize(vec2(-(b-a).y,(b-a).x));
-    float jag=(noise2(vec2(t*9.,uTime*60.))-.5)*1.6*uK*sin(t*3.1416);
-    float d=segDist(q-n2*jag,a,b)/uK;
-    float k=sqrt(clamp(uEnergy,0.,4.));
-    float core=exp(-pow(d/(.18+.08*k),2.));
-    float c=length(vb-mix(a,b,.5))/uK;
-    float glow=exp(-pow(c/(1.5+3.5*k),2.))*(.35+.4*k);
-    spark=sparkInk((core*2.2+glow)*uSpark);
-  }
-  // Zone 1 goes up
-  vec4 fire=vec4(0.);
-  if(uBoom>0.){
-    float c=uBoom;
-    vec3 C=SP+vec3(-10.,0.,6.+30.*c);
-    vec2 dv=(vb-project(C))/uK;
-    float d=length(dv);
-    float R=16.+78.*(1.-exp(-c/.2));
-    float n=fbm3(vec3(dv*.045,c*1.6));
-    float shell=exp(-pow((d-R*(.84+.28*n))/(7.+R*.13),2.));
-    float core=(1.-smoothstep(R*.35,R*(.8+.25*n),d))*(.5+.7*n);
-    float life=smoothstep(0.,.05,c)*exp(-c/.6);
-    vec3 fp=onFloor(vb,0.);
-    float Rs=20.+380.*c;
-    float ring=exp(-pow((length(fp.xy-SP.xy)-Rs)/6.,2.))*exp(-c/.32)*.7*smoothstep(${DIVIDE.toFixed(1)}-10.,${DIVIDE.toFixed(1)}+10.,fp.x);
-    float ef=smoothstep(0.,80.,min(min(vb.x,uView.x-vb.x),min(vb.y,uView.y-vb.y)));
-    float e=((shell*1.4+core*1.1)*life+ring)*ef;
-    float hot=(core*life*exp(-c/.4)*1.4+ring*.6)*ef+e*.35;
-    fire=fireInk(e,clamp(hot/max(e,1e-4),0.,1.));
-    haze*=1.-smoothstep(0.,.25,c);
-  }
-  o=over(spark,over(fire,haze));
-  o.rgb=min(o.rgb,vec3(o.a));
-  float dd=(hash12(gl_FragCoord.xy+uTime)-.5)/255.*smoothstep(0.,1.5/255.,o.a);
-  gl_FragColor=max(o+dd,0.);
-}`;
-
+const PLATE = { x: -170, y: -92, w: 330, d: 172, r: 8 };
+const P = k.fitProjection([...k.boxCorners(PLATE, -0.8, 0), [-156, -66, 74], [84, -38, 88], [140, -76, 56], [140, -10, 56]], W, H, { pad: 22, azimuth: 45, elevation: 30 });
+const DATA = { W, H, P, PLATE };
+Object.assign(DATA, { GASES, PF_PER_M, L_MAX, V_MIN, V_MAX, REEL, REEL_R, PST, DIVIDE, MOD_Y, OUR, BOTTLES, BOTTLE_R, BOTTLE_H, start: START });
 const LIVE = `
+${engineScript()}
 const D = __DATA__;
-const { P, GASES } = D;
-const stage = document.querySelector(".fx-stage");
-const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const stage = document.querySelector(".mk-stage");
 const readout = document.querySelector("[data-readout]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
-const LIGHT = document.body.dataset.theme === "light" ? 1 : 0;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lightTheme = document.body.dataset.theme === "light";
+const E = mk2(stage, D.P, { W: D.W, H: D.H, pivot: [-5, -6, 20], plate: { ...D.PLATE, h: 12, foot: 5 }, shadowBox: [-178, -100, -18, 168, 88, 110] });
+const { box, cyl, prism, circle, lathe, tube, sphere, loft, roundPoly, rrect, tris } = E;
+E.bindTools(stage);
+const xbtn = stage.querySelector('[data-mk="xray"]');
+const setX = (on) => { E.setXray(on); if (xbtn) xbtn.setAttribute("aria-pressed", String(on)); };
+const sceneG = stage.querySelector('[data-part="scene"]');
+const iso = (p) => E.project(p), depthOf = (p) => E.depthOf(p);
+const shakeEls = [stage.querySelector(".mk-gl"), stage.querySelector(".mk-over")];
+// a tap on the stage that isn't a drag or a press on the toolbar
+const onTap = (fn) => { let d0 = null; stage.addEventListener("pointerdown", (ev) => { d0 = ev.target.closest(".mk-tools,button,a") ? null : [ev.clientX, ev.clientY]; }); stage.addEventListener("pointerup", (ev) => { if (d0 && Math.hypot(ev.clientX - d0[0], ev.clientY - d0[1]) < 6) fn(ev); d0 = null; }); };
+// 3x4 matrix for a cached object turning about a vertical axis through (cx, cy)
+const rotZ = (cx, cy, a) => { const c = Math.cos(a), s = Math.sin(a); return [c, -s, 0, s, c, 0, 0, 0, 1, cx - c * cx + s * cy, cy - s * cx - c * cy, 0]; };
+const mixHex = (a, b, t) => { const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)), A = h(a), B = h(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * Math.min(1, Math.max(0, t))).toString(16).padStart(2, "0")).join(""); };
+const setShake = (x, y) => { const t = x || y ? "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)" : ""; for (const e of shakeEls) if (e.style.transform !== t) e.style.transform = t; };
+const P = D.P, GASES = D.GASES;
 const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-const gl = glLayer({ canvas: stage.querySelector(".fx-gl"), fragment: ${JSON.stringify(GLSL)}, view: [D.W, D.H], camera: D.camera, uniforms: ["uSpark", "uEnergy", "uBoom", "uLift"], fixed: { uLight: LIGHT } });
-if (gl) stage.setAttribute("data-gl", "");
-
+const burst = (age, rise, fall) => (age > 0 ? sm(0, rise, age) * Math.exp(-Math.max(0, age - rise) / fall) : 0);
 let gas = D.start.gas, volts = D.start.v, len = D.start.len, lenShown = len;
 let frame = 0, last = 0, now = 0, visible = false, touring = true, auto = false, slow = false, tourClock = 0, tourStep = -1;
 let sparkAt = -10, sparkE = 0, ignites = false, boomAt = null, lastFire = -10;
@@ -314,38 +68,6 @@ const booming = () => boomAt !== null && now - boomAt < BOOM_END + 0.3;
 
 const energy = (v, L) => 0.5 * (L * D.PF_PER_M * 1e-12) * v * v * 1e6; // µJ
 const capNF = (L) => L * D.PF_PER_M / 1000;
-
-// ---- dynamic art ----
-const packG = q("pack"), snakeG = q("snake"), counterG = q("counter"), wireG = q("wire"), standG = q("stand"), reelG = q("reel");
-const bottleGs = [...stage.querySelectorAll("[data-bottle]")];
-const flash = stage.querySelector(".fx-flash");
-function drawReel(L) {
-  const [x, y] = D.REEL, rem = 1 - L / D.L_MAX;
-  const r = 10.6 + 11 * rem;
-  let s = solidSvg(cylinder(x, y, r, 2.2, 24, P, 48), { tone: "mid", crease: "none", inner: lineSvg([5, 8, 11, 14, 17, 20, 23].map((z) => sideArc(x, y, r, z, P, 28)).join(""), { tone: "lo" }) });
-  packG.innerHTML = s;
-  const txt = String(Math.round(L)).padStart(4, "0") + " m";
-  const t = counterG.querySelector("text"); if (t && t.textContent !== txt) t.textContent = txt;
-}
-function drawSnake(L) {
-  const A = [D.REEL[0] + D.REEL_R + 0.5, D.REEL[1] - 2], B = [D.PST[0] - 14, D.PST[1] + 30];
-  const amp = 22 * sm(0, 900, L), n = 1 + Math.floor(Math.min(L, 4800) / 650);
-  const dx = B[0] - A[0], dy = B[1] - A[1], len2 = Math.hypot(dx, dy), nx = -dy / len2, ny = dx / len2;
-  const pts = [];
-  for (let i = 0; i <= 90; i++) {
-    const t = i / 90, w = Math.sin(t * n * Math.PI) * amp * Math.sin(t * Math.PI);
-    pts.push(iso([A[0] + dx * t + nx * w, A[1] + dy * t + ny * w, 1], P));
-  }
-  const up = [[B[0], B[1], 1], [D.PST[0], D.PST[1] + 10, 1], [D.PST[0], D.PST[1] + 10, 22]].map((p) => iso(p, P));
-  const d = pathOf([...pts, ...up]);
-  snakeG.innerHTML = '<path class="iso-line iso-cable" data-tone="mid" d="' + d + '"/>' + dotsSvg([pts[0], up[up.length - 1]], { size: 1, tone: "mid" });
-}
-function drawWire(lift) {
-  const [x, y] = D.PST;
-  const a = [x - 3, y + 10, 47], mid = [x - 1, y + 10, 48.4 + lift * 0.4], tip = [x + 1.5 - lift * 0.15, y + 10, 47 + 1.4 + lift];
-  wireG.innerHTML = '<path class="iso-line" data-tone="lit" style="stroke-width:1" d="' + pathOf([a, mid, tip].map((p) => iso(p, P))) + '"/>' + dotsSvg([iso(tip, P)], { size: 0.55, tone: "hi" });
-}
-
 // ---- ui ----
 const ui = {
   gas: [...document.querySelectorAll("[data-gas]")], v: document.querySelector("#volts"), vOut: document.querySelector("#volts-out"),
@@ -391,45 +113,152 @@ function chaos() {
   return { c, back: 1 - sm(3.0, 3.9, c) };
 }
 const tip = (c, delay, target) => { const u = Math.max(0, c - delay); return u <= 0 ? 0 : target * (1 - Math.exp(-u / 0.11) * Math.cos(u * 13)); };
-
-function draw() {
-  const g = GASES[gas];
-  if (Math.abs(lenShown - len) > 0.5) { lenShown = len; }
-  drawReel(len); drawSnake(len);
-  const age = now - sparkAt;
-  const lift = sm(0, 0.08, age) * 3.2 * (age < 2.5 ? 1 : 1 - sm(2.5, 3.0, age));
-  drawWire(lift);
-  const K = chaos();
+// ---------------- the loop, in real 3D: barrier, drum of cable, junction box ----------------
+const TAU = Math.PI * 2, rn = () => Math.random(), REEL = D.REEL, RR = D.REEL_R, PST = D.PST, SP = [PST[0] + 1.7, PST[1] + 11, 33], BLUE = "#3f9fe6";
+const flashEl = stage.querySelector(".fx-flash"), overEl = stage.querySelector(".mk-over");
+const tipM = (piv, ang, axis) => { const c = Math.cos(ang), s = Math.sin(ang), R = axis === "x" ? [1, 0, 0, 0, c, -s, 0, s, c] : [c, 0, s, 0, 1, 0, -s, 0, c]; return [...R, ...[0, 1, 2].map((i) => piv[i] - (R[i * 3] * piv[0] + R[i * 3 + 1] * piv[1] + R[i * 3 + 2] * piv[2]))]; };
+const xfOf = (m) => (p) => [m[0] * p[0] + m[1] * p[1] + m[2] * p[2] + m[9], m[3] * p[0] + m[4] * p[1] + m[5] * p[2] + m[10], m[6] * p[0] + m[7] * p[1] + m[8] * p[2] + m[11]];
+function benchParts() {
+  const o = [], PL = D.PLATE, dv = D.DIVIDE;
+  // the zone boundary: a hazard strip across the bench
+  o.push(box(dv - 3, dv + 3, PL.y + 6, PL.y + PL.d - 6, 0, 0.6, "#e8b923", { mat: "paint", bevel: 0.2 }));
+  for (let y = PL.y + 8; y < PL.y + PL.d - 12; y += 7) o.push(prism([[dv - 3, y], [dv + 3, y + 4], [dv + 3, y + 7.4], [dv - 3, y + 3.4]], "z", 0.6, 0.66, "#23262b", { bevel: 0, flat: true }));
+  // the panel in the safe area: backplate, DIN rail, a supply and three barriers
+  o.push(prism(rrect(-160, -138, -70, 10, 1.5), "z", 0, 3, "#8a9099", { mat: "paint" }), box(-158, -154, -66, 6, 3, 71, "#c9ced3", { mat: "satin", bevel: 0.4 }), box(-154, -152, -62, 2, 40, 44, "#aeb4bb", { mat: "steel", bevel: 0.2 }));
+  for (const [y, z] of [[-62, 66], [2, 66], [-62, 9], [2, 9]]) o.push(prism(circle(y, z, 1.3, 6), "x", -154, -153.2, "#8f959d", { mat: "steel" }));
+  D.MOD_Y.forEach((y, i) => {
+    const top = i === 0 ? 58 : 54, ours = i === D.OUR, S = ours ? { shell: true } : {};
+    o.push(box(-152, -136, y, y + 12, 28, top - 3, i === 0 ? "#8f959d" : "#e3e7ea", { mat: "plastic", bevel: 0.5, ...S }), box(-152, -136, y, y + 12, top - 3, top, i === 0 ? "#6f757d" : BLUE, { mat: "plastic", bevel: 0.5, ...S }));
+    for (const yy of [y + 3, y + 6, y + 9]) for (const xx of [-148.5, -139.5]) o.push(cyl(xx, yy, 1, top, top + 0.4, "#d8dce0", 8, { mat: "steel" }));
+    o.push(prism(circle(y + 9, top - 7, 0.9, 10), "x", -136, -135.6, i === 0 ? "#5fe08a" : ours ? "#5fe08a" : "#3a8f58", { flat: true, emit: ["#5fe08a", ours || i === 0 ? 1 : 0.25], emitK: 2 }));
+    o.push(box(-135.98, -135.9, y + 1.5, y + 10.5, top - 17, top - 10, "#f6f4ee", { bevel: 0, flat: true }));
+  });
+  // inside our barrier: fuse, resistor, and two zeners to earth
+  const y0 = D.MOD_Y[D.OUR] + 6, yb = y0 + 1.6;
+  o.push(box(-150, -138, y0 - 0.4, y0 + 0.4, 30, 50, "#2f7d4f", { mat: "plastic", bevel: 0 }));
+  o.push(tube([[-148.6, yb, 46.5], [-139.4, yb, 46.5]], 1.25, "#eef3f6", { seg: 10, mat: "glass", emit: ["#cfe6ff", 0.25] }), tube([[-149, yb, 46.5], [-147.4, yb, 46.5]], 1.45, "#c9ced3", { seg: 10, mat: "steel" }), tube([[-140.6, yb, 46.5], [-139, yb, 46.5]], 1.45, "#c9ced3", { seg: 10, mat: "steel" }));
+  o.push(tube([[-148, yb, 40.5], [-140, yb, 40.5]], 1.5, "#d8b98a", { seg: 10, mat: "plastic" }));
+  for (const [x, c] of [[-146.6, "#8a3a2a"], [-144.6, "#23262b"], [-142.6, "#c0392b"]]) o.push(tube([[x, yb, 40.5], [x + 0.9, yb, 40.5]], 1.58, c, { seg: 10, mat: "plastic" }));
+  for (const x of [-148, -142.6]) o.push(tube([[x, yb, 34.5], [x + 4.4, yb, 34.5]], 1.15, "#26282c", { seg: 10, mat: "plastic" }), tube([[x + 3.3, yb, 34.5], [x + 4, yb, 34.5]], 1.22, "#d8dce0", { seg: 10, mat: "steel" }));
+  o.push(box(-150, -138, y0 + 0.4, y0 + 0.9, 30.6, 31.6, "#c9a24a", { mat: "metal", bevel: 0 }));
+  // name tags for the bottles
+  for (const b of D.BOTTLES) o.push(prism(rrect(b.at[0] - 36, b.at[0] - 12, b.at[1] - 6, b.at[1] + 6, 1.4), "z", 0, 1, "#e9e6df", { mat: "matte" }));
+  return o;
+}
+const cableO = (hot, lvl) => ({ seg: 8, mat: "plastic", emit: lvl > 0 ? [hot ? "#ff6a3a" : "#4ab0ff", 0.03 + lvl * 0.012] : undefined });
+const cableC = (hot, lvl) => (lvl > 0 && hot ? "#f08a4a" : BLUE);
+function leadParts(hot, lvl) { return [tube([[-136, -24, 31], [-131, -24, 29], [-128, -24, 20], [-126, -24, 4], [-121, -24, 1.3], [-90, -24, 1.3], [-76, -14, 1.3], [-62, 8, 2], [-52, 22, 1.3], [REEL[0] - RR + 2, REEL[1], 1.6]], 1.25, cableC(hot, lvl), cableO(hot, lvl))]; }
+function snakeParts(L, hot, lvl) {
+  const A = [REEL[0] + RR - 2, REEL[1] - 2], B = [PST[0] - 14, PST[1] + 34], amp = 22 * sm(0, 900, L), nw = 1 + Math.floor(Math.min(L, 4800) / 650);
+  const dx = B[0] - A[0], dy = B[1] - A[1], l2 = Math.hypot(dx, dy), nx = -dy / l2, ny = dx / l2, pts = [];
+  for (let i = 0; i <= 90; i++) { const t = i / 90, w = Math.sin(t * nw * Math.PI) * amp * Math.sin(t * Math.PI); pts.push([A[0] + dx * t + nx * w, A[1] + dy * t + ny * w, 1.3]); }
+  pts.push([PST[0] - 6, PST[1] + 24, 1.3], [PST[0] + 1, PST[1] + 15, 3.6], [PST[0] + 1, PST[1] + 11, 12], [PST[0] + 1, PST[1] + 11, 22]);
+  return [tube(pts, 1.25, cableC(hot, lvl), cableO(hot, lvl))];
+}
+function reelParts(r, hot, lvl) {
+  const o = [], WOOD = "#c9a66b", prof = [[0, 2.2]];
+  for (let z = 2.2; z < 26; z += 2.4) prof.push([r - 0.45, z], [r, z + 1.2]);
+  prof.push([r - 0.45, 26.2], [0, 26.2]);
+  o.push(cyl(0, 0, RR, 0, 2.2, WOOD, 56, { mat: "matte", bevel: 0.4 }), cyl(0, 0, 10, 2.2, 26.2, "#a8834e", 32, { mat: "matte", bevel: 0 }), lathe(prof, cableC(hot, lvl), { c: [0, 0, 0], ...cableO(hot, lvl), seg: 48 }), cyl(0, 0, RR, 26.2, 28.4, WOOD, 56, { mat: "matte", bevel: 0.4, shell: true }));
+  for (let i = 0; i < 6; i++) o.push(cyl(Math.cos(i * Math.PI / 3 + 0.3) * 16, Math.sin(i * Math.PI / 3 + 0.3) * 16, 2.4, 28.4, 28.46, "#3a2c1c", 14, { bevel: 0, flat: true }));
+  o.push(cyl(0, 0, 3, 28.4, 32.4, "#aeb4bb", 20, { mat: "steel" }), prism(rrect(-2.4, 17.4, -2.4, 2.4, 2.2), "z", 32.4, 34.8, "#8f959d", { mat: "steel" }), cyl(15, 0, 1.9, 34.8, 44, "#26282c", 14, { mat: "rubber" }));
+  o.push(prism(rrect(-10, 10, 9, 18, 1), "z", 28.4, 32, "#2f3338", { mat: "plastic" }), box(-8.6, 8.6, 10.2, 16.8, 32, 32.1, "#101418", { bevel: 0, flat: true }));
+  return o;
+}
+function standParts() {
+  const o = [], [x, y] = PST, G = "#8a9099";
+  o.push(prism(rrect(x - 12, x + 12, y - 12, y + 12, 1.6), "z", 0, 2.4, G, { mat: "paint" }));
+  for (const [bx, by] of [[x - 8.5, y - 8.5], [x + 8.5, y - 8.5], [x - 8.5, y + 8.5], [x + 8.5, y + 8.5]]) o.push(cyl(bx, by, 1.6, 2.4, 3.6, "#c9ced3", 6, { mat: "steel" }));
+  o.push(cyl(x, y, 3.4, 2.4, 82.4, "#b4bcc4", 24, { mat: "satin", bevel: 0 }), cyl(x, y, 3.9, 82.4, 84, G, 24, { mat: "paint" }));
+  // the transmitter on the back of the pipe
+  o.push(box(x - 2, x + 2, y - 12, y - 3, 64, 68, G, { mat: "paint" }), lathe([[0, 48], [2.4, 48], [2.4, 54], [6.5, 54], [6.5, 69.4], [8, 70], [8, 80.4], [7.2, 81], [0, 81]], "#2e6aa8", { c: [x, y - 18, 0], seg: 40, mat: "paint", shell: true }), cyl(x, y - 18, 5.8, 81, 81.3, "#101418", 32, { bevel: 0, flat: true }));
+  o.push(box(x - 4, x + 4, y - 20.5, y - 19.7, 56, 68, "#2f7d4f", { mat: "plastic", bevel: 0 }), box(x - 3, x + 3, y - 19.7, y - 17, 58, 63, "#26282c", { mat: "plastic", bevel: 0.3 }), cyl(x, y - 16, 2.2, 72, 78, "#c9ced3", 14, { mat: "steel" }));
+  for (const z of [30, 42]) o.push(cyl(x, y, 4, z, z + 1.4, "#c9ced3", 20, { mat: "steel", bevel: 0 }));
+  // the junction box on the front of the pipe, cover swung open
+  const J = { x0: x - 11, x1: x + 11, y0: y + 4, y1: y + 18, z0: 26, z1: 48 }, W = { mat: "satin", shell: true, bevel: 0.3 }, JC = "#b4bcc4";
+  o.push(box(J.x0, J.x1, J.y0, J.y0 + 1.2, J.z0, J.z1, JC, W), box(J.x0, J.x0 + 1.2, J.y0 + 1.2, J.y1, J.z0, J.z1, JC, W), box(J.x1 - 1.2, J.x1, J.y0 + 1.2, J.y1, J.z0, J.z1, JC, W), box(J.x0 + 1.2, J.x1 - 1.2, J.y0 + 1.2, J.y1, J.z0, J.z0 + 1.2, JC, W), box(J.x0 + 1.2, J.x1 - 1.2, J.y0 + 1.2, J.y1, J.z1 - 1.2, J.z1, JC, W));
+  o.push(box(J.x0 - 1.4, J.x0 - 0.2, J.y1 - 0.5, J.y1 + 21, J.z0, J.z1, JC, { mat: "satin", bevel: 0.3 }), cyl(J.x0 - 0.8, J.y1 - 0.2, 0.9, J.z0 + 2, J.z1 - 2, "#8f959d", 8, { mat: "steel" }));
+  o.push(cyl(x + 1, y + 11, 2.6, 21.5, 26, "#c9a24a", 6, { mat: "metal" }), box(x - 9, x + 9, y + 5.2, y + 6.4, 35, 40, "#aeb4bb", { mat: "steel", bevel: 0 }));
+  for (let i = 0; i < 4; i++) { const cx = x - 5.6 + i * 3.75; o.push(box(cx - 1.7, cx + 1.7, y + 6.4, y + 12.4, 33, 43, i < 2 ? BLUE : "#6fb8ee", { mat: "plastic", bevel: 0.3 })); for (const z of [35.6, 40.4]) o.push(prism(circle(cx, z, 0.95, 10), "y", y + 12.4, y + 12.8, "#d8dce0", { mat: "steel" })); }
+  o.push(tube([[x + 1, y + 11, 25], [x + 1, y + 11, 28.6]], 1.25, BLUE, { seg: 8, mat: "plastic" }), tube([[x + 0.5, y + 11, 28.4], [x - 1.4, y + 10.6, 30.4], [x - 1.85, y + 10, 33.4]], 0.5, "#8a5a3a", { seg: 6, mat: "plastic" }));
+  return o;
+}
+function bottleParts(sel) {
+  const R = D.BOTTLE_R, Hh = D.BOTTLE_H, top = 2.4 + Hh, o = [];
+  o.push(cyl(0, 0, R + 1.2, 0, 2.4, "#3a3d42", 24, { mat: "rubber" }));
+  o.push(lathe([[0, 2.4], [R, 2.4], [R, top - 6], [R - 1.2, top - 2], [5.2, top], [5.2, top + 3], [2.4, top + 3], [2.4, top + 7], [4.2, top + 7], [4.2, top + 8.6], [0, top + 8.6]], sel ? "#e2742a" : "#8f9aa4", { c: [0, 0, 0], seg: 28, mat: "paint", emit: sel ? ["#ff7a2a", 0.05] : undefined }));
+  for (const z of [2.4 + Hh * 0.62, 2.4 + Hh * 0.78]) o.push(lathe([[R + 0.15, z], [R + 0.15, z + 1.2]], sel ? "#f4f2ec" : "#c9ced3", { c: [0, 0, 0], seg: 28, mat: "paint" }));
+  return o;
+}
+const HAZE = Array.from({ length: 30 }, (_, i) => { const h = (n2) => { const s = Math.sin(i * 12.9898 + n2 * 78.233) * 43758.5453; return s - Math.floor(s); }; return [h(1), h(2), h(3), h(4)]; });
+let fx = [];
+function draw(dt = 0) {
+  const g = GASES[gas], K = chaos(), En = energy(volts, len), hot = En >= g.mie, lvl = E.xray > 0.5 ? 1 + Math.round(clamp(En / (2 * g.mie), 0, 1) * 6) : 0;
+  const age = now - sparkAt, lift = sm(0, 0.08, age) * 3.2 * (age < 2.5 ? 1 : 1 - sm(2.5, 3.0, age));
+  const ck = (hot ? 100 : 0) + lvl, rPack = Math.round((10.6 + 11 * (1 - len / D.L_MAX)) * 5) / 5;
+  let reelM = [1, 0, 0, 0, 1, 0, 0, 0, 1, REEL[0], REEL[1], 0], standM;
   if (K.c >= 0) {
-    const c = K.c;
-    bottleGs.forEach((bg) => {
-      const pv = D.pivots.bottles[bg.dataset.bottle];
-      const a = tip(c, 0.06 + 0.05 * (3 - pv.order), pv.left ? -84 : 84) * K.back;
-      bg.setAttribute("transform", "rotate(" + a.toFixed(1) + " " + pv.at[0].toFixed(1) + " " + pv.at[1].toFixed(1) + ")");
-    });
-    standG.setAttribute("transform", "rotate(" + (tip(c, 0.04, 78) * K.back).toFixed(1) + " " + D.pivots.stand[0].toFixed(1) + " " + D.pivots.stand[1].toFixed(1) + ")");
-    const shove = 26 * sm(0, 0.5, c) * K.back;
-    reelG.setAttribute("transform", "translate(" + (-shove).toFixed(1) + " " + (shove * 0.25).toFixed(1) + ") rotate(" + (-14 * sm(0, 0.5, c) * K.back).toFixed(1) + " " + D.pivots.reel[0].toFixed(1) + " " + D.pivots.reel[1].toFixed(1) + ")");
-    const A = 7 * Math.exp(-c / 0.35);
-    stage.style.transform = "translate(" + (A * Math.sin(c * 90)).toFixed(1) + "px," + (A * Math.cos(c * 71)).toFixed(1) + "px)";
-    flash.style.opacity = (0.8 * burst(c, 0.03, 0.22)).toFixed(3);
-  } else if (boomAt !== null && now - boomAt > BOOM_END) {
-    boomAt = null;
-    bottleGs.forEach((bg) => bg.removeAttribute("transform"));
-    standG.removeAttribute("transform"); reelG.removeAttribute("transform");
-    stage.style.transform = ""; flash.style.opacity = "0";
+    const c = K.c, sh = 14 * sm(0, 0.5, c) * K.back, r = rotZ(0, 0, -0.24 * sm(0, 0.5, c) * K.back);
+    reelM = [...r.slice(0, 9), REEL[0] - sh, REEL[1] + sh * 0.3, 0];
+    standM = tipM([PST[0], PST[1] + 12, 0], (-tip(c, 0.04, 78) * K.back * Math.PI) / 180, "x");
+  }
+  const objs = [{ cache: "bench", rev: 0, parts: benchParts }, { cache: "lead", rev: ck, parts: () => leadParts(hot, lvl) }, { cache: "snake", rev: Math.round(len / 10) * 1000 + ck, parts: () => snakeParts(len, hot, lvl) },
+    { cache: "reel", rev: Math.round(rPack * 5) * 1000 + ck, m: reelM, parts: () => reelParts(rPack, hot, lvl) }, { cache: "stand", rev: 0, m: standM, parts: standParts }];
+  // the conductor that comes off its terminal
+  const [x, y] = PST, tipP = [x + 1.9 + lift * 0.5, y + 10 + lift * 1.5, 33.3 - lift * 0.5];
+  objs.push({ xf: standM ? xfOf(standM) : undefined, parts: [tube([[x + 1.5, y + 11, 28.4], [x + 1.8 + lift * 0.25, y + 10.5 + lift * 0.7, 30.6], tipP], 0.5, BLUE, { seg: 6, mat: "plastic" }), sphere(tipP, 0.62, "#e8b96a", { mat: "copper" })] });
+  D.BOTTLES.forEach((b, i) => { const a = K.c >= 0 ? (tip(K.c, 0.06 + 0.05 * (3 - i), 84) * K.back * Math.PI) / 180 : 0; let m = [1, 0, 0, 0, 1, 0, 0, 0, 1, b.at[0], b.at[1], 0]; if (a) { const t = tipM([D.BOTTLE_R, 0, 0], a, "y"); m = [...t.slice(0, 9), t[9] + b.at[0], t[10] + b.at[1], t[11]]; } objs.push({ cache: "bottle" + (i === gas ? "S" : "N"), rev: 0, m, parts: () => bottleParts(i === gas) }); });
+  let svg = E.render(objs);
+  // gas hanging over Zone 1
+  const hz = K.c >= 0 ? Math.max(0, 1 - K.c * 4) * (K.c < 3 ? 1 : 0) : 1, PL = D.PLATE;
+  if (hz > 0.01) for (const [a, b, c, d] of HAZE) { const t = now * 0.05 + d * 9; E.sprite([D.DIVIDE + 22 + a * (PL.x + PL.w - D.DIVIDE - 40) + Math.sin(t * 1.3 + c * 6) * 10, PL.y + 14 + b * (PL.d - 28) + Math.cos(t + a * 6) * 8, 6 + c * 26], 20 + d * 14, lightTheme ? "#3f8f9a" : "#6fc4d0", (lightTheme ? 0.07 : 0.055) * hz); }
+  // the spark, sized by its energy against the gas's MIE
+  const flick = age < 0.35 ? 0.6 + 0.4 * Math.sin(age * 140) : 1, sp = still.matches ? 0 : burst(age, 0.004, ignites ? 0.12 : 0.07) * flick, k2 = Math.sqrt(clamp(sparkE, 0, 4));
+  if (sp > 0.02 && K.c < 0.3) {
+    const a0 = tipP, b0 = [x + 1.9, y + 10, 33.2];
+    for (let s = 0; s < 2; s++) { let prev = a0; for (let i = 1; i <= 5; i++) { const t = i / 5, p = i === 5 ? b0 : [a0[0] + (b0[0] - a0[0]) * t + (rn() - 0.5) * 0.9, a0[1] + (b0[1] - a0[1]) * t + (rn() - 0.5) * 0.9, a0[2] + (b0[2] - a0[2]) * t + (rn() - 0.5) * 0.9]; E.line(prev, p, s ? 1.4 : 3 + k2, s ? "#ffffff" : "#8fb4ff", sp, true); prev = p; } }
+    E.sprite([(a0[0] + b0[0]) / 2, (a0[1] + b0[1]) / 2, (a0[2] + b0[2]) / 2], 2 + 5 * k2, "#bcd0ff", Math.min(1, (0.45 + 0.3 * k2) * sp), true, 1);
+  }
+  // Zone 1 goes up; the safe area doesn't notice
+  if (K.c >= 0) {
+    const c = K.c, life = Math.exp(-c / 0.5), Rr = 16 + 70 * (1 - Math.exp(-c / 0.2)), C = [SP[0] - 10, SP[1], SP[2] + 6 + 30 * c];
+    if (life > 0.02) { E.sprite(C, Rr * 0.8, "#ffb04a", 0.5 * life, true, 1); E.sprite(C, Rr * 0.35, "#fff0c8", 0.6 * life, true, 1); }
+    if (dt > 0 && c < 1.0) for (let j = 0; j < 8; j++) fx.push({ k: "flame", p: [D.DIVIDE + 34 + rn() * (PL.x + PL.w - D.DIVIDE - 40), PL.y + 6 + rn() * (PL.d - 12), 6 + rn() * 50], v: [rn() * 110, (rn() - 0.5) * 120, 30 + rn() * 80], life: 0, max: 0.45 + rn() * 0.6, s: 1.7 + rn() });
+    if (dt > 0 && c >= 0.3 && c < 2.8 && rn() < dt * 40) fx.push({ k: "smoke", p: [D.DIVIDE + 20 + rn() * 180, (rn() - 0.5) * 130, 20 + rn() * 50], v: [(rn() - 0.5) * 20, (rn() - 0.5) * 20, 30 + rn() * 40], life: 0, max: 2 + rn() * 2, s: 1.5 });
+  }
+  fx = fx.filter((p) => {
+    p.life += dt; if (p.life > p.max) return false;
+    const t = p.life / p.max;
+    if (p.k === "flame") { p.v[0] *= 0.93; p.v[1] *= 0.93; }
+    for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * dt;
+    if (p.k === "flame") E.sprite(p.p, (5 + 15 * t) * p.s, t < 0.25 ? "#fff0b8" : t < 0.6 ? "#ff9a2e" : "#d8481a", 0.8 * (1 - t * t), true, 2);
+    else E.sprite(p.p, (12 + 40 * t) * p.s, lightTheme ? "#4a4744" : "#2e2c2b", 0.45 * (1 - t));
+    return true;
+  });
+  // lettering
+  const fmt = (v) => (v < 10 ? v.toFixed(1) : Math.round(v)) + " µJ";
+  let m = E.faceMatrix([-160, 64, 0.05], [1, 0, 0], [0, 1, 0]);
+  if (m) svg += '<g transform="' + m + '"><text class="pt bench" x="0" y="5" font-size="5">SAFE AREA</text><text class="pt bench" x="106" y="5" font-size="5">ZONE 1</text></g>';
+  D.MOD_Y.forEach((my, i) => { const top = i === 0 ? 58 : 54; m = E.faceMatrix([-135.88, my + 10.5, top - 17], [0, -1, 0], [0, 0, -1]); if (m) svg += '<g transform="' + m + '"><text class="pt" x="0.8" y="3.6" font-size="2.5">' + (i === 0 ? "24 V" : "Ex ia") + "</text></g>"; });
+  for (const [i, b] of D.BOTTLES.entries()) { m = E.faceMatrix([b.at[0] - 33.8, b.at[1] - 4.6, 1.05], [1, 0, 0], [0, 1, 0]); if (m) svg += '<g transform="' + m + '"><text class="pt' + (i === gas ? " sel" : "") + '" x="0" y="4" font-size="3.8">' + b.id + '</text><text class="pt lo" x="0" y="8.4" font-size="2.6">' + b.group + " " + b.mie + "µJ</text></g>"; }
+  if (K.c < 0) {
+    m = E.faceMatrix([REEL[0] - 7.6, REEL[1] + 10.8, 32.15], [1, 0, 0], [0, 1, 0]);
+    if (m) svg += '<g transform="' + m + '"><text class="pt lcd" x="0" y="4.6" font-size="4.2">' + String(Math.round(len)).padStart(4, "0") + " m</text></g>";
+    m = E.faceMatrix([PST[0] - 4.6, PST[1] - 19.4, 81.35], [1, 0, 0], [0, 1, 0]);
+    if (m) svg += '<g transform="' + m + '"><text class="pt lcd" x="0" y="2.4" font-size="2.3">12.0 mA</text></g>';
+    if (age < 2.6 && age > 0) { const p = E.project([SP[0] + 4, SP[1] + 8, SP[2] + 6]); svg += '<text class="mk-lab elab" data-s="' + (ignites ? "bad" : "ok") + '" x="' + (p[0] + 8).toFixed(1) + '" y="' + p[1].toFixed(1) + '" opacity="' + clamp(2.6 - age, 0, 1).toFixed(2) + '">' + fmt(sparkE * g.mie) + "</text>"; }
+  }
+  if (E.xray > 0.02 && K.c < 0) svg += E.callouts([
+    { p: [-144, D.MOD_Y[D.OUR] + 8, 46], text: "Zener barrier", sub: "fuse, resistor, zeners to earth" }, { p: [REEL[0], REEL[1] - RR + 2, 27], text: Math.round(len) + " m of cable", sub: capNF(len).toFixed(0) + " nF, charged to " + volts + " V" },
+  ], E.xray, E.fs < 0.62 ? {} : { topL: 70, topR: 70 });
+  if (sceneG.innerHTML !== svg) sceneG.innerHTML = svg;
+  if (K.c >= 0) { const A = 7 * Math.exp(-K.c / 0.35); setShake(A * Math.sin(K.c * 90), A * Math.cos(K.c * 71)); flashEl.style.opacity = (0.8 * burst(K.c, 0.03, 0.22)).toFixed(3); }
+  else if (boomAt !== null && now - boomAt > BOOM_END) {
+    boomAt = null; setShake(0, 0); flashEl.style.opacity = "0";
     ui.shot.textContent = "Reset. Shorter cable, lower voltage, or a gas that's harder to light.";
   }
-  if (gl) {
-    const flick = age < 0.35 ? (0.6 + 0.4 * Math.sin(age * 140)) : 1;
-    const sp = still.matches ? 0 : burst(age, 0.004, ignites ? 0.12 : 0.07) * flick;
-    gl.draw({ uSpark: sp, uEnergy: sparkE, uBoom: K.c, uLift: lift }, now);
-  }
-  bottleGs.forEach((bg) => bg.querySelectorAll(".iso-solid").forEach((s) => s.toggleAttribute("data-lit", bg.dataset.bottle === g.id)));
-  stage.querySelectorAll("[data-tag] text").forEach((tx) => tx.setAttribute("data-tone", tx.parentNode.dataset.tag === g.id ? "hi" : +tx.getAttribute("font-size") > 3.2 ? "mid" : "lo"));
-  const E = energy(volts, len);
   const text = K.c >= 0 ? (K.c < 3.0 ? "BOOM · the spark lit Zone 1" : "resetting…")
-    : g.id + " MIE " + g.mie + " µJ · " + volts + " V · " + Math.round(len) + " m = " + capNF(len).toFixed(0) + " nF · spark " + (E < 10 ? E.toFixed(1) : Math.round(E)) + " µJ · " + (E >= g.mie ? "ignites" : "safe");
+    : g.id + " MIE " + g.mie + " µJ · " + volts + " V · " + Math.round(len) + " m = " + capNF(len).toFixed(0) + " nF · spark " + (En < 10 ? En.toFixed(1) : Math.round(En)) + " µJ · " + (En >= g.mie ? "ignites" : "safe");
   if (readout.textContent !== text) readout.textContent = text;
   stage.setAttribute("aria-valuenow", String(Math.round(len)));
   stage.setAttribute("aria-valuetext", text);
@@ -448,9 +277,9 @@ function tick(t) {
     if (tourClock % 3.2 > 1.2 && now - lastFire > 2.5) fire();
   }
   if (auto && !booming() && now - lastFire > 3.2 * (slow ? 1.2 : 1)) fire();
-  draw(); syncUi();
+  draw(dt * (slow ? 0.12 : 1)); syncUi();
   const busy = touring || auto || now - sparkAt < 3.2 || boomAt !== null || drag;
-  frame = visible && busy ? requestAnimationFrame(tick) : 0;
+  frame = visible ? requestAnimationFrame(tick) : 0;
 }
 const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
 const takeOver = () => { touring = false; };
@@ -470,26 +299,27 @@ ui.fire.addEventListener("click", shoot);
 ui.slow.addEventListener("click", () => { slow = !slow; run(); });
 ui.auto.addEventListener("click", () => { takeOver(); auto = !auto; run(); });
 ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { auto = false; tourClock = 0; tourStep = -1; } run(); });
-
-// on the figure: drag sideways to pay out cable, tap for a spark, tap a bottle for gas
+// on the figure: drag the drum sideways to pay out cable (anywhere else turns the view), tap a bottle for gas, tap anything else for a spark
 let drag = null;
-stage.addEventListener("pointerdown", (ev) => { drag = { x: ev.clientX, y: ev.clientY, from: len, moved: false }; stage.setPointerCapture(ev.pointerId); });
+const ptOf = (ev) => { const m0 = overEl.getScreenCTM(); if (!m0) return null; const pt = overEl.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY; const q2 = pt.matrixTransform(m0.inverse()); return [q2.x, q2.y]; };
+function hitAt(ev) {
+  const q2 = ptOf(ev); if (!q2 || ev.target.closest(".mk-tools,button,a")) return null;
+  for (const [i, b] of D.BOTTLES.entries()) { const a = E.project([b.at[0], b.at[1], 4]), c = E.project([b.at[0], b.at[1], 54]), t = clamp((q2[1] - a[1]) / ((c[1] - a[1]) || 1), 0, 1); if (Math.hypot(q2[0] - (a[0] + (c[0] - a[0]) * t), q2[1] - (a[1] + (c[1] - a[1]) * t)) < 14) return { bottle: i }; }
+  const c = E.project([REEL[0], REEL[1], 16]), rx = Math.abs(E.project([REEL[0] + RR, REEL[1] - RR, 0])[0] - E.project([REEL[0] - RR, REEL[1] + RR, 0])[0]) / 2;
+  if (Math.abs(q2[0] - c[0]) < rx && Math.abs(q2[1] - c[1]) < rx * 0.75) return { reel: true };
+  return {};
+}
+stage.addEventListener("pointerdown", (ev) => { const h = hitAt(ev); if (!h) return; drag = { x: ev.clientX, y: ev.clientY, from: len, moved: false, reel: !!h.reel, bottle: h.bottle }; if (h.reel) { ev.stopPropagation(); stage.setPointerCapture(ev.pointerId); } }, true);
 stage.addEventListener("pointermove", (ev) => {
-  if (!drag) return;
+  if (!drag) { if (ev.pointerType !== "touch" && !ev.buttons) { const h = hitAt(ev); stage.style.cursor = h && h.reel ? "ew-resize" : h && h.bottle !== undefined ? "pointer" : ""; } return; }
   const dx = ev.clientX - drag.x;
   if (!drag.moved && Math.hypot(dx, ev.clientY - drag.y) < 5) return;
   drag.moved = true;
-  setLen(drag.from + dx / stage.getBoundingClientRect().width * D.L_MAX * 1.2);
+  if (drag.reel) setLen(drag.from + dx / stage.getBoundingClientRect().width * D.L_MAX * 1.2);
 });
-stage.addEventListener("pointerup", (ev) => {
-  if (!drag) return;
-  const was = drag; drag = null;
-  if (was.moved) { run(); return; }
-  const hit = document.elementsFromPoint(ev.clientX, ev.clientY).map((e) => e.closest && e.closest("[data-bottle],[data-tag]")).find(Boolean);
-  if (hit) setGas(GASES.findIndex((g) => g.id === (hit.dataset.bottle || hit.dataset.tag)));
-  else shoot();
-});
+stage.addEventListener("pointerup", () => { if (!drag) return; const was = drag; drag = null; if (was.moved) { run(); return; } if (was.bottle !== undefined) setGas(was.bottle); else shoot(); });
 stage.addEventListener("pointercancel", () => { drag = null; });
+
 stage.addEventListener("keydown", (ev) => {
   if (ev.key === "ArrowRight") { ev.preventDefault(); setLen(len + (ev.shiftKey ? 500 : 50)); }
   else if (ev.key === "ArrowLeft") { ev.preventDefault(); setLen(len - (ev.shiftKey ? 500 : 50)); }
@@ -498,62 +328,44 @@ stage.addEventListener("keydown", (ev) => {
   else if (ev.key === "g" || ev.key === "G") { ev.preventDefault(); setGas(gas + 1); }
   else if (ev.key === " " || ev.key === "Enter" || ev.key === "f") { ev.preventDefault(); shoot(); }
   else if (ev.key === "s") { slow = !slow; run(); }
+  else if (ev.key === "x" || ev.key === "X") { setX(!E.xrayOn); run(); }
 });
-window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
-syncUi(); draw();
+window.__fig = { E, freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+setX(true); syncUi(); draw();
 `;
 
-const CSS = `.fx-stage{position:relative;cursor:ew-resize;touch-action:none}
-.fx-layer{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.fx-gl{display:block}
-body[data-theme="dark"] .fx-gl{mix-blend-mode:screen}
-.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(closest-side at 64% 46%,#fff8e8 0%,#ffd9a0 40%,rgba(255,170,90,0) 100%)}
-.iso-plate{overflow:hidden}
-.iso-cable{stroke-width:1.5}
-.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
-.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.ctl-label{min-width:56px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
-.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
-.ctl button:hover{border-color:var(--anatomy-mid)}
-.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
-.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
-.ctl #fire{border-color:var(--anatomy-lit);color:var(--anatomy-lit);padding:7px 14px;font-weight:600;letter-spacing:.06em}
-.slide{position:relative;flex:1;min-width:110px}
-.slide input{width:100%;accent-color:var(--anatomy-lit);margin:0}
-.ctl output{min-width:64px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
-.meter{position:relative;flex:1;min-width:110px;height:10px;margin-top:14px;border:1px solid var(--anatomy-lo);border-radius:5px}
-#meter-fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--anatomy-mid);transition:width .15s}
-#meter-fill[data-bad="true"]{background:#ff8a3d}
-#meter-mie{position:absolute;left:50%;top:-14px;bottom:-3px;border-left:1px dashed var(--anatomy-lit)}
-#meter-mie::after{content:attr(data-label);position:absolute;top:-1px;left:4px;font-size:10px;white-space:nowrap;color:var(--anatomy-lit)}
-#shot{min-height:2.6em;font-size:12px;line-height:1.4}
-@media (max-width:520px){.ctl button small{display:none}.ctl-label{min-width:44px}.ctl button{padding:7px 8px}}`;
+const CSS = `.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle 70% at 64% 46%,#fff8e8 0%,#ffd9a0 40%,rgba(255,170,90,0) 100%)}
+.pt{font-family:var(--anatomy-mono);fill:#23262b;font-weight:700}.pt.lo{fill:#5a6068;font-weight:600}.pt.sel{fill:#d0501a}.pt.lcd{fill:#9ff0c0}.pt.bench{fill:var(--anatomy-muted);font-weight:600;letter-spacing:.08em;opacity:.8}
+.elab{font-size:calc(13px*var(--mk-ts,1))}.elab[data-s="ok"]{fill:var(--mk-good)}.elab[data-s="bad"]{fill:var(--mk-danger)}
+.mk-hint{top:46px}
+.ctl #fire{padding:7px 14px;font-weight:600;letter-spacing:.06em}
+.meter{margin-top:12px}#meter-fill[data-bad="true"]{background:var(--mk-danger)}#meter-mie{left:50%}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="slider" aria-label="Cable length: drag sideways or use arrow keys; up and down change voltage; space makes a spark" aria-valuemin="0" aria-valuemax="${L_MAX}" aria-valuenow="${START.len}">${fig}<canvas class="fx-layer fx-gl" aria-hidden="true"></canvas><div class="fx-flash" aria-hidden="true"></div></div>`;
+const stage = stageHtml({
+  W, H, fig: "Fig 4", title: "Ex i, cable length", xray: true,
+  label: "A bench split into a safe area and Zone 1. In the safe area a zener barrier on a DIN rail feeds a blue cable that runs through a drum and across the bench to an open junction box on a transmitter stand in Zone 1. Breaking the wire at the junction box makes a spark whose energy comes from the cable's stored charge. An x-ray mode shows inside the barrier and how charged the cable is.",
+  keysHelp: "Cable length: drag the drum to pay out cable, drag anywhere else to rotate, X for x-ray, drag sideways or use arrow keys; up and down change voltage; space makes a spark",
+  extra: `<div class="fx-flash" aria-hidden="true"></div>`,
+});
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Gas</span>${GASES.map((g, i) => `<button type="button" data-gas="${i}" aria-pressed="${i === START.gas}">${g.id}<small>${g.group} · ${g.mie} µJ</small></button>`).join("")}</div>
   <div class="ctl-row"><span class="ctl-label">Volts</span><div class="slide"><input id="volts" type="range" min="${V_MIN}" max="${V_MAX}" step="1" value="${START.v}" aria-label="Barrier voltage"></div><output id="volts-out">${START.v} V</output></div>
   <div class="ctl-row"><span class="ctl-label">Cable</span><div class="slide"><input id="len" type="range" min="0" max="${L_MAX}" step="10" value="${START.len}" aria-label="Cable length in metres"></div><output id="len-out">${START.len} m</output></div>
-  <div class="ctl-row"><span class="ctl-label">Spark</span><div class="meter" aria-hidden="true"><span id="meter-fill"></span><span id="meter-mie" data-label="MIE"></span></div><output id="energy-out">0 µJ</output></div>
-  <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="fire">SPARK</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="auto" aria-pressed="false">Auto</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
-  <div id="shot" aria-live="polite">Pick a gas, set the voltage, pay out some cable, hit SPARK.</div>
+  <div class="ctl-row"><span class="ctl-label">Spark</span><div class="meter" aria-hidden="true"><span id="meter-fill" class="fill"></span><span id="meter-mie" class="mark" data-label="MIE"></span></div><output id="energy-out">0 µJ</output></div>
+  <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="fire" class="danger">SPARK</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="auto" aria-pressed="false">Auto</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
 </div>`;
 
-const card = k.plateHtml({
-  fig: "Fig 4",
-  title: "Ex i, cable length",
-  hint: "Drag: cable · tap: spark",
-  readout: "",
-  keys: [
-    { mark: "lit", label: "The wire that comes off its terminal, and the spark" },
-    { mark: "raised", label: "Barrier in the safe area; cable drum and loops on the bench" },
-  ],
-  caption: "An intrinsically safe loop stores energy in its cable: about 200 pF per metre, charged to the barrier voltage. Let a wire come off its terminal live (an open circuit) and that energy comes out as a spark, ½CV². Under the gas's minimum ignition energy it fizzles; over it, Zone 1 goes up. More cable means more capacitance, so a loop that was fine at 50 m can be a bomb at 500 m. MIE values: methane 280, propane 250, ethylene 70, hydrogen 17 µJ.",
-  body: stageHtml,
-});
 
-const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
-const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a certified anything. MIE values and 200 pF/m are real; real IS checks use the standard's ignition curves with safety factors, not raw MIE.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/ex-i-spark" style="color:inherit">Source</a></p>`;
+const foot = footHtml({
+  theme, slug: "ex-i-spark",
+  real: "the MIE values and 200 pF/m.",
+  made: "the rest. Real IS checks use the ignition curves in the standard with safety factors, not raw MIE.",
+});
 const name = theme === "light" ? "light.html" : "index.html";
-writeFileSync(join(HERE, name), k.pageHtml({ title: "Ex i spark", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + glScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 700 }));
+writeFileSync(join(HERE, name), pageMk2({
+  k, title: "Ex i, cable length", fig: "Fig 4", hint: "Drag: cable · tap: spark", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  caption: "An intrinsically safe loop stores energy in its cable: about 200 pF per metre, charged to the barrier voltage. Let a wire come off its terminal live (an open circuit) and that energy comes out as a spark, ½CV². Under the gas's minimum ignition energy it fizzles; over it, Zone 1 goes up. More cable means more capacitance, so a loop that was fine at 50 m can be a bomb at 500 m. MIE values: methane 280, propane 250, ethylene 70, hydrogen 17 µJ.",
+  script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
+}));
 console.log("wrote", name);
