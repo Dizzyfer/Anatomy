@@ -1,15 +1,12 @@
-import { writeFileSync, readFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as k from "../../kit/iso-kit.mjs";
-import { kitScript } from "../../scripts/inline-kit.mjs";
+import { engineScript, stageHtml, pageMk2, footHtml } from "../../mk2/shell.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
-const SOLID = readFileSync(join(HERE, "solid.mjs"), "utf8").replace(/^export /gm, "");
-
-const W = 680;
-const H = 500;
+const W = 960, H = 600;
 
 // Truth: hydro power is P = ρ·g·Q·H·η. A concrete gravity dam holds the water back by its own weight: water pushes it
 // sideways (½ρgH²) and seeps under it pushing up (uplift), and drains in the foundation exist to bleed that uplift off.
@@ -17,45 +14,27 @@ const H = 500;
 // load rejection and the water column slams into the gates (water hammer); too slow and the unit overspeeds. Toy: the
 // reservoir is tiny and time is sped up, the river is one-dimensional, and every number is picked to make it fail on cue.
 const PLATE = { x: -360, y: -240, w: 920, d: 480, r: 16 };
-const PLATE_H = 14, FOOT_H = 6;
-const P = k.fitProjection([...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [-360, -240, 140], [0, -240, 140], [0, 160, 112], [-360, 160, 112]], W, H, { pad: 10, azimuth: 45 });
-const Sv = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const depth2 = ([x, y]) => k.depthOf([x, y, 0], P);
-const byDepth = (pts) => [...pts].sort((a, b) => depth2(a) - depth2(b));
-function plate() {
-  const out = [`<path class="iso-halo" d="${k.haloOf(PLATE, -PLATE_H - FOOT_H, PLATE_H, P)}"/>`];
-  for (const [x, y] of byDepth(k.corners(PLATE, 30))) {
-    out.push(Sv(k.cylinder(x, y, 9, -PLATE_H - FOOT_H, 2, P, 28), { tone: "lo" }));
-    out.push(Sv(k.cylinder(x, y, 7, -PLATE_H - FOOT_H + 2, FOOT_H - 2, P, 28), { tone: "mid" }));
-  }
-  out.push(Sv(k.slabOf(PLATE, -PLATE_H, PLATE_H, P, 8, 2), { tone: "mid", inner: L(k.sideSeam(PLATE, -PLATE_H / 2, P), { tone: "faint" }) }));
-  return out.join("");
-}
-const svg = k.figureSvg({
-  width: W, height: H,
-  label: "A concrete gravity dam across a canyon, with the reservoir behind it, a spillway with three radial gates in the middle, four penstocks down its face to a powerhouse at the toe, and a river running past a small town downstream. The near side is cut away to show the dam's triangular cross-section.",
-  body: [plate(), `<g data-part="back"></g>`, `<g data-part="res"></g>`, `<g data-part="dam"></g>`, `<g data-part="water1"></g>`, `<g data-part="near"></g>`, `<g data-part="water2"></g>`, `<g data-part="town"></g>`, `<g data-part="front"></g>`],
-});
-const DATA = { W, H, P };
+const P = k.fitProjection([...k.boxCorners(PLATE, -0.8, 0), [-360, -240, 140], [0, -240, 140], [0, 160, 112], [-360, 160, 112]], W, H, { pad: 14, azimuth: 45, elevation: 30 });
+const DATA = { W, H, P, PLATE };
 
 const LIVE = `
-${SOLID}
+${engineScript()}
 const D = __DATA__;
-const PR = D.P;
-const stage = document.querySelector(".fx-stage");
-const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const stage = document.querySelector(".mk-stage");
 const readout = document.querySelector("[data-readout]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-const R = solids((p) => iso(p, PR), (p) => depthOf(p, PR));
-const { box, prism } = R;
-const svgEl = stage.querySelector("svg"), cv = stage.querySelector(".fx-smoke"), ctx = cv.getContext("2d"), flashEl = stage.querySelector(".fx-flash");
-const G = { back: q("back"), res: q("res"), dam: q("dam"), w1: q("water1"), near: q("near"), w2: q("water2"), town: q("town"), front: q("front") };
-const sp = (p) => { const a = iso(p, PR); return a[0].toFixed(1) + " " + a[1].toFixed(1); };
-const poly = (pts, attr) => '<path d="M' + pts.map(sp).join("L") + 'Z" ' + attr + "/>";
+const lightTheme = document.body.dataset.theme === "light";
+const E = mk2(stage, D.P, { W: D.W, H: D.H, pivot: [80, 0, 30], plate: { ...D.PLATE, h: 14, foot: 6 }, shadowBox: [-370, -250, -25, 570, 250, 160] });
+const { box, cyl, prism, circle, lathe, tube, sphere, loft, roundPoly, rrect, tris } = E;
+E.bindTools(stage);
+const xbtn = stage.querySelector('[data-mk="xray"]');
+const setX = (on) => { E.setXray(on); if (xbtn) xbtn.setAttribute("aria-pressed", String(on)); };
+const sceneG = stage.querySelector('[data-part="scene"]');
+const iso = (p) => E.project(p), depthOf = (p) => E.depthOf(p);
+const shakeEls = [stage.querySelector(".mk-gl"), stage.querySelector(".mk-over")];
+const setShake = (x, y) => { const t = x || y ? "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)" : ""; for (const e of shakeEls) if (e.style.transform !== t) e.style.transform = t; };
 let seed = 5; const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
-
 // ---------------- the site (metres) ----------------
 const YW = 150, CREST = 102, SPILL = 88, TOE = 82, X0 = -350, XE = 555, FLOOR = 7, CH = 40;
 const ROCK = "#6f665c", ROCK2 = "#82786c", CONC = "#bdb8ae", CONC2 = "#a9a398", SEC = "#d9c9a6";
@@ -69,26 +48,6 @@ function monoObj(m, xf) {
   else parts.push(box(0, 10, m.y0, m.y1, CREST, CREST + 1.4, "#8d887f"));
   return { parts, xf };
 }
-function staticBack() {
-  const o = [];
-  // canyon floor upstream and downstream, the far wall, the terraces
-  o.push({ parts: [box(X0, XE, -YW, YW, -3, 0, "#5b5146")], key: -1e9 });
-  [[X0, 0, 135], [0, 160, 118], [160, 340, 78], [340, XE, 46]].forEach(([x0, x1, ht], i) => {
-    const parts = [box(x0, x1, -235, -YW, 0, ht, i % 2 ? ROCK : "#776d61", { cap: "#7c7a58" })];
-    for (let z = 14; z < ht - 4; z += 17) parts.push(box(x0, x1, -YW, -YW + 0.3, z, z + 1.2, "#5d554b"));
-    o.push({ parts, key: -9e8 + i });
-  });
-  o.push({ parts: [box(TOE + 8, XE, -YW, -CH, 0, FLOOR, "#6b7a4f", { cap: "#7d8f5a" })], key: -8e8 });
-  return R.render(o);
-}
-function staticNear() {
-  // the near terrace downstream and the cut-away near bank, drawn in front of the river channel
-  const o = [{ parts: [box(TOE + 8, XE, CH, YW, 0, FLOOR, "#6b7a4f", { cap: "#7d8f5a" })], key: 1 }, { parts: [box(X0, 0, YW, 235, -3, 10, ROCK, { cap: ROCK2 })], key: 2 }, { parts: [box(TOE, XE, YW, 235, -3, 4, ROCK, { cap: ROCK2 })], key: 3 }];
-  return R.render(o);
-}
-G.back.innerHTML = staticBack();
-G.near.innerHTML = staticNear();
-
 // ---------------- the town ----------------
 const HOUSES = [];
 [[290, -110], [318, -82], [350, -120], [395, -95], [300, 80], [335, 112], [372, 74], [420, 105], [460, -110], [480, 90]].forEach(([x, y], i) => HOUSES.push({ x, y, w: 12 + (i % 3) * 3, d: 10, h: 6 + (i % 2) * 2, col: ["#c8b79a", "#b9c4c9", "#d2c2a1", "#a9b8a0"][i % 4], roof: ["#8c3b2e", "#5c6670", "#7a4a2e"][i % 3], gone: null }));
@@ -213,95 +172,103 @@ function spray(p, s) { const a = rnd() * Math.PI * 2; parts.push({ k: "spray", p
 function spark(p) { const a = rnd() * Math.PI * 2; parts.push({ k: "spark", p: [...p], v: [Math.cos(a) * 60, Math.sin(a) * 60, 30 + rnd() * 60], life: 0, max: 0.6 + rnd() * 0.6, s: 1 }); }
 function smokeP(p, s) { parts.push({ k: "smoke", p: [...p], v: [(rnd() - 0.5) * 6, (rnd() - 0.5) * 6, 10 + rnd() * 8], life: 0, max: 3 + rnd() * 2, s }); }
 function mist(p, s) { parts.push({ k: "mist", p: [...p], v: [8 + rnd() * 12, (rnd() - 0.5) * 10, 4 + rnd() * 8], life: 0, max: 1.5 + rnd(), s }); }
-function sizeCanvas() { const r = svgEl.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1); const w = Math.max(1, Math.round(r.width * dpr)), hh = Math.max(1, Math.round(r.height * dpr)); if (cv.width !== w || cv.height !== hh) { cv.width = w; cv.height = hh; } }
-let shakeOff = [0, 0];
+// ---------------- drawing ----------------
+const flashEl = stage.querySelector(".fx-flash");
+let shakeOff = [0, 0], flowA = 0, spin = 0;
 function drawParticles(dt) {
-  sizeCanvas();
-  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
-  ctx.setTransform(cv.width / D.W, 0, 0, cv.height / D.H, shakeOff[0] * cv.width / D.W, shakeOff[1] * cv.height / D.H);
   parts = parts.filter((p) => {
     p.life += dt; if (p.life > p.max) return false;
     const t = p.life / p.max;
     if (p.k !== "smoke" && p.k !== "mist") p.v[2] -= 30 * dt;
+    const o = [p.p[0], p.p[1], p.p[2]];
     for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * dt;
-    const P2 = iso(p.p, PR);
-    const soft = (r, c, a) => { const g = ctx.createRadialGradient(P2[0], P2[1], 0, P2[0], P2[1], r); g.addColorStop(0, "rgba(" + c + "," + a.toFixed(3) + ")"); g.addColorStop(1, "rgba(" + c + ",0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(P2[0], P2[1], r, 0, 7); ctx.fill(); };
-    if (p.k === "spray") soft(3 + 6 * t * p.s, "235,245,255", 0.7 * (1 - t));
-    if (p.k === "mist") soft(5 + 12 * t * p.s, "230,240,250", 0.28 * Math.sin(Math.PI * t));
-    if (p.k === "smoke") soft((6 + 20 * t) * p.s, "60,60,64", 0.5 * (1 - t));
-    if (p.k === "spark") { ctx.fillStyle = "rgba(255," + Math.round(210 - 120 * t) + ",90," + (1 - t).toFixed(2) + ")"; ctx.fillRect(P2[0] - 1, P2[1] - 1, 2, 2); }
+    if (p.k === "spray") E.sprite(p.p, 4 + 8 * t * p.s, lightTheme ? "#c4d4e2" : "#ebf5ff", 0.7 * (1 - t));
+    if (p.k === "mist") E.sprite(p.p, 7 + 16 * t * p.s, lightTheme ? "#c4d0dc" : "#e6f0fa", 0.3 * Math.sin(Math.PI * t));
+    if (p.k === "smoke") E.sprite(p.p, (8 + 26 * t) * p.s, "#3c3c40", 0.5 * (1 - t));
+    if (p.k === "spark") E.line(o, p.p, 2, t < 0.5 ? "#ffe6a0" : "#ff8a3a", 1 - t, true);
     return true;
   });
 }
-
-// ---------------- drawing ----------------
-let flowA = 0;
+function siteStatic() {
+  const o = [], Rk = { mat: "matte" };
+  // canyon floor upstream and downstream, the far wall in terraces, the near bank cut low
+  o.push(box(X0, XE, -YW, YW, -3, 0, "#5b5146", Rk));
+  [[X0, 0, 135], [0, 160, 118], [160, 340, 78], [340, XE, 46]].forEach(([x0, x1, ht], i) => {
+    o.push(box(x0, x1, -235, -YW, 0, ht, i % 2 ? ROCK : "#776d61", { ...Rk, cap: "#7c7a58" }));
+    for (let z = 14; z < ht - 4; z += 17) o.push(box(x0, x1, -YW, -YW + 1.2, z, z + 1.6, "#5d554b", { ...Rk, bevel: 0 }));
+  });
+  o.push(box(TOE + 8, XE, -YW, -CH, 0, FLOOR, "#6b7a4f", { ...Rk, cap: "#7d8f5a" }), box(TOE + 8, XE, CH, YW, 0, FLOOR, "#6b7a4f", { ...Rk, cap: "#7d8f5a" }));
+  o.push(box(X0, 0, YW, 235, -3, 10, ROCK, { ...Rk, cap: ROCK2 }), box(TOE, XE, YW, 235, -3, 4, ROCK, { ...Rk, cap: ROCK2 }));
+  o.push(box(0, TOE, YW, 235, -3, 1.2, "#4f463d", { ...Rk, cap: "#5f564b" }));
+  // a few trees on the terraces, because a town has trees
+  for (let n = 0; n < 16; n++) { const x = 270 + ((n * 61) % 250), y = (n % 2 ? 1 : -1) * (58 + ((n * 37) % 80)); o.push(lathe([[0, 0], [0.8, 0], [0.8, 3], [3.4, 3.4], [2.2, 7], [0, 10.5]], "#4f7a45", { c: [x, y, FLOOR], mat: "matte", seg: 8 })); }
+  return o;
+}
 function draw(dt) {
-  flowA += dt;
-  // reservoir: surface and the cut face on the near side
-  const lv = Math.max(0.5, level);
-  let rs = poly([[X0, -YW, lv], [0, -YW, lv], [0, YW, lv], [X0, YW, lv]], 'class="wsurf"');
-  rs += poly([[X0, YW, 0], [0, YW, 0], [0, YW, lv], [X0, YW, lv]], 'class="wsec"');
-  for (let i = 0; i < 8; i++) { const x = X0 + 30 + ((i * 97 + flowA * 12) % 300), y = -YW + 20 + ((i * 53) % 260); rs += '<path class="ripple" d="M' + sp([x, y, lv + 0.1]) + "L" + sp([x + 18, y, lv + 0.1]) + '"/>'; }
-  G.res.innerHTML = rs;
-  // the dam: standing monoliths, sliding ones, gates, water over it
-  const objs = [];
+  flowA += dt; spin += dt * omega * 9;
+  const objs = [{ cache: "site", rev: 0, parts: siteStatic }], lv = Math.max(0.5, level), wet = [];
+  // the dam: standing monoliths, sliding ones, gates
   MONO.forEach((m) => {
-    if (!m.gone) { objs.push(monoObj(m)); return; }
+    if (!m.gone) { const ob = monoObj(m); ob.shell = true; ob.mat = "concrete"; objs.push(ob); return; }
     const g2 = m.gone, t = now - g2.t;
     g2.x = Math.min(160, g2.vx * t * t * 0.5 + t * 4); g2.r = Math.min(1.1, g2.vr * t * t); g2.dz = -Math.min(40, 8 * t * t * 0.3);
     const c = [TOE, 0, 0], cr = Math.cos(g2.r), sr = Math.sin(g2.r);
-    objs.push(monoObj(m, (p) => { const dx = p[0] - c[0], dz = p[2] - c[2]; return [c[0] + dx * cr + dz * sr + g2.x, p[1], c[2] - dx * sr + dz * cr + g2.dz]; }));
+    const ob = monoObj(m, (p) => { const dx = p[0] - c[0], dz = p[2] - c[2]; return [c[0] + dx * cr + dz * sr + g2.x, p[1], c[2] - dx * sr + dz * cr + g2.dz]; }); ob.mat = "concrete"; objs.push(ob);
   });
-  // radial gates on the spillway bays
-  const gz = SPILL + gateOpen * 14;
-  for (let b = 0; b < 3; b++) { const y0 = -YW + 120 + 2.5 + b * 30, y1 = y0 + 25; if (!MONO[4 + b].gone) objs.push({ parts: [box(3, 5, y0, y1, gz, gz + 12, jam ? "#a0522d" : "#3f6f8f")], key: R.VIEW[0] * 4 + R.VIEW[1] * (y0 + 12) + R.VIEW[2] * 110 }); }
-  let ds = R.render(objs);
+  const gz = SPILL + gateOpen * 14, kit = [];
+  for (let b = 0; b < 3; b++) { const y0 = -YW + 120 + 2.5 + b * 30, y1 = y0 + 25; if (!MONO[4 + b].gone) kit.push(box(3, 5, y0, y1, gz, gz + 12, jam ? "#a0522d" : "#3f6f8f", { mat: jam ? "matte" : "paint" })); }
   // penstocks down the face, from the intakes to the powerhouse
-  for (const y of [72, 94, 116, 138]) ds += '<path class="pen" d="M' + sp([10, y, 78]) + "L" + sp([TOE - 4, y, 14]) + '"/><path class="pen-hi" d="M' + sp([10, y - 1.5, 78]) + "L" + sp([TOE - 4, y - 1.5, 14]) + '"/>';
-  // water going over: spillway chute, overtopping sheet, breach
-  const sheet = (y0, y1, q, top) => { const tk = clamp(q / 3000, 0.25, 1); return poly([[8, y0, top + 0.6], [8, y1, top + 0.6], [TOE + 6, y1, 2 + 3 * tk], [TOE + 6, y0, 2 + 3 * tk]], 'class="sheet" style="opacity:' + (0.45 + 0.4 * tk).toFixed(2) + '"') + '<path class="streak" style="stroke-dashoffset:' + (-flowA * 60).toFixed(0) + '" d="M' + sp([8, (y0 + y1) / 2, top]) + "L" + sp([TOE + 6, (y0 + y1) / 2, 3]) + "M" + sp([8, y0 + 6, top]) + "L" + sp([TOE + 6, y0 + 6, 3]) + "M" + sp([8, y1 - 6, top]) + "L" + sp([TOE + 6, y1 - 6, 3]) + '"/>'; };
-  if (Qs > 20) ds += sheet(-30 + 2.5, 60 - 2.5, Qs, SPILL + 1);
-  if (Qo > 5) { for (const m of MONO) if (!m.gone) ds += sheet(m.y0 + 0.5, m.y1 - 0.5, Qo / 9, m.spill ? SPILL + 1 : CREST); }
-  if (failed) { const bottom = Math.max(0, CREST - (now - failed.t) * 30), lv2 = Math.max(level, 2); ds += poly([[-20, -60, lv2], [-20, 60, lv2], [TOE + 40, 60, Math.max(4, bottom * 0.3)], [TOE + 40, -60, Math.max(4, bottom * 0.3)]], 'class="sheet breach"'); }
-  if (burst) ds += poly([[50, 88, 45], [50, 100, 45], [70, 106, 75 + Math.sin(now * 20) * 4], [62, 84, 72]], 'class="sheet"');
-  G.dam.innerHTML = ds;
-  // powerhouse
-  const ph = [{ parts: [box(TOE, TOE + 44, 62, 146, 0, 26, "#c9c3b5", { cap: "#8f897d" }), ...[70, 92, 114, 136].map((y) => box(TOE + 44, TOE + 50, y - 6, y + 6, 0, 3, "#5d6b74"))], key: 0 }];
-  if (wreck) ph[0].parts[0] = box(TOE, TOE + 44, 62, 146, 0, 20, "#7d776c", { cap: "#3b3732" });
-  G.front.innerHTML = R.render(ph);
-  // river: the channel part first, then anything over the terraces
-  let w1 = "", w2 = "";
+  for (const y of [72, 94, 116, 138]) kit.push(tube([[9, y, 80], [16, y, 76], [TOE - 6, y, 16], [TOE + 4, y, 10]], 2.4, "#5d6b74", { mat: "steel", seg: 10 }));
+  // inside the dam: the drainage gallery and its drains, and what the water is doing underneath
+  if (!failed) { kit.push(box(8, 12, -YW + 4, YW - 4, 8, 12.5, "#3a3d42", { mat: "matte", emit: ["#ffd97a", 0.25] })); for (let y = -135; y <= 135; y += 30) kit.push(tube([[10, y, 8], [10, y, -2.5]], 0.5, drains ? "#5aa0d8" : "#7a4a2e", { mat: "steel", seg: 5 })); }
+  objs.push({ parts: kit });
+  // powerhouse (the casing goes to glass in x-ray), and the four units inside: generator on top, turbine runner below
+  const ph = [];
+  if (wreck) ph.push(box(TOE, TOE + 44, 62, 146, 0, 20, "#7d776c", { cap: "#3b3732", mat: "concrete" }));
+  else { ph.push(box(TOE, TOE + 44, 62, 146, 0, 26, "#c9c3b5", { cap: "#8f897d", mat: "concrete", shell: true }), ...[70, 92, 114, 136].map((y) => box(TOE + 44, TOE + 50, y - 6, y + 6, 0, 3, "#5d6b74", { mat: "steel" })));
+    for (const y of [72, 94, 116, 138]) { const c = [TOE + 22, y, 0], on = grid && Pmw > 5; ph.push(lathe([[0, 14], [6.5, 14], [6.5, 21], [5, 22.5], [0, 22.5]], "#c9a43a", { c, mat: "paint", seg: 18, emit: on ? ["#ffd97a", 0.25] : undefined }), tube([[c[0], y, 5], [c[0], y, 14]], 0.9, "#aeb4bb", { mat: "steel", seg: 8 }), lathe([[0, 3], [4.6, 3.6], [3.4, 7], [1.2, 8], [0, 8]], "#7f8b96", { c, mat: "metal", seg: 14 }));
+      for (let b2 = 0; b2 < 3; b2++) { const a = spin + (b2 * Math.PI * 2) / 3, mx = c[0] + Math.cos(a) * 4, my = y + Math.sin(a) * 4; ph.push(box(mx - 0.6, mx + 0.6, my - 0.6, my + 0.6, 22.6, 23.6, "#e2501a", { mat: "paint", bevel: 0 })); } } }
+  objs.push({ parts: ph });
+  // town: houses (lit if the plant's feeding the grid), the bridge, and whatever's floating away
+  const lit = Pmw > 50;
+  HOUSES.forEach((hs2) => { const g2 = hs2.gone; if (g2 && now - g2.t > 9) return; objs.push(g2 ? { mat: "matte", parts: houseParts(hs2, false), xf: (p) => { const dx = p[0] - hs2.x, dy = p[1] - hs2.y, c = Math.cos(g2.r), s2 = Math.sin(g2.r); return [hs2.x + g2.x + dx * c - dy * s2, hs2.y + dx * s2 + dy * c, p[2] + g2.z]; } } : { mat: "matte", parts: houseParts(hs2, lit) }); });
+  if (!BRIDGE.gone || now - BRIDGE.gone.t < 6) { const g2 = BRIDGE.gone, t = g2 ? now - g2.t : 0; objs.push({ mat: "concrete", parts: bridgeParts(), xf: g2 ? (p) => [p[0] + t * 14 + Math.abs(p[1]) * 0.05 * t, p[1], p[2] - t * 3] : undefined }); }
+  // water. The reservoir is a block of it; anything spilling is a sheet down the face; the river is a strip per cell of the flood model
+  const WAT = { mat: "water", rough: 0.08 };
+  wet.push(box(X0, 0, -YW, YW, 0.2, lv, "#2f6f9c", { ...WAT, opacity: lightTheme ? 0.72 : 0.62 }));
+  const sheet = (y0, y1, q, top) => { const tk = clamp(q / 3000, 0.25, 1), a = [8, y0, top + 0.6], b = [8, y1, top + 0.6], c = [TOE + 6, y1, 2 + 3 * tk], d = [TOE + 6, y0, 2 + 3 * tk]; wet.push(tris([[a, b, c], [a, c, d]], "#d6ecf8", { ...WAT, opacity: 0.5 + 0.4 * tk })); for (let n = 0; n < 5; n++) { const y = y0 + ((n + 0.5) * (y1 - y0)) / 5, f = (flowA * 1.3 + n * 0.37) % 1, g = Math.min(1, f + 0.18); E.line([8 + (TOE - 2) * f, y, top + 1.2 - (top - 3) * f], [8 + (TOE - 2) * g, y, top + 1.2 - (top - 3) * g], 2, "#ffffff", 0.7); } };
+  if (Qs > 20) sheet(-30 + 2.5, 60 - 2.5, Qs, SPILL + 1);
+  if (Qo > 5) for (const m of MONO) if (!m.gone) sheet(m.y0 + 0.5, m.y1 - 0.5, Qo / 9, m.spill ? SPILL + 1 : CREST);
+  if (failed) { const bottom = Math.max(0, CREST - (now - failed.t) * 30), lv2 = Math.max(level, 2), z1 = Math.max(4, bottom * 0.3); wet.push(tris([[[-20, -60, lv2], [-20, 60, lv2], [TOE + 40, 60, z1]], [[-20, -60, lv2], [TOE + 40, 60, z1], [TOE + 40, -60, z1]]], "#bcd8ea", { ...WAT, opacity: 0.85 })); }
+  if (burst) wet.push(tris([[[50, 88, 45], [50, 100, 45], [70, 106, 75 + Math.sin(now * 20) * 4]], [[50, 88, 45], [70, 106, 75 + Math.sin(now * 20) * 4], [62, 84, 72]]], "#d6ecf8", { ...WAT, opacity: 0.8 }));
+  const hex = (r, g, b) => "#" + [r, g, b].map((v) => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, "0")).join("");
   for (let i = 0; i < N - 1; i++) {
     const xa = XS + i * DX, xb = xa + DX, ha = h[i], hb = h[i + 1];
     if (ha < 0.05 && hb < 0.05) continue;
     const u = Math.abs(hu[i] / Math.max(h[i], 0.05)), fr = u / Math.sqrt(9.81 * Math.max(h[i], 0.05)), foam = clamp((fr - 1.1) * 0.5, 0, 0.55) + clamp((h[i] - 12) / 60, 0, 0.15);
-    const col = "rgba(" + Math.round(70 + 150 * foam) + "," + Math.round(110 + 110 * foam) + "," + Math.round(140 + 80 * foam) + ",0.93)";
-    const za = Math.min(ha, FLOOR), zb = Math.min(hb, FLOOR);
-    w1 += poly([[xa, -CH, za], [xb, -CH, zb], [xb, CH, zb], [xa, CH, za]], 'fill="' + col + '"');
-    if (ha > FLOOR || hb > FLOOR) {
-      const ya = YW - 2, za2 = Math.max(ha, FLOOR + 0.1), zb2 = Math.max(hb, FLOOR + 0.1);
-      w2 += poly([[xa, -ya, za2], [xb, -ya, zb2], [xb, ya, zb2], [xa, ya, za2]], 'fill="' + col + '"');
-      w2 += poly([[xa, ya, FLOOR], [xb, ya, FLOOR], [xb, ya, zb2], [xa, ya, za2]], 'fill="rgba(40,90,130,0.9)"');
-    }
+    const col = hex(60 + 160 * foam, 115 + 110 * foam, 150 + 80 * foam), over = ha > FLOOR || hb > FLOOR, yw = over ? YW - 2 : CH, za = over ? Math.max(ha, FLOOR + 0.1) : ha, zb = over ? Math.max(hb, FLOOR + 0.1) : hb;
+    const q = [[xa, -yw, za], [xb, -yw, zb], [xb, yw, zb], [xa, yw, za]];
+    wet.push(tris([[q[0], q[1], q[2]], [q[0], q[2], q[3]]].concat(over ? [[[xa, yw, FLOOR], [xb, yw, FLOOR], q[2]], [[xa, yw, FLOOR], q[2], q[3]]] : []), col, { mat: "gloss", rough: 0.12 + foam }));
   }
-  G.w1.innerHTML = w1; G.w2.innerHTML = w2;
-  // town: houses (lit if the plant's feeding the grid), the bridge, and whatever's floating away
-  const lit = Pmw > 50;
-  const town = [];
-  HOUSES.forEach((hs2) => { const g2 = hs2.gone; if (g2 && now - g2.t > 9) return; town.push(g2 ? { parts: houseParts(hs2, false), xf: (p) => { const dx = p[0] - hs2.x, dy = p[1] - hs2.y, c = Math.cos(g2.r), s2 = Math.sin(g2.r); return [hs2.x + g2.x + dx * c - dy * s2, hs2.y + dx * s2 + dy * c, p[2] + g2.z]; } } : { parts: houseParts(hs2, lit) }); });
-  if (!BRIDGE.gone || now - BRIDGE.gone.t < 6) { const g2 = BRIDGE.gone, t = g2 ? now - g2.t : 0; town.push({ parts: bridgeParts(), xf: g2 ? (p) => [p[0] + t * 14 + Math.abs(p[1]) * 0.05 * t, p[1], p[2] - t * 3] : undefined, key: R.VIEW[0] * BRIDGE.x }); }
-  G.town.innerHTML = R.render(town);
+  objs.push({ parts: wet });
+  let svg = E.render(objs);
+  // ripples on the reservoir; pressure under the dam (short and blue with the drains working, long and red without)
+  for (let i = 0; i < 8; i++) { const x = X0 + 30 + ((i * 97 + flowA * 12) % 300), y = -YW + 20 + ((i * 53) % 260); E.line([x, y, lv + 0.3], [x + 18, y, lv + 0.3], 1.2, "#ffffff", 0.3); }
+  if (E.xray > 0.05 && !failed) for (let x = 6; x < TOE; x += 12) { const up = drains ? Math.max(1.5, 14 * (1 - x / 30)) : 6 + 16 * (1 - x / TOE) * (lv / 100); E.line([x, YW - 6, -2], [x, YW - 6, -2 + up], 2.5, drains ? "#5aa0d8" : "#ff5a2a", E.xray, !lightTheme); }
+  if (E.xray > 0.02 && !failed) svg += E.callouts([
+    { p: [-120, 100, lv], text: "Reservoir", sub: "its weight is trying to push the dam downstream" }, { p: [4, -15, CREST + 4], text: "Spillway gates", sub: "the only safe way over the top" }, { p: [40, 94, 50], text: "Penstocks", sub: "water down to the turbines" },
+    { p: [TOE + 22, 138, 20], text: "Powerhouse", sub: "four units: generator over turbine" }, { p: [10, 60, 10], text: "Drainage gallery", sub: drains ? "bleeds off the water pressure under the dam" : "blocked: uplift is prising the dam off its base" }, { p: [300, 0, 3], text: "Tailrace", sub: "" },
+  ], E.xray);
+  sceneG.innerHTML = svg;
   // spray at the bottom of anything falling
   if (Qs > 200 && rnd() < dt * (4 + Qs / 800)) mist([TOE + 10, -10 + rnd() * 70, 4], 1 + Qs / 4000);
   if (Qo > 50 && rnd() < dt * 10) mist([TOE + 8, -YW + rnd() * 300, 4], 1.5);
   if (failed && now - failed.t < 8) for (let i = 0; i < 4; i++) spray([TOE + rnd() * 40, -60 + rnd() * 120, 10 + rnd() * 20], 1.5);
   if (burst) spray([62, 92, 70], 1);
   if (wreck && rnd() < dt * 6) smokeP([105, 100, 28], 1);
-  // shake and flash
   const amp = shake * 6;
   shakeOff = amp > 0.05 ? [(rnd() - 0.5) * amp, (rnd() - 0.5) * amp] : [0, 0];
-  svgEl.style.transform = amp > 0.05 ? "translate(" + shakeOff[0].toFixed(1) + "px," + shakeOff[1].toFixed(1) + "px)" : "";
+  setShake(shakeOff[0], shakeOff[1]);
   const ft = now - flashT; flashEl.style.opacity = ft < 0.4 ? String((1 - ft / 0.4) * 0.6) : "0";
   drawParticles(dt);
   const text = failed ? "DAM FAILED" : burst ? "PENSTOCK BURST" : wreck ? "UNIT DESTROYED" : (grid ? Math.round(Pmw) + " MW" : "TRIPPED · " + Math.round(omega * 100) + " % speed") + " · level " + level.toFixed(1) + " m · FS " + FS.toFixed(2);
@@ -381,49 +348,25 @@ ui.fresh.addEventListener("click", act(() => resetSite()));
 ui.slow.addEventListener("click", () => { slow = !slow; run(); });
 ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; actions = []; } syncUi(); run(); });
 stage.addEventListener("keydown", (ev) => {
-  const map = { t: () => (grid ? tripGrid() : reconnect()), f: () => { Qin = 14000; }, g: () => { gateCmd = gateCmd > 0.5 ? 0 : 1; }, j: () => { jam = !jam; }, d: () => { drains = !drains; }, r: () => resetSite() };
+  const map = { x: () => setX(!E.xrayOn), t: () => (grid ? tripGrid() : reconnect()), f: () => { Qin = 14000; }, g: () => { gateCmd = gateCmd > 0.5 ? 0 : 1; }, j: () => { jam = !jam; }, d: () => { drains = !drains; }, r: () => resetSite() };
   if (map[ev.key]) { ev.preventDefault(); act(map[ev.key])(); }
   if (ev.key === "s") { slow = !slow; run(); }
 });
 new IntersectionObserver((es) => { visible = es[es.length - 1].isIntersecting; if (visible) run(); }, { rootMargin: "120px 0px" }).observe(stage);
 if (still.matches) touring = false;
-window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+window.__fig = { E, freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
 for (let i = 0; i < 400; i++) river(0.1, 1500 / B);
 draw(0); syncUi(); story();
 `;
 
-const CSS = `.fx-stage{position:relative;overflow:hidden}
-.fx-stage svg{display:block;position:relative}
-.fx-smoke{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle 50% at 50% 45%,#ffffff 0%,rgba(220,235,255,.5) 40%,rgba(220,235,255,0) 100%)}
-.wsurf{fill:#3a7aa8;opacity:.92}body[data-theme="light"] .wsurf{fill:#5d9cc8}
-.wsec{fill:#245d86;opacity:.95;stroke:#1a4566;stroke-width:.5}
-.ripple{fill:none;stroke:#9cc8ec;stroke-width:.7;opacity:.6}
-.sheet{fill:#cfe6f7;stroke:none}.sheet.breach{fill:#8fc2e6;opacity:.9}
-.streak{fill:none;stroke:#ffffff;stroke-width:1;opacity:.55;stroke-dasharray:6 9}
-.pen{fill:none;stroke:#3e4a52;stroke-width:5;stroke-linecap:round}.pen-hi{fill:none;stroke:#8597a3;stroke-width:1;stroke-linecap:round}
-.fx-stage path{stroke-linejoin:round}
-.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
-.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.ctl-label{min-width:72px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
-.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
-.ctl button:hover{border-color:var(--anatomy-mid)}
-.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
-.ctl #jam[aria-pressed="true"],.ctl #drains[aria-pressed="true"],.ctl #trip,.ctl [data-q="14000"]{color:#ff6a3d;border-color:#ff6a3d}
-.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
-.ctl output{min-width:96px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
-.slide{position:relative;flex:1;min-width:120px}.slide input{width:100%;accent-color:var(--anatomy-lit);margin:0}
-.meter{position:relative;flex:1;min-width:110px;height:10px;margin-top:14px;border:1px solid var(--anatomy-lo);border-radius:5px}
-.meter .fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .1s;background:#3ddc84}
-.meter .fill[data-state="warn"]{background:#ffb347}.meter .fill[data-state="bad"]{background:#ff5a2a}
-.mark{position:absolute;top:-14px;bottom:-3px;width:0;border-left:1px dashed #ff6a3d;pointer-events:none}
-.mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:#ff6a3d}
-.mark.l::after{left:auto;right:4px}
-#stats{font-size:12px;color:var(--anatomy-mid);line-height:1.5}#stats b{color:var(--anatomy-hi,var(--anatomy-mid));font-weight:600}
-#shot{min-height:3.6em;font-size:12px;line-height:1.4}
-@media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:80px}.ctl button small{display:none}}`;
+const CSS = `.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle 60% at 50% 50%,#ffffff 0%,#dfefff 40%,rgba(200,225,255,0) 100%)}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Hydro dam: T trips the grid, F brings a flood, G opens the spillway gates, J jams a gate, D blocks the drains">${svg}<canvas class="fx-smoke" aria-hidden="true"></canvas><div class="fx-flash" aria-hidden="true"></div></div>`;
+const stage = stageHtml({
+  W, H, fig: "Fig 22", title: "Hydro dam", xray: true,
+  label: "A concrete gravity dam across a canyon with a gated spillway, penstocks and a powerhouse, a reservoir behind it and a small town on the river below. An x-ray mode shows the drainage gallery, the pressure under the dam and the generators.",
+  keysHelp: "Hydro dam: drag to rotate, X for x-ray, T trips the grid, F brings a flood, G opens the spillway gates, J jams a gate, D blocks the drains",
+  extra: `<div class="fx-flash" aria-hidden="true"></div>`,
+});
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Controls">
   <div class="ctl-row"><span class="ctl-label">River</span><div class="slide"><input id="inflow" type="range" min="0" max="100" step="1" value="58" aria-label="Inflow to the reservoir"></div><output id="in-out">1,500 m³/s</output></div>
@@ -431,31 +374,25 @@ const CONTROLS = `<div class="ctl" role="group" aria-label="Controls">
   <div class="ctl-row"><span class="ctl-label">Turbines</span><div class="slide"><input id="turb" type="range" min="0" max="100" step="1" value="100" aria-label="Turbine gate opening"></div><output id="turb-out">100 %</output></div>
   <div class="ctl-row"><span class="ctl-label">Spillway</span><div class="slide"><input id="gates" type="range" min="0" max="100" step="1" value="0" aria-label="Spillway gate opening"></div><output id="gates-out">0 % open</output></div>
   <div class="ctl-row"><span class="ctl-label">Close in</span><div class="slide"><input id="tc" type="range" min="0.5" max="25" step="0.5" value="6" aria-label="Turbine gate closing time after a trip, seconds"></div><output id="tc-out">6.0 s</output></div>
-  <div class="ctl-row"><span class="ctl-label">Break it</span><button type="button" id="trip">Trip the grid<small>load rejection</small></button><button type="button" id="jam" aria-pressed="false">Jam the gates<small>spillway stuck</small></button><button type="button" id="drains" aria-pressed="false">Drains clear</button></div>
+  <div class="ctl-row"><span class="ctl-label">Break it</span><button type="button" id="trip" class="danger">Trip the grid<small>load rejection</small></button><button type="button" id="jam" aria-pressed="false">Jam the gates<small>spillway stuck</small></button><button type="button" id="drains" aria-pressed="false">Drains clear</button></div>
   <div class="ctl-row"><span class="ctl-label">Lake</span><div class="meter"><span id="l-fill" class="fill"></span><span class="mark" style="left:${(102 / 125 * 100).toFixed(1)}%" data-label="crest"></span></div><output id="l-out">96 m</output></div>
   <div class="ctl-row"><span class="ctl-label">Power</span><div class="meter"><span id="p-fill" class="fill"></span></div><output id="p-out">0 MW</output></div>
   <div class="ctl-row"><span class="ctl-label">Holding</span><div class="meter"><span id="fs-fill" class="fill"></span><span class="mark" style="left:40%" data-label="1.0 = slides"></span></div><output id="fs-out">1.8</output></div>
   <div class="ctl-row"><span class="ctl-label">Unit</span><div class="meter"><span id="s-fill" class="fill"></span></div><output id="s-out">speed · pressure</output></div>
-  <div class="ctl-row"><span class="ctl-label">Flows</span><span id="stats"></span></div>
+  <div class="ctl-row wide"><span class="ctl-label">Flows</span><span id="stats"></span></div>
   <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="fresh">Rebuild</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
-  <div id="shot" aria-live="polite"></div>
 </div>`;
 
-const card = k.plateHtml({
-  fig: "Fig 22",
-  title: "Hydro dam",
-  hint: "Make power, then make a flood",
-  readout: "",
-  keys: [
-    { mark: "lit", label: "Live: lake level, water down the penstocks, spillway and river, the town's lights" },
-    { mark: "raised", label: "100 m concrete gravity dam, powerhouse, and a town downstream; near side cut away" },
-  ],
-  caption: "A hydro dam turns height into power: water falls down the penstocks, spins the turbines, and the power is ρ·g·Q·H, the flow times the fall. A concrete gravity dam stays put by being heavy. The lake pushes it sideways, water seeping underneath pushes it up (uplift), and the only thing holding it is friction on the rock under its own weight. Drains in the foundation bleed off the uplift. In a flood the spillway passes the extra water; if it can't, the lake goes over the top and starts digging out the rock at the toe. And when the grid trips, the turbines suddenly have nothing to push against: close their gates too fast and the moving water slams into them, too slow and they run away.",
-  body: stageHtml,
-});
 
-const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
-const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a dam safety assessment. Real: P = ρgQH, the forces on a gravity dam (water pressure, uplift, weight) and the sliding check, foundation drains to cut uplift, weir and gate flow, overtopping scouring the toe, the dam-break outflow, shallow-water flood waves, water hammer (Joukowsky and Michaud) against overspeed after a load rejection. Real failures: St Francis (1928, a gravity dam that failed at its foundation) and Teton (1976). Made up: the dam, the site, the tiny reservoir and the sped-up time, every coefficient, the town, and failure picked to happen on cue.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/dam" style="color:inherit">Source</a></p>`;
+const foot = footHtml({
+  theme, slug: "dam",
+  real: "P = ρgQH, the forces on a gravity dam (water pressure, uplift, weight) and the sliding check, foundation drains to cut uplift, weir and gate flow, overtopping scouring the toe, the dam-break outflow, shallow-water flood waves, water hammer (Joukowsky and Michaud) against overspeed after a load rejection. Real failures: St Francis (1928, a gravity dam that failed at its foundation) and Teton (1976).",
+  made: "the dam, the site, the tiny reservoir and the sped-up time, every coefficient, the town, and failure picked to happen on cue.",
+});
 const name = theme === "light" ? "light.html" : "index.html";
-writeFileSync(join(HERE, name), k.pageHtml({ title: "Hydro dam", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 720 }));
+writeFileSync(join(HERE, name), pageMk2({
+  k, title: "Hydro dam", fig: "Fig 22", hint: "Make power, then make a flood", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  caption: "A hydro dam turns height into power: water falls down the penstocks, spins the turbines, and the power is ρ·g·Q·H, the flow times the fall. A concrete gravity dam stays put by being heavy. The lake pushes it sideways, water seeping underneath pushes it up (uplift), and the only thing holding it is friction on the rock under its own weight. Drains in the foundation bleed off the uplift. In a flood the spillway passes the extra water; if it can't, the lake goes over the top and starts digging out the rock at the toe. And when the grid trips, the turbines suddenly have nothing to push against: close their gates too fast and the moving water slams into them, too slow and they run away.",
+  script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
+}));
 console.log("wrote", name);
