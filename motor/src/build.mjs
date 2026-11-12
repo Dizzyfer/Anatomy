@@ -2,14 +2,11 @@ import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as k from "../../kit/iso-kit.mjs";
-import { glCamera } from "../../kit/gl.mjs";
-import { kitScript, glScript } from "../../scripts/inline-kit.mjs";
+import { engineScript, stageHtml, pageMk2, footHtml } from "../../mk2/shell.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
-
-const W = 640;
-const H = 440;
+const W = 960, H = 600;
 
 // Truth: WEG W22 IE3, 7.5 kW 4-pole 132M, 400 V 50 Hz: 14.2 A, 1460 rpm, Il/In 8.3, Tl/Tn 2.4, Tb/Tn 3.5,
 // class F (155 °C), 80 K rise, locked rotor time 12 s cold / 7 s hot, J 0.0563 kg·m². Class 10 overload: trips at 7.2 × Ie in 4 to 10 s.
@@ -31,203 +28,33 @@ const PZ = 66;
 const BULB = [-100, 44];
 const TBOX = { x: MC[0] + 31, y: MC[1] - 21, w: 8, d: 11 };
 const PLATE = { x: -122, y: -78, w: 200, d: 150, r: 8 };
-const PLATE_H = 12, FOOT_H = 5;
-
-const P = k.fitProjection(
-  [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [MC[0] - 36, MC[1] - 36, ZFAN + 4], [PANEL.x, PANEL.y, PZ + 4]],
-  W, H, { pad: 20, azimuth: 45 },
-);
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const Dt = (points, style) => k.dotsSvg(points, style);
-const depth2 = ([x, y]) => k.depthOf([x, y, 0], P);
-const byDepth = (pts) => [...pts].sort((a, b) => depth2(a) - depth2(b));
-const slab = (plan, z, h, r = 1.2, bevel = 0.5) => k.slabOf({ r, ...plan }, z, h, P, 4, bevel);
-const rad = (d) => (d * Math.PI) / 180;
-const pol = (r, a) => [MC[0] + r * Math.cos(rad(a)), MC[1] + r * Math.sin(rad(a))];
-function sector(r0, r1, a0, a1, n = 24) {
-  const out = [];
-  for (let i = 0; i <= n; i++) out.push(pol(r1, a0 + ((a1 - a0) * i) / n));
-  for (let i = n; i >= 0; i--) out.push(pol(r0, a0 + ((a1 - a0) * i) / n));
-  return out;
-}
-const solidSector = (r0, r1, a0, a1, z, h, n) => k.extrude(sector(r0, r1, a0, a1, n), z, h, P, { convex: false });
-const face = (pts, cls) => `<path class="${cls}" d="${k.pathOf(pts.map(at), true)}"/>`;
-
-function plate() {
-  const out = [`<path class="iso-halo" d="${k.haloOf(PLATE, -PLATE_H - FOOT_H, PLATE_H, P)}"/>`];
-  for (const [x, y] of byDepth(k.corners(PLATE, 22))) {
-    out.push(S(k.cylinder(x, y, 7, -PLATE_H - FOOT_H, 1.6, P, 28), { tone: "lo" }));
-    out.push(S(k.cylinder(x, y, 5.4, -PLATE_H - FOOT_H + 1.6, FOOT_H - 1.6, P, 28), { tone: "mid" }));
-  }
-  out.push(S(k.slabOf(PLATE, -PLATE_H, PLATE_H, P, 8, 1.6), { tone: "mid", inner: L(k.sideSeam(PLATE, -PLATE_H / 2, P), { tone: "faint" }) }));
-  out.push(L(k.planOutline(k.insetPlan(PLATE, 5), 0, P), { tone: "lo" }));
-  const screws = k.corners(PLATE, 10);
-  out.push(L(screws.map(([x, y]) => k.ring(x, y, 2.2, 0, P, 16)).join(""), { tone: "lo" }));
-  out.push(Dt(screws.map(([x, y]) => at([x, y, 0])), { size: 0.5 }));
-  return out.join("");
-}
-
-function panel() {
-  const out = [];
-  out.push(`<path class="iso-halo" d="${k.haloOf({ ...k.insetPlan({ ...PANEL, r: 1 }, -3) }, 0, 0.1, P)}"/>`);
-  out.push(S(slab(PANEL, 0, PZ, 1, 0.5), { tone: "hi", inner: L(k.segment([PANEL.x + PANEL.w, PANEL.y + 3, PZ - 4], [PANEL.x + PANEL.w, PANEL.y + PANEL.d - 3, PZ - 4], P), { tone: "faint" }) }));
-  const m = k.sideMatrix([PANEL.x + PANEL.w + 0.02, PANEL.y + PANEL.d], PZ - 6, P, "right");
-  const lampAt = (x, lab, part) => `<circle data-part="${part}" class="lamp" data-on="false" cx="${x}" cy="17" r="2.4"/><text class="iso-face-text" data-tone="lo" x="${x}" y="23" font-size="2" text-anchor="middle">${lab}</text>`;
-  out.push(`<g transform="${m}">
-    <text class="iso-face-text" data-tone="lo" x="3" y="5" font-size="2.6">STARTER</text>
-    <text data-part="p-mode" class="iso-face-text" data-tone="hi" x="3" y="10.4" font-size="4">DOL</text>
-    <g data-part="p-cont">${lampAt(8, "MAIN", "k1")}${lampAt(20, "STAR", "k2")}${lampAt(32, "DELTA", "k3")}</g>
-    <g data-part="p-vfd"><rect x="5" y="13" width="30" height="10" rx="1" class="vfd-scr"/><text data-part="vfd-hz" class="iso-face-text vfd-t" x="20" y="20" font-size="4.6" text-anchor="middle">0.0 Hz</text></g>
-    ${lampAt(8, "RUN", "run").replace(/cy="17"/, 'cy="31"').replace(/y="23"/, 'y="37"')}
-    ${lampAt(20, "O/L", "ol").replace(/cy="17"/, 'cy="31"').replace(/y="23"/, 'y="37"')}
-    <text data-part="p-amps" class="iso-face-text" data-tone="mid" x="27" y="33" font-size="3">0 A</text>
-  </g>`);
-  return out.join("");
-}
-
-function bulb() {
-  const [x, y] = BULB, out = [];
-  out.push(S(k.cylinder(x, y, 5, 0, 2, P, 24, 0.4), { tone: "mid" }));
-  out.push(S(k.cylinder(x, y, 1, 2, 44, P, 12), { tone: "mid" }));
-  out.push(S(k.cylinder(x, y, 2.6, 46, 2.4, P, 16, 0.4), { tone: "mid" }));
-  out.push(`<g class="bulb">${S(k.cylinder(x, y, 4, 48.4, 7, P, 24, 3), { tone: "hi" })}</g>`);
-  return out.join("");
-}
-
-function cable() {
-  const pts = [[PANEL.x + PANEL.w, -40, 3], [-40, -40, 2.5], [TBOX.x + 4, -40, 2.5], [TBOX.x + 4, TBOX.y + 3, 2.5], [TBOX.x + 4, TBOX.y + 3, 30]];
-  const d = k.pathOf(pts.map(at));
-  return `<path class="iso-pipe-out" d="${d}"/><path class="iso-pipe" d="${d}"/>`;
-}
-
-const finAngles = [];
-for (let a = 97.5; a < 360; a += 15) finAngles.push(a);
-const isBack = (a) => a > 135 && a < 315;
-function fin(a) {
-  const c = Math.cos(rad(a)), s = Math.sin(rad(a)), t = 0.7;
-  const ring = [[RO - 0.3, -t], [RO + 3.4, -t], [RO + 3.4, t], [RO - 0.3, t]].map(([r, w]) => [MC[0] + r * c - w * s, MC[1] + r * s + w * c]);
-  return S(k.extrude(ring, Z0 + 3, ZC - Z0 - 6, P), { tone: "mid" });
-}
-
-// the end windings sit on top of the stator core, 12 coil groups of 30° (4 poles); the overlays show the field
-const SEG = [];
-for (let i = 0; i < 12; i++) { const a0 = i * 30, a1 = a0 + 30; if (a1 <= 90) continue; SEG.push({ i, a0, a1, back: (a0 + a1) / 2 > 135 && (a0 + a1) / 2 < 315 }); }
-function winding(s) {
-  return `<g class="cu wind">${S(solidSector(23, 30, s.a0 + 1, s.a1 - 1, ZC, ZW - ZC, 8), { tone: "hi" })}</g><path data-seg="${s.i}" class="pole" d="${k.onTop(sector(23, 30, s.a0 + 1, s.a1 - 1, 8), ZW, P, true)}"/>`;
-}
-
-function motorBack() {
-  const out = [];
-  out.push(`<path class="iso-halo" d="${k.haloOf({ x: MC[0] - 40, y: MC[1] - 40, w: 80, d: 80, r: 30 }, 0, 0.1, P)}"/>`);
-  out.push(S(slab({ x: MC[0] - 30, y: MC[1] - 30, w: 60, d: 60 }, 0, Z0, 4, 0.6), { tone: "mid" }));
-  for (const a of finAngles.filter(isBack)) out.push(fin(a));
-  out.push(S(solidSector(RB, RO, 135, 315, Z0, ZC - Z0, 36), { tone: "mid" }));
-  for (const s of SEG.filter((s) => s.back)) out.push(winding(s));
-  return out.join("");
-}
-
-function rotor() {
-  const out = [];
-  out.push(`<g class="rotor">${S(k.cylinder(MC[0], MC[1], RR, ZR0, ZR1 - ZR0 - 2, P, 48), { tone: "hi" })}</g>`);
-  out.push(`<g class="cu ring">${S(k.cylinder(MC[0], MC[1], RR, ZR1 - 2, 2, P, 48), { tone: "hi" })}</g>`);
-  out.push(`<path data-part="bars" class="bars" d=""/><path data-part="rfins" class="rfins" d=""/>`);
-  return out.join("");
-}
-
-function motorFront() {
-  const out = [];
-  out.push(S(solidSector(RB, RO, 90, 135, Z0, ZC - Z0, 10), { tone: "mid" }));
-  out.push(S(solidSector(RB, RO, 315, 360, Z0, ZC - Z0, 10), { tone: "mid" }));
-  // the cut faces: laminated core, frame, and a slot full of copper
-  for (const a of [90, 0]) {
-    const p = (r, z) => { const [x, y] = pol(r, a); return [x, y, z]; };
-    out.push(face([p(23, Z0 + 3), p(27, Z0 + 3), p(27, ZC - 3), p(23, ZC - 3)], "slot"));
-    const lam = [];
-    for (let z = Z0 + 3; z < ZC; z += 3) lam.push(k.segment(p(27.4, z), p(RF, z), P));
-    out.push(L(lam.join(""), { tone: "faint" }));
-    out.push(L(k.segment(p(RF, Z0), p(RF, ZC), P), { tone: "lo" }));
-  }
-  for (const a of finAngles.filter((a) => !isBack(a))) out.push(fin(a));
-  for (const s of SEG.filter((s) => !s.back)) out.push(winding(s));
-  // terminal box
-  out.push(S(slab(TBOX, 30, 14, 1, 0.4), { tone: "hi" }));
-  // shaft and the fan it drives
-  out.push(S(k.cylinder(MC[0], MC[1], 3.6, ZR1, ZFAN - ZR1, P, 20), { tone: "hi" }));
-  out.push(`<g data-part="jam" class="jam">${S(k.extrude([[MC[0] + 6, MC[1] + 40], [MC[0] + 9, MC[1] + 37], [MC[0] + 30, MC[1] + 2], [MC[0] + 27, MC[1] + 5]], ZFAN - 4, 2.6, P), { tone: "hi" })}</g>`);
-  out.push(`<g data-part="fan"></g>`);
-  out.push(S(k.cylinder(MC[0], MC[1], 6.5, ZFAN - 1, 4, P, 24, 1), { tone: "hi" }));
-  return out.join("");
-}
-
-const svg = k.figureSvg({
-  width: W, height: H,
-  label: "A 7.5 kilowatt induction motor standing on its end with a fan on the shaft, cut open to show the stator core, the copper windings and the squirrel cage rotor. A starter panel and a light on the same supply stand behind it, with the cable running to the motor's terminal box.",
-  body: [plate(), panel(), bulb(), cable(), motorBack(), rotor(), motorFront()],
-});
-
-const DATA = { W, H, camera: glCamera(P), P, MODEL, MC, RR, ZR1, ZFAN, BULB };
-
-const FRAG = `
-uniform float uLight;
-uniform float uBulb;
-uniform float uHot;
-uniform float uSmoke;
-uniform float uPop;
-vec4 inkFor(vec3 seen,float cover){vec3 ab=1.-seen;float a=max(max(ab.r,max(ab.g,ab.b)),cover);return vec4(vec3(a)-ab,a);}
-vec4 over(vec4 t,vec4 u){return t+u*(1.-t.a);}
-vec4 glowInk(vec3 hue,float e){vec3 c=tonemap(hue*e,1.3);float a=max(c.r,max(c.g,c.b));float la=1.-exp(-1.4*e);return mix(vec4(c,a),inkFor(mix(vec3(1.),hue*.8,la),0.)*la,uLight);}
-vec4 smokeInk(float h){float a=(1.-exp(-h))*mix(.55,.45,uLight);return vec4(mix(vec3(.34,.32,.3),vec3(.25,.23,.21),uLight)*a,a);}
-void main(){
-  vec2 vb=viewOf(gl_FragCoord.xy);
-  vec4 o=vec4(0.);
-  vec2 db=(vb-project(vec3(${BULB[0].toFixed(1)},${BULB[1].toFixed(1)},52.)))/uK;
-  float b=exp(-pow(length(db)/4.,2.))*1.4+exp(-pow(length(db)/16.,2.))*.5;
-  o=glowInk(vec3(1.,.82,.5),b*uBulb);
-  if(uHot>.002){
-    float h=0.;
-    for(int i=0;i<3;i++){
-      vec3 p=onFloor(vb,${ZC.toFixed(1)}+float(i)*3.);
-      float r=length(p.xy-vec2(${MC.map((v) => v.toFixed(1)).join(",")}));
-      h+=exp(-pow((r-26.5)/5.,2.))*.5;
-    }
-    o=over(glowInk(vec3(1.,.28,.06),h*uHot*(.8+.2*noise2(vec2(uTime*3.,1.)))),o);
-  }
-  if(uSmoke>.002){
-    float s=0.;
-    for(int i=0;i<6;i++){
-      float z=${ZW.toFixed(1)}+float(i)*9.;
-      vec3 p=onFloor(vb,z);
-      vec2 c=vec2(${MC.map((v) => v.toFixed(1)).join(",")})+vec2(sin(z*.07+uTime)*3.,cos(z*.05)*2.+(z-60.)*.25);
-      float w=exp(-pow(length(p.xy-c)/(14.+(z-60.)*.35),2.));
-      s+=w*smoothstep(.3,.8,fbm2(p.xy*.05+vec2(0.,-uTime*.5)+z*.02))*.55;
-    }
-    o=over(smokeInk(s*uSmoke),o);
-  }
-  if(uPop>.002){
-    vec2 dv=(vb-project(vec3(${(MC[0] + 18).toFixed(1)},${(MC[1] + 18).toFixed(1)},${(ZC + 2).toFixed(1)})))/uK;
-    float e=exp(-pow(length(dv)/2.,2.))*2.4+exp(-pow(length(dv)/12.,2.))*.8;
-    o=over(glowInk(vec3(.62,.78,1.),e*uPop),o);
-  }
-  o.rgb=min(o.rgb,vec3(o.a));
-  float dd=(hash12(gl_FragCoord.xy+uTime)-.5)/255.*smoothstep(0.,1.5/255.,o.a);
-  gl_FragColor=max(o+dd,0.);
-}`;
-
+const P = k.fitProjection([...k.boxCorners(PLATE, -0.8, 0), [-12, -28, 104], [60, 44, 104], [-110, -64, 70], [-100, 44, 58], [60, -28, 104]], W, H, { pad: 24, azimuth: 45, elevation: 30 });
+const DATA = { W, H, P, PLATE };
+Object.assign(DATA, { MODEL, MC, RR, ZR1, ZFAN, BULB, PANEL, PZ, TBOX, GEO: { RO, RF, RB, Z0, ZC, ZW, ZR0 } });
 const LIVE = `
+${engineScript()}
 const D = __DATA__;
-const { P, MODEL: M } = D;
-const stage = document.querySelector(".fx-stage");
-const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const stage = document.querySelector(".mk-stage");
 const readout = document.querySelector("[data-readout]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
-const LIGHT = document.body.dataset.theme === "light" ? 1 : 0;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lightTheme = document.body.dataset.theme === "light";
+const E = mk2(stage, D.P, { W: D.W, H: D.H, pivot: [0, 0, 40], plate: { ...D.PLATE, h: 12, foot: 5 }, shadowBox: [-130, -86, -18, 86, 80, 112] });
+const { box, cyl, prism, circle, lathe, tube, sphere, loft, roundPoly, rrect, tris } = E;
+E.bindTools(stage);
+const xbtn = stage.querySelector('[data-mk="xray"]');
+const setX = (on) => { E.setXray(on); if (xbtn) xbtn.setAttribute("aria-pressed", String(on)); };
+const sceneG = stage.querySelector('[data-part="scene"]');
+const iso = (p) => E.project(p), depthOf = (p) => E.depthOf(p);
+const shakeEls = [stage.querySelector(".mk-gl"), stage.querySelector(".mk-over")];
+// a tap on the stage that isn't a drag or a press on the toolbar
+const onTap = (fn) => { let d0 = null; stage.addEventListener("pointerdown", (ev) => { d0 = ev.target.closest(".mk-tools,button,a") ? null : [ev.clientX, ev.clientY]; }); stage.addEventListener("pointerup", (ev) => { if (d0 && Math.hypot(ev.clientX - d0[0], ev.clientY - d0[1]) < 6) fn(ev); d0 = null; }); };
+// 3x4 matrix for a cached object turning about a vertical axis through (cx, cy)
+const rotZ = (cx, cy, a) => { const c = Math.cos(a), s = Math.sin(a); return [c, -s, 0, s, c, 0, 0, 0, 1, cx - c * cx + s * cy, cy - s * cx - c * cy, 0]; };
+const mixHex = (a, b, t) => { const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)), A = h(a), B = h(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * Math.min(1, Math.max(0, t))).toString(16).padStart(2, "0")).join(""); };
+const setShake = (x, y) => { const t = x || y ? "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)" : ""; for (const e of shakeEls) if (e.style.transform !== t) e.style.transform = t; };
+const M = D.MODEL, P = D.P;
 const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-const gl = glLayer({ canvas: stage.querySelector(".fx-gl"), fragment: ${JSON.stringify(FRAG)}, view: [D.W, D.H], camera: D.camera, uniforms: ["uBulb", "uHot", "uSmoke", "uPop"], fixed: { uLight: LIGHT } });
-if (gl) stage.setAttribute("data-gl", "");
-
 // the equivalent circuit, per unit; a = supply frequency (pu of 50 Hz), V = phase voltage (pu)
 const ck = M.ckt;
 function motorAt(s, V, a) {
@@ -251,9 +78,6 @@ let frame = 0, last = 0, now = 0, visible = false, touring = true, slow = false,
 const hist = [];
 const VIS = 1 / 40;
 
-const fanG = q("fan"), bars = q("bars"), rfins = q("rfins"), jam = q("jam"), segs = [...stage.querySelectorAll("[data-seg]")];
-const lamps = { k1: q("k1"), k2: q("k2"), k3: q("k3"), run: q("run"), ol: q("ol") };
-const pMode = q("p-mode"), pCont = q("p-cont"), pVfd = q("p-vfd"), vfdHz = q("vfd-hz"), pAmps = q("p-amps"), bulbG = stage.querySelector(".bulb");
 const ui = {
   st: [...document.querySelectorAll("[data-st]")], ld: [...document.querySelectorAll("[data-ld]")], ol: [...document.querySelectorAll("[data-olb]")],
   tFill: document.querySelector("#t-fill"), tOut: document.querySelector("#t-out"),
@@ -321,37 +145,102 @@ function step(dt) {
   thE = 2 * thF;
 }
 
-const rotPts = (r, z, a) => iso([D.MC[0] + r * Math.cos(a), D.MC[1] + r * Math.sin(a), z], P);
-const pt = (p) => p[0].toFixed(1) + " " + p[1].toFixed(1);
-function drawSpin() {
-  // rotor bars on the side facing us, and the end ring fins on top
-  let d = "";
-  for (let j = 0; j < 18; j++) {
-    const a = thR + (j / 18) * Math.PI * 2;
-    if (Math.cos(a - Math.PI / 4) < 0.1) continue;
-    d += "M" + pt(rotPts(D.RR, 10, a + 0.12)) + "L" + pt(rotPts(D.RR, D.ZR1 - 3, a));
+// ---------------- the motor, in real 3D ----------------
+const TAU = Math.PI * 2, rad = (d) => (d * Math.PI) / 180;
+const [MX, MY] = D.MC, G = D.GEO, C0 = [MX, MY, 0];
+const pol = (r, a) => [MX + r * Math.cos(a), MY + r * Math.sin(a)];
+const FRAME = "#3f6a8f", FRAME_CUT = "#8fb0cc", CORE = "#4b5057", CU = "#c0703f", CU_COOKED = "#2a1a10", ALU = "#c9ced3";
+// a ring sector as a prism ring (for windings and the like)
+function sector(r0, r1, a0, a1, n = 8) { const o = []; for (let i = 0; i <= n; i++) o.push(pol(r1, a0 + ((a1 - a0) * i) / n)); for (let i = n; i >= 0; i--) o.push(pol(r0, a0 + ((a1 - a0) * i) / n)); return o; }
+const KEEP = { c: C0, a0: Math.PI / 2, a1: TAU, seg: 48 };
+function motorStatic() {
+  const o = [];
+  // foot flange
+  o.push(prism(rrect(MX - 32, MX + 32, MY - 32, MY + 32, 5), "z", 0, G.Z0, "#365a7a", { mat: "paint" }));
+  for (const [dx, dy] of [[-26, -26], [26, -26], [-26, 26], [26, 26]]) o.push(cyl(MX + dx, MY + dy, 2.6, G.Z0, G.Z0 + 1.6, "#aeb4bb", 6, { mat: "steel" }));
+  // frame: three quarters of it, with the cut faces showing the casting
+  o.push(lathe([[G.RF, G.Z0], [G.RO, G.Z0], [G.RO, G.ZC], [G.RF, G.ZC], [G.RF, G.Z0]], FRAME, { ...KEEP, closed: true, cap: FRAME_CUT, mat: "paint", shell: true }));
+  // cooling fins down the outside
+  for (let a = 97.5; a < 360; a += 15) { const c = Math.cos(rad(a)), s = Math.sin(rad(a)), t = 0.75; o.push(prism([[G.RO - 0.3, -t], [G.RO + 3.6, -t], [G.RO + 3.6, t], [G.RO - 0.3, t]].map(([r, w]) => [MX + r * c - w * s, MY + r * s + w * c]), "z", G.Z0 + 3, G.ZC - 3, FRAME, { mat: "paint", shell: true, bevel: 0 })); }
+  // stator core: a stack of thin steel laminations, so the cut faces read as a stack
+  for (let z = G.Z0 + 3; z < G.ZC - 3.2; z += 3.1) o.push(lathe([[G.RB, z], [G.RF - 0.15, z], [G.RF - 0.15, z + 2.7], [G.RB, z + 2.7], [G.RB, z]], CORE, { ...KEEP, seg: 36, closed: true, cap: "#7d848c", mat: "steel", shell: true }));
+  // terminal box on the side
+  o.push(box(D.TBOX.x, D.TBOX.x + D.TBOX.w, D.TBOX.y, D.TBOX.y + D.TBOX.d, 30, 44, "#365a7a", { mat: "paint" }), box(D.TBOX.x + D.TBOX.w, D.TBOX.x + D.TBOX.w + 0.8, D.TBOX.y + 1, D.TBOX.y + D.TBOX.d - 1, 31, 43, "#4b7aa3", { mat: "paint" }));
+  // the supply cable from the starter, along the floor and up into the terminal box
+  o.push(tube([[D.PANEL.x + D.PANEL.w, -40, 3], [-40, -40, 2.2], [D.TBOX.x + 4, -40, 2.2], [D.TBOX.x + 4, D.TBOX.y + 4, 2.2], [D.TBOX.x + 4, D.TBOX.y + 4, 30]], 1.7, "#1f2023", { seg: 8, mat: "rubber" }));
+  // starter panel
+  const PN = D.PANEL;
+  o.push(box(PN.x, PN.x + PN.w, PN.y, PN.y + PN.d, 0, D.PZ, "#c9cdd2", { mat: "paint" }), box(PN.x + PN.w, PN.x + PN.w + 0.5, PN.y + 2, PN.y + PN.d - 2, 3, D.PZ - 3, "#d7dade", { mat: "paint" }));
+  o.push(box(PN.x + PN.w + 0.5, PN.x + PN.w + 1.6, PN.y + 3.5, PN.y + 5.5, 26, 38, "#2a2d31", { mat: "plastic" }));
+  // the light on the same supply
+  const [bx, by] = D.BULB;
+  o.push(cyl(bx, by, 5, 0, 2, "#3a3d42", 20, { mat: "paint" }), cyl(bx, by, 1, 2, 44, "#8f959d", 10, { mat: "steel" }), cyl(bx, by, 2.6, 44, 47.5, "#2a2d31", 14, { mat: "plastic" }));
+  return o;
+}
+// what turns: the squirrel cage, the shaft and the fan
+function rotorParts() {
+  const o = [], R = D.RR;
+  o.push(cyl(MX, MY, R - 0.4, G.ZR0 + 2, D.ZR1 - 2, "#8f959c", 40, { mat: "satin" }));
+  for (const [z0, z1] of [[G.ZR0, G.ZR0 + 2], [D.ZR1 - 2, D.ZR1]]) o.push(lathe([[12, z0], [R, z0], [R, z1], [12, z1], [12, z0]], ALU, { c: C0, seg: 40, closed: true, mat: "metal" }));
+  for (let j = 0; j < 18; j++) { const a = (j / 18) * TAU, p0 = pol(R - 0.1, a + 0.12), p1 = pol(R - 0.1, a); o.push(tube([[p0[0], p0[1], G.ZR0 + 2], [p1[0], p1[1], D.ZR1 - 2]], 0.7, ALU, { seg: 4, mat: "metal" })); }
+  for (let j = 0; j < 8; j++) { const a = (j / 8) * TAU, c = Math.cos(a), s = Math.sin(a), t = 0.6; o.push(prism([[12, -t], [R - 1, -t], [R - 1, t], [12, t]].map(([r, w]) => [MX + r * c - w * s, MY + r * s + w * c]), "z", D.ZR1, D.ZR1 + 2.2, ALU, { mat: "metal", bevel: 0 })); }
+  o.push(cyl(MX, MY, 3.6, G.Z0 - 1, D.ZFAN + 4, "#b4bac1", 18, { mat: "steel" }));
+  // fan on the end of the shaft
+  o.push(cyl(MX, MY, 6.5, D.ZFAN - 1.5, D.ZFAN + 3.5, "#d5d9de", 20, { mat: "plastic" }));
+  for (let j = 0; j < 5; j++) { const a = (j / 5) * TAU, c = Math.cos(a), s = Math.sin(a), sh = [[6, -3], [24, -7], [35, -4.5], [36.5, 1], [34, 6], [6, 3]]; o.push(prism(sh.map(([r, w]) => [MX + r * c - w * s, MY + r * s + w * c]), "z", D.ZFAN, D.ZFAN + 1.4, "#d5d9de", { mat: "plastic" })); }
+  return o;
+}
+let parts = [];
+function puff(p, v, max, s, k2) { parts.push({ p, v, life: 0, max, s, k: k2 }); }
+const PANEL_LABELS = { k1: "MAIN", k2: "STAR", k3: "DELTA", run: "RUN", ol: "O/L" };
+function draw(dt = 0) {
+  const cook = dead ? 1 : clamp((temp - 120) / (M.burn - 120), 0, 1), hot = clamp((temp - 110) / 70, 0, 1), cu = mixHex(CU, CU_COOKED, cook * 0.85);
+  const mag = clamp(Iline / 2.5, 0, 1) * (on ? 1 : 0), live = [];
+  // the windings: 12 coil groups top and bottom, lit by the field going round (N red, S blue) and by how hot they are
+  for (let i = 0; i < 12; i++) {
+    const a0 = rad(i * 30 + 1.2), a1 = rad(i * 30 + 28.8), ph = Math.cos(2 * rad(i * 30 + 15) - thE), k2 = Math.abs(ph) * (0.25 + 0.75 * mag) * (on ? 1 : 0);
+    const cut = i < 3; // the quarter that's cut away keeps only its lower coils, so you can see in
+    const col = k2 > 0.03 ? mixHex(cu, ph > 0 ? "#ff4a3d" : "#3d8bff", k2 * 0.85) : cu, em = k2 > 0.03 ? [ph > 0 ? "#ff4a3d" : "#3d8bff", k2 * 0.8] : hot > 0.02 ? ["#ff5a14", hot * 0.9] : undefined;
+    if (!cut) live.push(prism(sector(23, 30, a0, a1), "z", G.ZC - 0.4, G.ZW, col, { mat: "copper", emit: em, emitK: 1.5 }));
+    live.push(prism(sector(23, 30, a0, a1), "z", G.Z0 + 0.4, G.Z0 + 3.2, cu, { mat: "copper", emit: hot > 0.02 ? ["#ff5a14", hot * 0.9] : undefined }));
   }
-  bars.setAttribute("d", d);
-  let f = "";
-  for (let j = 0; j < 8; j++) { const a = thR + (j / 8) * Math.PI * 2; f += "M" + pt(rotPts(8, D.ZR1, a)) + "L" + pt(rotPts(D.RR - 1.5, D.ZR1, a)); }
-  rfins.setAttribute("d", f);
-  // fan blades
-  let b = "";
-  for (let j = 0; j < 3; j++) {
-    const a = thR + (j / 3) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
-    const shape = [[6, -3], [24, -6], [35, -3.5], [36.5, 1], [34, 5], [6, 3]];
-    const pts = (z) => shape.map(([r, w]) => iso([D.MC[0] + r * c - w * s, D.MC[1] + r * s + w * c, z], P));
-    const top = pts(D.ZFAN + 1.2), bot = pts(D.ZFAN);
-    b += '<path class="blade-e" d="M' + bot.map(pt).join("L") + 'Z"/><path class="blade" d="M' + top.map(pt).join("L") + 'Z"/>';
+  // copper in the slots, on the two cut faces
+  for (const a of [Math.PI / 2 + 0.012, TAU - 0.012]) live.push(prism(sector(23.2, 27, a - 0.01, a + 0.01, 1), "z", G.Z0 + 3, G.ZC - 3, cu, { mat: "copper", bevel: 0, emit: hot > 0.02 ? ["#ff5a14", hot] : undefined }));
+  // someone's broom in the fan
+  if (loadKind === "jam") live.push(box(MX + 6, MX + 9, MY - 4, MY + 62, D.ZFAN - 6, D.ZFAN - 3, "#a0743f", { mat: "matte" }), box(MX + 3, MX + 12, MY + 62, MY + 74, D.ZFAN - 8, D.ZFAN - 1, "#c8a25a", { mat: "matte" }));
+  // panel lamps, the drive's screen, and the bulb
+  const PN = D.PANEL, fx = PN.x + PN.w + 0.5, lampAt = (u, z, onNow, col) => prism(circle(PN.y + PN.d - u, z, 2.3, 14), "x", fx, fx + 0.9, onNow ? col : "#4a4e55", { mat: "plastic", emit: onNow ? [col, 1] : undefined, emitK: 2.2 });
+  const sd = starter === "sd", vfd = starter === "vfd", lamps = [];
+  if (!vfd) { lamps.push(["k1", 8, 43, on && phase !== "off", "#3ddc84"]); if (sd) lamps.push(["k2", 20, 43, on && phase === "star", "#3ddc84"], ["k3", 32, 43, on && phase === "delta", "#3ddc84"]); }
+  else live.push(box(fx, fx + 0.6, PN.y + PN.d - 37, PN.y + PN.d - 5, 37, 47, "#10261c", { mat: "gloss", emit: ["#1f6a45", 0.5], bevel: 0 }));
+  lamps.push(["run", 8, 29, on, "#3ddc84"], ["ol", 20, 29, tripped === "ol" || tripped === "vfd", "#ff4a3d"]);
+  for (const l of lamps) live.push(lampAt(l[1], l[2], l[3], l[4]));
+  const [bx, by] = D.BULB, bright = clamp((vt - 0.85) / 0.15, 0, 1);
+  live.push(sphere([bx, by, 52], 4.6, mixHex("#5a5648", "#ffe7a8", bright), { lat: 8, lon: 14, mat: "gloss", emit: ["#ffdf9a", 0.15 + 0.85 * bright], emitK: 2.6 }));
+  let svg = E.render([{ cache: "motor", rev: 0, parts: motorStatic }, { cache: "rotor", rev: 0, m: rotZ(MX, MY, thR), parts: rotorParts }, { parts: live }]);
+  // smoke off the windings, and the flash when it finally shorts
+  const smokeK = dead ? Math.exp(-(now - deadAt) / 9) * 1.2 + 0.25 : clamp((temp - 160) / 40, 0, 1);
+  if (smokeK > 0.02 && dt > 0 && Math.random() < dt * 26 * smokeK) { const a = Math.random() * TAU, p = pol(26, a); puff([p[0], p[1], G.ZW], [(Math.random() - 0.5) * 5, (Math.random() - 0.5) * 5, 14 + Math.random() * 10], 2.4 + Math.random() * 1.6, 1, "smoke"); }
+  parts = parts.filter((p) => { p.life += dt; if (p.life > p.max) return false; const t = p.life / p.max; for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * dt; E.sprite(p.p, (4 + 15 * t) * p.s, lightTheme ? "#55524e" : "#3a3836", 0.5 * (1 - t)); return true; });
+  if (now - deadAt < 0.5) E.sprite([MX + 18, MY + 18, G.ZC + 2], 10 + (now - deadAt) * 40, "#bcd4ff", Math.exp(-(now - deadAt) / 0.12), true, 1);
+  // the lettering on the starter door
+  const m = E.faceMatrix([fx + 0.05, PN.y + PN.d, D.PZ - 6], [0, -1, 0], [0, 0, -1]);
+  if (m) {
+    let t = '<text class="pt lo" x="3" y="5" font-size="2.6">STARTER</text><text class="pt hi" x="3" y="10.6" font-size="4">' + (starter === "dol" ? "DOL" : sd ? "STAR-DELTA" : "VFD") + "</text>";
+    for (const l of lamps) t += '<text class="pt lo" x="' + l[1] + '" y="' + (D.PZ - 6 - l[2] + 6.2).toFixed(1) + '" font-size="2" text-anchor="middle">' + PANEL_LABELS[l[0]] + "</text>";
+    if (vfd) t += '<text class="pt vfd" x="21" y="15.6" font-size="4.6" text-anchor="middle">' + (tripped === "vfd" ? "STALL" : (on ? hz * 50 : 0).toFixed(1) + " Hz") + "</text>";
+    t += '<text class="pt" x="27" y="33" font-size="3">' + Math.round(Iline * M.amps) + " A</text>";
+    svg += '<g transform="' + m + '">' + t + "</g>";
   }
-  fanG.innerHTML = b;
-  // the field: N and S poles chasing round the windings
-  const mag = clamp(Iline / 2.5, 0, 1) * (on ? 1 : 0);
-  for (const el of segs) {
-    const i = +el.dataset.seg, ph = Math.cos(2 * ((i * 30 + 15) * Math.PI / 180) - thE);
-    el.dataset.n = ph > 0 ? "n" : "s";
-    el.style.opacity = (Math.abs(ph) * (0.25 + 0.75 * mag) * (on ? 1 : 0)).toFixed(2);
-  }
+  if (E.xray > 0.02) svg += E.callouts([
+    { p: [...pol(G.RO + 3, rad(200)), 40], text: "Frame and fins", sub: "gets the heat out" }, { p: [...pol(27, rad(120)), G.ZC - 8], text: "Stator core", sub: "laminated steel" },
+    { p: [...pol(26.5, rad(60)), G.Z0 + 3], text: "Windings", sub: Math.round(temp) + " °C, class F is 155" }, { p: [...pol(D.RR, rad(30)), 34], text: "Squirrel cage rotor", sub: "bars shorted at both ends" },
+    { p: [MX + 30, MY, D.ZFAN + 1], text: "The load", sub: loadKind === "jam" ? "jammed solid" : loadKind === "conv" ? "a loaded conveyor" : "a fan" }, { p: [PN.x + PN.w, PN.y + 20, 50], text: "Starter", sub: NAMES[starter] },
+  ], E.xray, E.fs < 0.62 ? {} : { topL: 70 });
+  if (sceneG.innerHTML !== svg) sceneG.innerHTML = svg;
+  const rpm = Math.round(w * M.rpm);
+  const text = dead ? "BURNT OUT · " + Math.round(temp) + " °C" : rpm + " rpm · " + Math.round(Iline * M.amps) + " A · " + Math.round(temp) + " °C windings" + (on ? "" : " · stopped");
+  if (readout.textContent !== text) readout.textContent = text;
 }
 
 function drawScope() {
@@ -370,28 +259,6 @@ function drawScope() {
   ctx.strokeStyle = lit; ctx.lineWidth = 1.8; ctx.beginPath();
   hist.forEach((h, i) => { i ? ctx.lineTo(X(h.t), yI(h.i)) : ctx.moveTo(X(h.t), yI(h.i)); }); ctx.stroke();
   ctx.fillStyle = lit; ctx.fillText("current", wpx - 112, hpx - 3); ctx.fillStyle = mid; ctx.fillText("speed", wpx - 52, hpx - 3);
-}
-
-function draw() {
-  drawSpin();
-  jam.style.display = loadKind === "jam" ? "" : "none";
-  const cook = clamp((temp - 120) / (M.burn - 120), 0, 1);
-  stage.style.setProperty("--cook", (dead ? 1 : cook).toFixed(3));
-  bulbG.style.setProperty("--b", clamp((vt - 0.85) / 0.15, 0, 1).toFixed(3));
-  pMode.textContent = starter === "dol" ? "DOL" : starter === "sd" ? "STAR-DELTA" : "VFD";
-  pCont.style.display = starter === "vfd" ? "none" : ""; pVfd.style.display = starter === "vfd" ? "" : "none";
-  lamps.k1.dataset.on = String(on && starter !== "vfd" && phase !== "off");
-  lamps.k2.dataset.on = String(on && phase === "star");
-  lamps.k3.dataset.on = String(on && phase === "delta");
-  lamps.k2.style.display = lamps.k3.style.display = starter === "sd" ? "" : "none";
-  lamps.k2.nextElementSibling.style.display = lamps.k3.nextElementSibling.style.display = starter === "sd" ? "" : "none";
-  lamps.run.dataset.on = String(on); lamps.ol.dataset.on = String(tripped === "ol" || tripped === "vfd");
-  vfdHz.textContent = (tripped === "vfd" ? "STALL" : (on ? hz * 50 : 0).toFixed(1) + " Hz");
-  pAmps.textContent = Math.round(Iline * M.amps) + " A";
-  if (gl) gl.draw({ uBulb: clamp((vt - 0.82) / 0.18, 0, 1) * 0.9, uHot: clamp((temp - 110) / 70, 0, 1), uSmoke: dead ? Math.exp(-(now - deadAt) / 9) * 1.2 + 0.25 : clamp((temp - 160) / 40, 0, 1), uPop: Math.exp(-(now - deadAt) / 0.12) * (now - deadAt < 1 ? 1 : 0) }, now);
-  const rpm = Math.round(w * M.rpm), slip = on && w > 0.01 ? (((starter === "vfd" ? hz : 1) - w) / (starter === "vfd" ? Math.max(hz, 0.02) : 1)) * 100 : 0;
-  const text = dead ? "BURNT OUT · " + Math.round(temp) + " °C" : rpm + " rpm · " + Math.round(Iline * M.amps) + " A · " + Math.round(temp) + " °C windings" + (on ? "" : " · stopped");
-  if (readout.textContent !== text) readout.textContent = text;
 }
 
 function syncUi() {
@@ -456,8 +323,8 @@ function tick(t) {
   const n = 20;
   for (let i = 0; i < n; i++) step(sdt / n);
   hist.push({ t: now, i: Iline, w }); while (hist.length && hist[0].t < now - 10.5) hist.shift();
-  draw(); syncUi(); drawScope(); story();
-  const idle = !touring && !on && w < 0.001 && Math.abs(temp - M.amb) < 0.5 && !dead && hist.every((h) => h.i < 0.001);
+  draw(sdt); syncUi(); drawScope(); story();
+  const idle = parts.length === 0 && !touring && !on && w < 0.001 && Math.abs(temp - M.amb) < 0.5 && !dead && hist.every((h) => h.i < 0.001);
   frame = visible && !idle ? requestAnimationFrame(tick) : 0;
 }
 const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
@@ -478,59 +345,25 @@ ui.go.addEventListener("click", toggle);
 ui.fresh.addEventListener("click", fresh);
 ui.slow.addEventListener("click", () => { slow = !slow; run(); });
 ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; tourClock = 0; actions = []; } run(); });
-stage.addEventListener("click", toggle);
+onTap(toggle);
 stage.addEventListener("keydown", (ev) => {
-  const map = { " ": toggle, Enter: toggle, "1": () => setSt("dol"), "2": () => setSt("sd"), "3": () => setSt("vfd"), f: () => setLd("fan"), c: () => setLd("conv"), j: () => setLd("jam"), o: () => setOl(!olOn), r: fresh, s: () => { slow = !slow; run(); } };
+  const map = { x: () => { setX(!E.xrayOn); run(); }, " ": toggle, Enter: toggle, "1": () => setSt("dol"), "2": () => setSt("sd"), "3": () => setSt("vfd"), f: () => setLd("fan"), c: () => setLd("conv"), j: () => setLd("jam"), o: () => setOl(!olOn), r: fresh, s: () => { slow = !slow; run(); } };
   if (map[ev.key]) { ev.preventDefault(); map[ev.key](); }
 });
-window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+window.__fig = { E, freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
 draw(); syncUi(); drawScope();
 `;
 
-const CSS = `.fx-stage{position:relative;cursor:pointer}
-.fx-layer{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.fx-gl{display:block}
-body[data-theme="dark"] .fx-gl{mix-blend-mode:screen}
-.iso-plate{overflow:hidden}
-.iso-pipe{fill:none;stroke:#2b2b2b;stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round}
-body[data-theme="light"] .iso-pipe{stroke:#4a4a4a}
-.iso-pipe-out{fill:none;stroke:var(--anatomy-mid);stroke-width:3.2;stroke-linejoin:round;stroke-linecap:round}
-.cu .iso-fill,.cu .iso-shade{fill:color-mix(in srgb,#b0643a,#2a1a10 calc(var(--cook,0)*85%))}.cu .iso-top{fill:color-mix(in srgb,#d08a5a,#3a2414 calc(var(--cook,0)*85%))}
-.ring .iso-fill,.ring .iso-shade{fill:#a9adb3}.ring .iso-top{fill:#c4c8cc}
-body[data-theme="dark"] .ring .iso-fill,body[data-theme="dark"] .ring .iso-shade{fill:#6d7177}body[data-theme="dark"] .ring .iso-top{fill:#868a90}
-.slot{fill:color-mix(in srgb,#b0643a,#2a1a10 calc(var(--cook,0)*85%));stroke:none}
-.pole{stroke:none;opacity:0}.pole[data-n="n"]{fill:#ff4a3d}.pole[data-n="s"]{fill:#3d8bff}
-.bars{fill:none;stroke:#c0c4c8;stroke-width:1.1;stroke-linecap:round}
-body[data-theme="light"] .bars{stroke:#8a8f96}
-.rfins{fill:none;stroke:var(--anatomy-mid);stroke-width:1.4;stroke-linecap:round}
-.blade{fill:var(--anatomy-face,#ddd);stroke:var(--anatomy-mid);stroke-width:.5;stroke-linejoin:round}
-.blade-e{fill:var(--anatomy-mid);stroke:var(--anatomy-mid);stroke-width:.5}
-.jam .iso-fill,.jam .iso-shade{fill:#a0743f}.jam .iso-top{fill:#c39256}
-.bulb .iso-fill,.bulb .iso-shade,.bulb .iso-top{fill:color-mix(in srgb,#ffe7a8,var(--anatomy-paper) calc((1 - var(--b,1))*100%))}
-.lamp{stroke:var(--anatomy-mid);stroke-width:.3;fill:var(--anatomy-paper)}.lamp[data-on="true"]{fill:#3ddc84}
-[data-part="ol"][data-on="true"]{fill:#ff4a3d}
-.vfd-scr{fill:#10261c;stroke:var(--anatomy-mid);stroke-width:.3}.vfd-t{fill:#5dff9d}
-.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
-.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.ctl-label{min-width:72px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
-.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
-.ctl button:hover{border-color:var(--anatomy-mid)}
-.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
-.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
-.ctl #go{font-weight:600;letter-spacing:.06em;min-width:84px;text-align:center;border-color:var(--anatomy-lit);color:var(--anatomy-lit)}
-.ctl #go[aria-pressed="true"]{background:var(--anatomy-lit);color:var(--anatomy-paper)}
-.ctl #fresh{border-color:#ff6a3d;color:#ff6a3d}
-.ctl output{min-width:72px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
-.meter{position:relative;flex:1;min-width:110px;height:10px;margin-top:14px;border:1px solid var(--anatomy-lo);border-radius:5px}
-.meter .fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .1s;background:var(--anatomy-mid)}
-.meter .fill[data-state="ok"]{background:#3ddc84}.meter .fill[data-state="warn"]{background:#ffb347}.meter .fill[data-state="bad"]{background:#ff5a2a}
-.mark{position:absolute;top:-14px;bottom:-3px;width:0;border-left:1px dashed #ff6a3d;pointer-events:none}
-.mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:#ff6a3d}
-#scope{width:100%;height:120px;display:block;border:1px solid var(--anatomy-lo);border-radius:6px}
-#stats{font-size:12px;color:var(--anatomy-mid);line-height:1.5}#stats b{color:var(--anatomy-hi,var(--anatomy-mid));font-weight:600}
-#shot{min-height:3.6em;font-size:12px;line-height:1.4}
-@media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:60px}.ctl button small{display:none}}`;
+const CSS = `.pt{font-family:var(--anatomy-mono);fill:#23262b;font-weight:600}.pt.lo{fill:#5a6068;font-weight:500}.pt.hi{font-weight:700}.pt.vfd{fill:#5dff9d}
+.ctl #go{font-weight:600;letter-spacing:.06em;min-width:84px;text-align:center}
+#scope{width:100%;height:120px;display:block;border:1px solid var(--anatomy-lo);border-radius:6px;grid-column:1/-1}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Induction motor: space starts and stops, 1 2 3 pick the starter, F C J pick the load, O bypasses the overload">${svg}<canvas class="fx-layer fx-gl" aria-hidden="true"></canvas></div>`;
+const stage = stageHtml({
+  W, H, fig: "Fig 11", title: "How a motor starts", xray: true,
+  label: "A 7.5 kilowatt induction motor standing on its end with a fan on the shaft, a quarter cut away to show the stator core, the copper windings and the squirrel cage rotor. A starter panel and a light on the same supply stand behind it, with the cable running to the motor's terminal box. An x-ray mode turns the frame and core to glass.",
+  keysHelp: "Induction motor: drag to rotate, X for x-ray, space starts and stops, 1 2 3 pick the starter, F C J pick the load, O bypasses the overload",
+  extra: ``,
+});
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Starter</span><button type="button" data-st="dol" aria-pressed="true">Direct on line</button><button type="button" data-st="sd" aria-pressed="false">Star-delta<small>3 s in star</small></button><button type="button" data-st="vfd" aria-pressed="false">VFD<small>5 s ramp, 1.5 × In limit</small></button></div>
@@ -539,26 +372,20 @@ const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <canvas id="scope" aria-label="Current and speed over the last ten seconds"></canvas>
   <div class="ctl-row"><span class="ctl-label">Windings</span><div class="meter"><span id="t-fill" class="fill"></span><span class="mark" style="left:${((155 - 20) / 200 * 100).toFixed(1)}%" data-label="155 °C class F"></span></div><output id="t-out">40 °C</output></div>
   <div class="ctl-row"><span class="ctl-label">Supply</span><div class="meter"><span id="v-fill" class="fill"></span><span class="mark" style="left:50%" data-label="−10 %"></span></div><output id="v-out">415 V</output></div>
-  <div class="ctl-row"><span class="ctl-label">Now</span><span id="stats"></span></div>
+  <div class="ctl-row wide"><span class="ctl-label">Now</span><span id="stats"></span></div>
   <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="go" aria-pressed="false">START</button><button type="button" id="fresh" style="display:none">Rewind it</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
-  <div id="shot" aria-live="polite">Stopped. Pick a starter and a load and hit START.</div>
 </div>`;
 
-const card = k.plateHtml({
-  fig: "Fig 11",
-  title: "How a motor starts",
-  hint: "Tap: start / stop",
-  readout: "",
-  keys: [
-    { mark: "lit", label: "The field (N red, S blue) going round the windings, the rotor chasing it; shown 40× slower" },
-    { mark: "raised", label: "7.5 kW induction motor cut open: frame, laminated core, copper windings, squirrel cage rotor" },
-  ],
-  caption: "Three phases in three sets of windings make a magnetic field that goes round the stator at 1500 rpm on a 4-pole motor. The rotor is just aluminium bars shorted at the ends. It only gets current, and so torque, when the field is slipping past it, which is why it always runs a little slower than the field. At standstill the slip is total, so a motor started direct on line pulls 7 to 8 times its full load current until it gets going. Star-delta cuts that to a third, but the torque too, so it can't start a loaded machine. A VFD starts the field slowly and brings it up with the rotor, so the current never spikes. And a jammed rotor turns all that current into heat: the overload relay is there to win that race.",
-  body: stageHtml,
-});
 
-const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
-const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a motor study. Anchored on a WEG W22 IE3 7.5 kW 4-pole (132M): 14.2 A, 1460 rpm, locked rotor current 8.3 × In, locked rotor torque 2.4 × Tn, breakdown 3.5 × Tn, class F, locked rotor time 12 s cold. Class 10 overload: trips at 7.2 × setting in 4 to 10 s. Made up: the circuit fitted to those ratios, the loads and their inertia, the timers, the drive, the supply dip, the thermal model and when it burns.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/motor" style="color:inherit">Source</a></p>`;
+const foot = footHtml({
+  theme, slug: "motor",
+  real: "Anchored on a WEG W22 IE3 7.5 kW 4-pole (132M): 14.2 A, 1460 rpm, locked rotor current 8.3 × In, locked rotor torque 2.4 × Tn, breakdown 3.5 × Tn, class F, locked rotor time 12 s cold. Class 10 overload: trips at 7.2 × setting in 4 to 10 s.",
+  made: "the circuit fitted to those ratios, the loads and their inertia, the timers, the drive, the supply dip, the thermal model and when it burns.",
+});
 const name = theme === "light" ? "light.html" : "index.html";
-writeFileSync(join(HERE, name), k.pageHtml({ title: "How a motor starts", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + glScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 700 }));
+writeFileSync(join(HERE, name), pageMk2({
+  k, title: "How a motor starts", fig: "Fig 11", hint: "Tap: start / stop", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  caption: "Three phases in three sets of windings make a magnetic field that goes round the stator at 1500 rpm on a 4-pole motor. The rotor is just aluminium bars shorted at the ends. It only gets current, and so torque, when the field is slipping past it, which is why it always runs a little slower than the field. At standstill the slip is total, so a motor started direct on line pulls 7 to 8 times its full load current until it gets going. Star-delta cuts that to a third, but the torque too, so it can't start a loaded machine. A VFD starts the field slowly and brings it up with the rotor, so the current never spikes. And a jammed rotor turns all that current into heat: the overload relay is there to win that race.",
+  script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
+}));
 console.log("wrote", name);

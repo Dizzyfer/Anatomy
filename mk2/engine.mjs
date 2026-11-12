@@ -286,6 +286,14 @@ export function mk2(stage, P, opt = {}) {
     return '<g class="mk-co" opacity="' + alpha.toFixed(2) + '">' + out + "</g>";
   }
 
+  // an SVG transform that lays overlay content flat on a plane in the scene: origin o, u = one unit to the right, v = one unit down.
+  // Returns "" when the plane is seen from behind (so text on the back of a box doesn't show through the front).
+  function faceMatrix(o, u, v) {
+    const p0 = project(o), p1 = project([o[0] + u[0], o[1] + u[1], o[2] + u[2]]), p2 = project([o[0] + v[0], o[1] + v[1], o[2] + v[2]]);
+    const a = p1[0] - p0[0], b = p1[1] - p0[1], c = p2[0] - p0[0], d = p2[1] - p0[1];
+    if (a * d - b * c <= 1e-9) return "";
+    return "matrix(" + [a, b, c, d, p0[0], p0[1]].map((n) => n.toFixed(4)).join(" ") + ")";
+  }
   // ---------------- frame bookkeeping ----------------
   let open = false, pending = false, haveFrame = false;
   function begin() {
@@ -352,7 +360,7 @@ export function mk2(stage, P, opt = {}) {
   let lastFlush = 0;
   if (!gl) {
     stage.classList.add("mk-nogl");
-    const E0 = { ok: false, prism, box, cyl, circle, rrect, lathe, tube, sphere, tris, loft, roundPoly, callouts, render, line() {}, sprite() {}, project, depthOf, px: () => cam.k, rgb, xray: 0, setXray() {}, view, bevel: 0, mat: "satin", bindTools() {}, VIEW: [0, 0, 1] };
+    const E0 = { ok: false, prism, box, cyl, circle, rrect, lathe, tube, sphere, tris, loft, roundPoly, callouts, faceMatrix, render, line() {}, sprite() {}, project, depthOf, px: () => cam.k, rgb, xray: 0, setXray() {}, view, bevel: 0, mat: "satin", bindTools() {}, VIEW: [0, 0, 1] };
     return E0;
   }
   const VS_CAM = `uniform vec4 uCam;uniform vec3 uOK;uniform vec4 uScr;uniform vec2 uDep;
@@ -635,7 +643,7 @@ o=vec4(c.rgb+bl,clamp(c.a+max(bl.r,max(bl.g,bl.b))*1.1,0.,1.));}`;
   new ResizeObserver(() => { if (haveFrame && !open && !window.__mk2skip) { drawFrame(); } }).observe(cv);
 
   const E = {
-    ok: true, prism, box, cyl, circle, rrect, lathe, tube, sphere, tris, loft, roundPoly, callouts, render, line: (...a) => { if (touch()) line(...a); }, sprite: (...a) => { if (touch()) sprite(...a); },
+    ok: true, prism, box, cyl, circle, rrect, lathe, tube, sphere, tris, loft, roundPoly, callouts, faceMatrix, render, line: (...a) => { if (touch()) line(...a); }, sprite: (...a) => { if (touch()) sprite(...a); },
     project, depthOf, px: () => cam.k, rgb, lin, view, goal, home, setXray, bindTools, get xrayOn() { return !!xrGoal; },
     xray: 0, mat: opt.mat || "satin", bevel: opt.bevel ?? 1.2 / (base.scale * UNIT), ao: opt.ao ?? 0.85, aoRadius: opt.aoRadius ?? 26 / (base.scale * UNIT), ink: opt.ink ?? 0.5, inkDepth: opt.inkDepth ?? 1.5, bloom: opt.bloom ?? 1,
     plate: opt.plate || null, shadowBox: opt.shadowBox || null, ms: 0, cpu: 0, triCount: 0, get fs() { return fsNow; }, cam: () => cam,
