@@ -2,14 +2,11 @@ import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as k from "../../kit/iso-kit.mjs";
-import { glCamera } from "../../kit/gl.mjs";
-import { kitScript, glScript } from "../../scripts/inline-kit.mjs";
+import { engineScript, stageHtml, pageMk2, footHtml } from "../../mk2/shell.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
-
-const W = 640;
-const H = 440;
+const W = 960, H = 600;
 
 // Truth (roughly, and it varies a lot cell to cell): SEI breaks down from about 70 to 90 °C; PE separators melt around 130 to 140 °C;
 // cobalt and nickel-rich cathodes run away somewhere around 150 to 200 °C, LFP around 250 °C; hot spots reach about 800 °C.
@@ -29,216 +26,38 @@ const COLS = 4, ROWS = 3, N = COLS * ROWS, TRIG = N - 1;
 const RC = 9, ZB = 4, ZT = 69;
 const PACK = [22, 6];
 const PITCH = { touch: 18.6, gap: 25, barrier: 25 };
-const PLATE = { x: -76, y: -50, w: 158, d: 110, r: 8 };
-const PLATE_H = 12, FOOT_H = 5;
 const CHG = { x: -64, y: 24, w: 26, d: 20 };
 const BMS = { x: -62, y: -30, w: 22, d: 40 };
-
-const P = k.fitProjection(
-  [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [PACK[0] - 20, PACK[1] - 20, ZT + 62], [PACK[0] + 40, PACK[1] + 30, ZT + 30]],
-  W, H, { pad: 18, azimuth: 45 },
-);
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const Dt = (points, style) => k.dotsSvg(points, style);
-const depth2 = ([x, y]) => k.depthOf([x, y, 0], P);
-const byDepth = (pts) => [...pts].sort((a, b) => depth2(a) - depth2(b));
-const slab = (plan, z, h, r = 1.2, bevel = 0.5) => k.slabOf({ r, ...plan }, z, h, P, 4, bevel);
-const rad = (d) => (d * Math.PI) / 180;
 const posOf = (i, pitch) => { const c = i % COLS, r = Math.floor(i / COLS); return [PACK[0] + (c - (COLS - 1) / 2) * pitch, PACK[1] + (r - (ROWS - 1) / 2) * pitch]; };
-function sector([cx, cy], r0, r1, a0, a1, n = 24) {
-  const pt = (r, a) => [cx + r * Math.cos(rad(a)), cy + r * Math.sin(rad(a))];
-  const out = [];
-  for (let i = 0; i <= n; i++) out.push(pt(r1, a0 + ((a1 - a0) * i) / n));
-  for (let i = n; i >= 0; i--) out.push(pt(r0, a0 + ((a1 - a0) * i) / n));
-  return out;
-}
-
-function plate() {
-  const out = [`<path class="iso-halo" d="${k.haloOf(PLATE, -PLATE_H - FOOT_H, PLATE_H, P)}"/>`];
-  for (const [x, y] of byDepth(k.corners(PLATE, 22))) {
-    out.push(S(k.cylinder(x, y, 7, -PLATE_H - FOOT_H, 1.6, P, 28), { tone: "lo" }));
-    out.push(S(k.cylinder(x, y, 5.4, -PLATE_H - FOOT_H + 1.6, FOOT_H - 1.6, P, 28), { tone: "mid" }));
-  }
-  out.push(S(k.slabOf(PLATE, -PLATE_H, PLATE_H, P, 8, 1.6), { tone: "mid", inner: L(k.sideSeam(PLATE, -PLATE_H / 2, P), { tone: "faint" }) }));
-  out.push(L(k.planOutline(k.insetPlan(PLATE, 5), 0, P), { tone: "lo" }));
-  const screws = k.corners(PLATE, 10);
-  out.push(L(screws.map(([x, y]) => k.ring(x, y, 2.2, 0, P, 16)).join(""), { tone: "lo" }));
-  out.push(Dt(screws.map(([x, y]) => at([x, y, 0])), { size: 0.5 }));
-  return out.join("");
-}
-
-function charger() {
-  const out = [];
-  out.push(S(slab(CHG, 0, 12, 2.4, 0.8), { tone: "hi", inner: L(k.sideSeam({ ...CHG, r: 2.4 }, 6, P), { tone: "faint" }) }));
-  const m = k.topMatrix([CHG.x + 4, CHG.y + 5], 12.01, P, "x");
-  out.push(`<g transform="${m}"><text class="iso-face-text" data-tone="lo" x="0" y="2" font-size="3">CHARGER</text><circle data-part="chg-lamp" class="lamp" data-on="false" cx="2" cy="7" r="1.6"/><text data-part="chg-t" class="iso-face-text" data-tone="mid" x="5.4" y="8" font-size="2.6">idle</text></g>`);
-  // the BMS board, its sense wires and the main lead
-  out.push(S(slab(BMS, 0, 2.4, 1, 0.3), { tone: "mid" }));
-  out.push(`<g class="pcb">${S(slab(k.insetPlan({ ...BMS, r: 1 }, 1.5), 2.4, 1.2, 0.6, 0.2), { tone: "hi" })}</g>`);
-  for (const [x, y, w, d] of [[BMS.x + 5, BMS.y + 8, 10, 10], [BMS.x + 6, BMS.y + 24, 6, 4], [BMS.x + 6, BMS.y + 32, 6, 4]]) out.push(S(slab({ x, y, w, d }, 3.6, 1.6, 0.4, 0.2), { tone: "lo" }));
-  const m2 = k.topMatrix([BMS.x + 3, BMS.y + 4], 3.61, P, "x");
-  out.push(`<g transform="${m2}"><text class="iso-face-text" data-tone="lo" x="0" y="0" font-size="2.6">BMS</text><circle data-part="bms-lamp" class="lamp" data-on="true" cx="14" cy="36" r="1.6"/></g>`);
-  const lead = [[CHG.x + 6, CHG.y, 3], [CHG.x + 6, BMS.y + BMS.d + 6, 2], [BMS.x + 6, BMS.y + BMS.d + 6, 2], [BMS.x + 6, BMS.y + BMS.d - 2, 3]].map(at);
-  out.push(`<path class="iso-pipe-out" d="${k.pathOf(lead)}"/><path class="iso-pipe" d="${k.pathOf(lead)}"/>`);
-  return out.join("");
-}
-
-// the jelly roll on the two cut faces of the trigger cell: anode, separator, cathode, separator, out from the mandrel
-function rollFaces(c) {
-  const out = [];
-  const u = [Math.cos(rad(135)), Math.sin(rad(135))];
-  const p = (r, z) => [c[0] + r * u[0], c[1] + r * u[1], z];
-  const quad = (r0, r1, cls) => `<path class="${cls}" d="${k.pathOf([p(r0, ZB + 3), p(r1, ZB + 3), p(r1, ZT - 4), p(r0, ZT - 4)].map(at), true)}"/>`;
-  out.push(quad(-8.5, 8.5, "roll-bg"));
-  const lay = [[0.48, "an"], [0.16, "sep"], [0.5, "ca"], [0.16, "sep"]];
-  for (const sgn of [1, -1]) {
-    let r = 1.3;
-    while (r < 8.3) for (const [t, cls] of lay) { if (r >= 8.3) break; const r1 = Math.min(8.3, r + t); out.push(sgn > 0 ? quad(r, r1, cls) : quad(-r1, -r, cls)); r += t; }
-  }
-  out.push(quad(-1.2, 1.2, "mandrel"));
-  out.push(L(k.segment(p(8.5, ZB), p(8.5, ZT), P) + k.segment(p(-8.5, ZB), p(-8.5, ZT), P), { tone: "lo" }));
-  return `<g class="roll" data-stage="0">${out.join("")}</g>`;
-}
-
-function cellSvg(i, c) {
-  const out = [];
-  if (i === TRIG) {
-    out.push(S(k.extrude(sector(c, 0.01, RC, 135, 315, 30), ZB, ZT - ZB, P), { tone: "hi" }));
-    out.push(rollFaces(c));
-    out.push(`<g class="cap">${S(k.extrude(sector(c, 0.01, 3.6, 135, 315, 16), ZT, 1.4, P), { tone: "hi" })}</g>`);
-  } else {
-    out.push(S(k.cylinder(c[0], c[1], RC, ZB, ZT - ZB, P, 36, 0.8), { tone: "hi" }));
-    out.push(L(k.ring(c[0], c[1], RC - 1.6, ZT, P, 28), { tone: "faint" }));
-    out.push(`<g class="cap">${S(k.cylinder(c[0], c[1], 3.6, ZT, 1.4, P, 20, 0.3), { tone: "hi" })}</g>`);
-  }
-  return `<g class="cell" data-cell="${i}" data-st="ok">${out.join("")}</g>`;
-}
-
-function pack(sp) {
-  const pitch = PITCH[sp];
-  const out = [];
-  const tray = { x: PACK[0] - (COLS / 2) * pitch - 4, y: PACK[1] - (ROWS / 2) * pitch - 4, w: COLS * pitch + 8, d: ROWS * pitch + 8 };
-  out.push(S(slab(tray, 0, ZB, 2, 0.5), { tone: "mid" }));
-  const order = byDepth([...Array(N).keys()].map((i) => [...posOf(i, pitch), i])).map((p) => p[2]);
-  for (const i of order) {
-    const c = posOf(i, pitch), col = i % COLS, row = Math.floor(i / COLS);
-    out.push(cellSvg(i, c));
-    if (sp === "barrier") {
-      if (col < COLS - 1) out.push(`<g class="mica">${S(slab({ x: c[0] + pitch / 2 - 0.5, y: c[1] - pitch / 2 + 0.6, w: 1, d: pitch - 1.2 }, ZB, ZT - ZB - 6, 0.2, 0), { tone: "hi", crease: "none" })}</g>`);
-      if (row < ROWS - 1) out.push(`<g class="mica">${S(slab({ x: c[0] - pitch / 2 + 0.6, y: c[1] + pitch / 2 - 0.5, w: pitch - 1.2, d: 1 }, ZB, ZT - ZB - 6, 0.2, 0), { tone: "hi", crease: "none" })}</g>`);
-    }
-  }
-  // nickel strips along each row, not over the cut cell
-  for (let r = 0; r < ROWS; r++) {
-    const a = posOf(r * COLS, pitch), b = posOf(r * COLS + COLS - (r === ROWS - 1 ? 2 : 1), pitch);
-    out.push(`<g class="ni">${S(slab({ x: a[0] - 3, y: a[1] - 2.5, w: b[0] - a[0] + 6, d: 5 }, ZT + 1.4, 0.4, 0.4, 0), { tone: "hi", crease: "none" })}</g>`);
-  }
-  return `<g data-sp="${sp}"${sp === "touch" ? "" : ' style="display:none"'}>${out.join("")}</g>`;
-}
-
-function nail() {
-  const out = [];
-  const c = posOf(TRIG, PITCH.touch), x = c[0] - 3.2, y = c[1] + 3.2;
-  out.push(S(k.cylinder(x, y, 0.9, ZT - 30, 36, P, 12), { tone: "hi" }));
-  out.push(S(k.cylinder(x, y, 3, ZT + 6, 1.2, P, 20, 0.3), { tone: "hi" }));
-  return `<g data-part="nail" style="display:none">${out.join("")}</g>`;
-}
-function heater() {
-  return `<g data-part="heater" class="heater" data-on="false" style="display:none"></g>`;
-}
-
-const svg = k.figureSvg({
-  width: W, height: H,
-  label: "A small pack of twelve cylindrical lithium-ion cells on a tray, one corner cell cut open to show the rolled-up anode, separator and cathode inside. A charger and a battery management board sit behind it.",
-  body: [plate(), charger(), pack("touch"), pack("gap"), pack("barrier"), nail(), heater()],
-});
-
+const PLATE = { x: -76, y: -50, w: 158, d: 110, r: 8 };
+const P = k.fitProjection([...k.boxCorners(PLATE, -0.8, 0), [-20, -30, 110], [64, -30, 110], [64, 44, 110], [-20, 44, 110], [-64, 44, 14]], W, H, { pad: 18, azimuth: 45, elevation: 30 });
+const DATA = { W, H, P, PLATE };
 const SPOS = Object.fromEntries(Object.keys(PITCH).map((sp) => [sp, [...Array(N).keys()].flatMap((i) => posOf(i, PITCH[sp]))]));
-const heaterSvg = Object.fromEntries(Object.keys(PITCH).map((sp) => { const c = posOf(TRIG, PITCH[sp]); return [sp, S(slab({ x: c[0] + RC + 2, y: c[1] - 7, w: 6, d: 14 }, 0, 22, 1, 0.3), { tone: "hi" })]; }));
-const nailOff = Object.fromEntries(Object.keys(PITCH).map((sp) => { const a = at([...posOf(TRIG, PITCH.touch), 0]), b = at([...posOf(TRIG, PITCH[sp]), 0]); return [sp, [b[0] - a[0], b[1] - a[1]]]; }));
-const DATA = { nailOff, W, H, camera: glCamera(P), P, MODEL, CHEM, N, TRIG, COLS, ROWS, SPOS, heaterSvg, ZT, nailDrop: (() => { const a = at([0, 0, 0]), b = at([0, 0, 28]); return [b[0] - a[0], b[1] - a[1]]; })() };
-
-const FRAG = `
-uniform float uLight;
-uniform vec2 uPos[${N}];
-uniform float uVent[${N}];
-uniform float uFire[${N}];
-uniform float uSmoke[${N}];
-uniform float uShort;
-uniform float uHeat;
-uniform vec2 uHeatAt;
-vec4 inkFor(vec3 seen,float cover){vec3 ab=1.-seen;float a=max(max(ab.r,max(ab.g,ab.b)),cover);return vec4(vec3(a)-ab,a);}
-vec4 over(vec4 t,vec4 u){return t+u*(1.-t.a);}
-vec4 fireInk(float e,float core){
-  vec3 hue=mix(vec3(.55,.16,.06),mix(vec3(1.,.36,.08),vec3(1.,.7,.3),smoothstep(.45,1.,core)),smoothstep(0.,.5,core));
-  vec3 c=tonemap(hue*e,1.4);float a=max(c.r,max(c.g,c.b));
-  float la=1.-exp(-1.8*e);
-  vec3 seen=mix(vec3(1.),mix(vec3(.82,.28,.06),vec3(1.,.78,.4),smoothstep(.6,1.,core)*smoothstep(.5,1.,la)),la);
-  return mix(vec4(c,a),inkFor(seen,.9*smoothstep(.75,1.,la)*core)*la,uLight);
-}
-vec4 gasInk(float h){float a=(1.-exp(-h))*mix(.42,.34,uLight);return vec4(mix(vec3(.86,.88,.9),vec3(.5,.52,.56),uLight)*a,a);}
-vec4 smokeInk(float h){float a=(1.-exp(-h))*mix(.6,.5,uLight);return vec4(mix(vec3(.3,.29,.28),vec3(.22,.21,.2),uLight)*a,a);}
-vec4 glowInk(vec3 hue,float e){vec3 c=tonemap(hue*e,1.3);float a=max(c.r,max(c.g,c.b));float la=1.-exp(-1.4*e);return mix(vec4(c,a),inkFor(mix(vec3(1.),hue*.8,la),0.)*la,uLight);}
-float edgeFade(vec2 vb){return smoothstep(0.,40.,min(min(vb.x,uView.x-vb.x),min(vb.y,uView.y-vb.y)));}
-void main(){
-  vec2 vb=viewOf(gl_FragCoord.xy);
-  vec4 o=vec4(0.);
-  float ef=edgeFade(vb);
-  float fire=0.,core=0.,gas=0.,smk=0.,sp=0.;
-  for(int i=0;i<${N};i++){
-    float v=uVent[i],f=uFire[i],s=uSmoke[i];
-    if(v+f+s<.005) continue;
-    vec2 d=(vb-project(vec3(uPos[i],${(ZT + 1.5).toFixed(1)})))/uK;
-    float up=-d.y, x=d.x;
-    float n=fbm2(vec2(x*.12,up*.08-uTime*2.4)+float(i)*3.1);
-    float wv=2.+up*.32;
-    gas+=v*exp(-pow(x/wv,2.))*smoothstep(-1.,3.,up)*exp(-up/40.)*(.5+.8*n)*1.2;
-    float wf=1.8+up*.16+3.*f;
-    float jet=exp(-pow(x/wf,2.))*smoothstep(-2.,1.,up)*exp(-up/(14.+30.*f))*(.55+.9*n);
-    fire+=f*jet*1.6; core+=f*jet*exp(-up/10.);
-    float ws=5.+up*.5;
-    smk+=s*exp(-pow((x-up*.15)/ws,2.))*smoothstep(4.,16.,up)*exp(-up/70.)*smoothstep(.3,.8,n+.1)*1.3;
-    if(f>.05){
-      for(int j=0;j<6;j++){
-        float h1=hash12(vec2(float(j),float(i)*1.7+3.)),h2=hash12(vec2(float(j)*3.3,float(i)+9.));
-        float tt=fract(uTime*.9+h1);
-        vec2 sv=vec2((h2-.5)*60.,70.+h1*50.);
-        vec2 sp2=vec2(sv.x*tt,sv.y*tt-70.*tt*tt);
-        sp+=f*exp(-pow(length(vec2(x,up)-sp2)/.9,2.))*(1.-tt)*1.4;
-      }
-    }
-  }
-  o=smokeInk(smk*ef);
-  o=over(gasInk(gas*ef),o);
-  o=over(fireInk((fire+sp)*ef,clamp(core*1.3/max(fire,1e-3),0.,1.)),o);
-  if(uShort>.002){
-    vec2 d=(vb-project(vec3(uPos[${TRIG}]+vec2(-1.5,1.5),40.)))/uK;
-    o=over(glowInk(vec3(.62,.78,1.),(exp(-pow(length(d)/1.4,2.))*2.2+exp(-pow(length(d)/8.,2.))*.6)*uShort),o);
-  }
-  if(uHeat>.002){
-    vec2 d=(vb-project(vec3(uHeatAt,12.)))/uK;
-    o=over(glowInk(vec3(1.,.3,.08),exp(-pow(length(d*vec2(1.,.7))/12.,2.))*.9*uHeat),o);
-  }
-  o.rgb=min(o.rgb,vec3(o.a));
-  float dd=(hash12(gl_FragCoord.xy+uTime)-.5)/255.*smoothstep(0.,1.5/255.,o.a);
-  gl_FragColor=max(o+dd,0.);
-}`;
-
+Object.assign(DATA, { MODEL, CHEM, N, TRIG, COLS, ROWS, SPOS, ZT, ZB, RC, PACK, PITCH, CHG, BMS });
 const LIVE = `
+${engineScript()}
 const D = __DATA__;
-const { P, MODEL: M, CHEM } = D;
-const stage = document.querySelector(".fx-stage");
-const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const stage = document.querySelector(".mk-stage");
 const readout = document.querySelector("[data-readout]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
-const LIGHT = document.body.dataset.theme === "light" ? 1 : 0;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lightTheme = document.body.dataset.theme === "light";
+const E = mk2(stage, D.P, { W: D.W, H: D.H, pivot: [14, 4, 36], plate: { ...D.PLATE, h: 12, foot: 5 }, shadowBox: [-84, -58, -18, 90, 68, 120] });
+const { box, cyl, prism, circle, lathe, tube, sphere, loft, roundPoly, rrect, tris } = E;
+E.bindTools(stage);
+const xbtn = stage.querySelector('[data-mk="xray"]');
+const setX = (on) => { E.setXray(on); if (xbtn) xbtn.setAttribute("aria-pressed", String(on)); };
+const sceneG = stage.querySelector('[data-part="scene"]');
+const iso = (p) => E.project(p), depthOf = (p) => E.depthOf(p);
+const shakeEls = [stage.querySelector(".mk-gl"), stage.querySelector(".mk-over")];
+// a tap on the stage that isn't a drag or a press on the toolbar
+const onTap = (fn) => { let d0 = null; stage.addEventListener("pointerdown", (ev) => { d0 = ev.target.closest(".mk-tools,button,a") ? null : [ev.clientX, ev.clientY]; }); stage.addEventListener("pointerup", (ev) => { if (d0 && Math.hypot(ev.clientX - d0[0], ev.clientY - d0[1]) < 6) fn(ev); d0 = null; }); };
+// 3x4 matrix for a cached object turning about a vertical axis through (cx, cy)
+const rotZ = (cx, cy, a) => { const c = Math.cos(a), s = Math.sin(a); return [c, -s, 0, s, c, 0, 0, 0, 1, cx - c * cx + s * cy, cy - s * cx - c * cy, 0]; };
+const mixHex = (a, b, t) => { const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)), A = h(a), B = h(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * Math.min(1, Math.max(0, t))).toString(16).padStart(2, "0")).join(""); };
+const setShake = (x, y) => { const t = x || y ? "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)" : ""; for (const e of shakeEls) if (e.style.transform !== t) e.style.transform = t; };
+const M = D.MODEL, CHEM = D.CHEM, P = D.P;
 const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-const gl = glLayer({ canvas: stage.querySelector(".fx-gl"), fragment: ${JSON.stringify(FRAG)}, view: [D.W, D.H], camera: D.camera, uniforms: ["uPos", "uVent", "uFire", "uSmoke", "uShort", "uHeat", "uHeatAt"], fixed: { uLight: LIGHT } });
-if (gl) stage.setAttribute("data-gl", "");
-
 let chem = "nmc", abuse = "charge", bms = true, sp = "touch", socSet = 1;
 let cells = [], soc = 1, charging = false, chargeStopped = "", nailAt = null, heaterOn = false, shortAt = -10, going = false, endAt = null;
 let frame = 0, last = 0, now = 0, visible = false, touring = true, slow = false, tourClock = 0, tourStep = -1, actions = [], lastShot = "", stageSaid = 0;
@@ -300,11 +119,6 @@ function step(dt) {
   const active = cells.some(burning) || charging || heaterOn || (nailAt !== null && now - nailAt < 8);
   if (going && endAt === null && !active && hot < Math.max(90, ch.sei + 10)) endAt = now;
 }
-
-const groups = [...Array(D.N).keys()].map((i) => [...stage.querySelectorAll('[data-cell="' + i + '"]')]);
-const rolls = [...stage.querySelectorAll(".roll")];
-const spG = [...stage.querySelectorAll("[data-sp]")];
-const nailG = q("nail"), heatG = q("heater"), chgLamp = q("chg-lamp"), chgT = q("chg-t"), bmsLamp = q("bms-lamp");
 const ui = {
   chem: [...document.querySelectorAll("[data-chem]")], abuse: [...document.querySelectorAll("[data-abuse]")], bms: [...document.querySelectorAll("[data-bms]")], sp: [...document.querySelectorAll("[data-spb]")],
   soc: document.querySelector("#soc"), socOut: document.querySelector("#soc-out"),
@@ -333,37 +147,101 @@ function syncUi() {
   ui.go.disabled = going; ui.go.textContent = abuse === "charge" ? "CHARGE IT" : abuse === "nail" ? "NAIL IT" : "HEAT IT";
   ui.slow.setAttribute("aria-pressed", String(slow)); ui.tour.setAttribute("aria-pressed", String(touring));
 }
-
-function draw() {
-  const ch = C();
-  stage.dataset.chem = chem;
-  spG.forEach((g) => (g.style.display = g.dataset.sp === sp ? "" : "none"));
-  cells.forEach((c, i) => {
-    const h = clamp((c.T - M.amb) / 220, 0, 1).toFixed(3);
-    for (const g of groups[i]) { g.style.setProperty("--h", h); if (g.dataset.st !== c.st) g.dataset.st = c.st; }
-  });
-  const tc = cells[D.TRIG];
+// ---------------- the pack, in real 3D ----------------
+const TAU = Math.PI * 2, RC = D.RC, ZB = D.ZB, ZT = D.ZT, CHG = D.CHG, BMS = D.BMS, HOT = "#ff5a14";
+const WRAP = { nmc: "#2f8f83", lfp: "#3b6fc9" }, CATH = { nmc: "#51648a", lfp: "#7a7448" };
+const posAt = (i) => [D.SPOS[sp][i * 2], D.SPOS[sp][i * 2 + 1]];
+const rn = () => Math.random();
+function benchStatic() {
+  const o = [];
+  // charger
+  o.push(prism(rrect(CHG.x, CHG.x + CHG.w, CHG.y, CHG.y + CHG.d, 2.4), "z", 0, 12, "#2f3338", { mat: "plastic" }), box(CHG.x + 2, CHG.x + CHG.w - 2, CHG.y + 2, CHG.y + 14, 12, 12.3, "#e9e6df", { bevel: 0, mat: "matte" }));
+  // the BMS board with its chips, and the lead from the charger
+  o.push(box(BMS.x, BMS.x + BMS.w, BMS.y, BMS.y + BMS.d, 0, 2.4, "#3a3f46", { mat: "plastic" }), box(BMS.x + 1.5, BMS.x + BMS.w - 1.5, BMS.y + 1.5, BMS.y + BMS.d - 1.5, 2.4, 3.6, "#1f6a4a", { mat: "satin" }));
+  for (const [x, y, w, d] of [[BMS.x + 5, BMS.y + 8, 10, 10], [BMS.x + 6, BMS.y + 24, 6, 4], [BMS.x + 6, BMS.y + 32, 6, 4]]) o.push(box(x, x + w, y, y + d, 3.6, 5.2, "#1b1c1f", { mat: "plastic" }));
+  for (let i = 0; i < 5; i++) o.push(cyl(BMS.x + 4 + i * 3.4, BMS.y + 4, 0.9, 3.6, 5.6, "#c9a24a", 8, { mat: "metal" }));
+  o.push(tube([[CHG.x + 6, CHG.y, 3], [CHG.x + 6, BMS.y + BMS.d + 6, 1.6], [BMS.x + 6, BMS.y + BMS.d + 6, 1.6], [BMS.x + 6, BMS.y + BMS.d - 2, 4]], 1.2, "#1c1d20", { seg: 7, mat: "rubber" }));
+  return o;
+}
+function trayParts() {
+  const pitch = D.PITCH[sp], o = [], x0 = D.PACK[0] - (D.COLS / 2) * pitch - 4, y0 = D.PACK[1] - (D.ROWS / 2) * pitch - 4, w = D.COLS * pitch + 8, d = D.ROWS * pitch + 8;
+  o.push(prism(rrect(x0, x0 + w, y0, y0 + d, 2.5), "z", 0, ZB, "#3a3f46", { mat: "plastic" }));
+  o.push(tube([[BMS.x + BMS.w, BMS.y + 12, 3], [x0 - 6, BMS.y + 12, 1.6], [x0 - 4, y0 + 8, 1.6], [x0 + 1, y0 + 8, 2.4]], 1.1, "#d0342c", { seg: 6, mat: "plastic" }), tube([[BMS.x + BMS.w, BMS.y + 16, 3], [x0 - 9, BMS.y + 16, 1.6], [x0 - 7, y0 + 14, 1.6], [x0 + 1, y0 + 14, 2.4]], 1.1, "#1c1d20", { seg: 6, mat: "plastic" }));
+  // nickel strips along each row (not over the cut cell)
+  for (let r = 0; r < D.ROWS; r++) { const a = posAt(r * D.COLS), b = posAt(r * D.COLS + D.COLS - (r === D.ROWS - 1 ? 2 : 1)); o.push(box(a[0] - 3, b[0] + 3, a[1] - 2.5, a[1] + 2.5, ZT + 1.4, ZT + 1.9, "#c9ced3", { mat: "steel", bevel: 0 })); }
+  if (sp === "barrier") for (let i = 0; i < D.N; i++) { const c = posAt(i), col = i % D.COLS, row = Math.floor(i / D.COLS); if (col < D.COLS - 1) o.push(box(c[0] + pitch / 2 - 0.5, c[0] + pitch / 2 + 0.5, c[1] - pitch / 2 + 0.6, c[1] + pitch / 2 - 0.6, ZB, ZT - 6, "#d9c9a0", { mat: "matte", bevel: 0 })); if (row < D.ROWS - 1) o.push(box(c[0] - pitch / 2 + 0.6, c[0] + pitch / 2 - 0.6, c[1] + pitch / 2 - 0.5, c[1] + pitch / 2 + 0.5, ZB, ZT - 6, "#d9c9a0", { mat: "matte", bevel: 0 })); }
+  return o;
+}
+// the trigger cell, cut in half so you can see the jelly roll: anode, separator, cathode, separator, wound out from the middle
+function rollParts(stg) {
+  const c = posAt(D.TRIG), o = [], HALF = { c: [c[0], c[1], 0], a0: (135 * Math.PI) / 180, a1: (315 * Math.PI) / 180, seg: 24, closed: true };
+  const ring = (r0, r1, col, extra) => o.push(lathe([[r0, ZB + 3], [r1, ZB + 3], [r1, ZT - 4], [r0, ZT - 4], [r0, ZB + 3]], col, { ...HALF, cap: col, mat: "matte", ...extra }));
+  const burn = stg === 3 ? { emit: ["#ff7a1f", 0.9], emitK: 2 } : stg === 2 ? { emit: ["#ff5a14", 0.16] } : stg === 1 ? { emit: ["#ff8a3a", 0.03] } : {};
+  const col = { an: stg === 4 ? "#141210" : stg >= 2 ? "#3a2a22" : "#3a3d42", sep: stg === 4 ? "#1d1a18" : stg >= 2 ? "#6a4a30" : stg === 1 ? "#e8dcc0" : "#f1efe9", ca: stg === 4 ? "#181614" : CATH[chem] };
+  ring(0.01, 1.2, stg === 4 ? "#2a2522" : "#aeb4bb", {});
+  let r = 1.3; const lay = [[0.48, "an"], [0.16, "sep"], [0.5, "ca"], [0.16, "sep"]];
+  while (r < 8.3) for (const [t, kk] of lay) { if (r >= 8.3) break; const r1 = Math.min(8.3, r + t); ring(r, r1, col[kk], burn); r += t; }
+  return o;
+}
+let fx = [];
+function draw(dt = 0) {
+  const ch = C(), live = [], tc = cells[D.TRIG];
   const stg = tc.trAt !== null ? (burning(tc) ? 3 : 4) : tc.sepGone ? 2 : tc.T > ch.sei ? 1 : 0;
-  rolls.forEach((r) => (r.dataset.stage = String(stg)));
-  // the nail going in
-  nailG.style.display = nailAt !== null ? "" : "none";
-  if (nailAt !== null) { const f = sm(0, 0.6, now - nailAt); const o = D.nailOff[sp]; nailG.setAttribute("transform", "translate(" + (o[0] + D.nailDrop[0] * (1 - f)).toFixed(1) + " " + (o[1] + D.nailDrop[1] * (1 - f)).toFixed(1) + ")"); }
-  heatG.style.display = abuse === "heat" ? "" : "none"; heatG.dataset.on = String(heaterOn);
-  if (heatG.dataset.sp !== sp) { heatG.innerHTML = D.heaterSvg[sp]; heatG.dataset.sp = sp; }
-  chgLamp.dataset.on = String(charging); chgT.textContent = charging ? "charging" : chargeStopped === "bms" ? "full" : "idle";
-  bmsLamp.dataset.on = String(bms);
-  if (gl && !window.__noGL) {
-    const pos = D.SPOS[sp];
-    const ti = D.TRIG;
-    gl.draw({
-      uPos: pos,
-      uVent: cells.map((c) => (c.vented && c.trAt === null ? 1 : 0)),
-      uFire: cells.map((c) => (c.trAt === null ? 0 : sm(0, 0.15, now - c.trAt) * (1 - sm(M.burn - 0.8, M.burn, now - c.trAt)))),
-      uSmoke: cells.map((c) => (c.trAt === null ? (c.vented ? 0.2 : 0) : sm(0.5, 2, now - c.trAt) * Math.exp(-Math.max(0, now - c.trAt - M.burn) / 8))),
-      uShort: Math.exp(-(now - shortAt) / 0.18) * (now - shortAt < 1.2 ? 1 : 0),
-      uHeat: heaterOn ? 1 : 0, uHeatAt: [pos[ti * 2] + 14, pos[ti * 2 + 1]],
-    }, now);
-  }
+  cells.forEach((c, i) => {
+    const [x, y] = posAt(i), h = clamp((c.T - M.amb) / 220, 0, 1), dead = c.st === "dead", fire = c.st === "fire";
+    const wrap = dead ? "#1d1a18" : mixHex(WRAP[chem], "#3a2a22", h * 0.7), glow = fire ? [HOT, 0.9] : h > 0.04 ? [HOT, h * 0.8] : undefined, em = fire ? ["#ff7a1f", 0.8] : h > 0.3 ? [HOT, (h - 0.3) * 0.9] : undefined;
+    if (i === D.TRIG) {
+      const HALF = { c: [x, y, 0], a0: (135 * Math.PI) / 180, a1: (315 * Math.PI) / 180, seg: 28 };
+      live.push(lathe([[8.5, ZB], [RC, ZB], [RC, ZT], [8.5, ZT], [8.5, ZB]], wrap, { ...HALF, closed: true, cap: dead ? "#2a2522" : "#c9ced3", mat: "plastic", glow, emit: em }), lathe([[0, ZB], [8.5, ZB], [8.5, ZB + 3], [0, ZB + 3]], "#aeb4bb", { ...HALF, mat: "steel" }), lathe([[0, ZT - 4], [8.5, ZT - 4], [8.5, ZT], [4.4, ZT], [3.6, ZT + 1.4], [0, ZT + 1.4]], dead ? "#2a2522" : "#c9ced3", { ...HALF, mat: "steel" }));
+      return;
+    }
+    live.push(lathe([[0, ZB], [RC, ZB], [RC, ZT - 1.2], [RC - 0.5, ZT - 0.2], [RC - 1.6, ZT]], wrap, { c: [x, y, 0], seg: 28, mat: "plastic", shell: true, glow, emit: em }));
+    live.push(lathe([[RC - 1.6, ZT], [4.6, ZT], [4.4, ZT - 0.6], [4.4, ZT]], dead ? "#2a2522" : "#f1efe9", { c: [x, y, 0], seg: 24, mat: "matte", shell: true }), lathe([[4.4, ZT - 0.4], [4.4, ZT + 0.2], [3.6, ZT + 1.4], [0, ZT + 1.4]], dead ? "#2a2522" : "#c9ced3", { c: [x, y, 0], seg: 20, mat: "steel", shell: true }));
+    // what's inside, for the x-ray: the roll, glowing with how hot it is
+    if (E.xray > 0.01) live.push(lathe([[1.2, ZB + 3], [8.3, ZB + 3], [8.3, ZT - 4], [1.2, ZT - 4]], dead ? "#1d1a18" : mixHex("#4a5058", HOT, h), { c: [x, y, 0], seg: 20, mat: "matte", emit: fire ? ["#ff7a1f", 1] : h > 0.03 ? [HOT, h] : undefined, emitK: 1.6 }));
+  });
+  // the nail going in, or the heater pad cooking it
+  const tp = posAt(D.TRIG);
+  if (nailAt !== null) { const f = sm(0, 0.6, now - nailAt), dz = 30 * (1 - f), nx = tp[0] - 3.2, ny = tp[1] + 3.2; live.push(lathe([[0, ZT - 30], [0.9, ZT - 27], [0.9, ZT + 6], [3, ZT + 6], [3, ZT + 7.2], [0, ZT + 7.2]], "#c9ced3", { c: [nx, ny, dz], seg: 12, mat: "steel" })); }
+  if (abuse === "heat") live.push(box(tp[0] + RC + 1.5, tp[0] + RC + 6, tp[1] - 7, tp[1] + 7, ZB, 26, heaterOn ? "#ff7a2a" : "#7a4a3a", { mat: "matte", emit: heaterOn ? [HOT, 0.9] : undefined, emitK: 2 }), tube([[tp[0] + RC + 4, tp[1] + 7, 8], [tp[0] + RC + 10, tp[1] + 16, 2], [tp[0] + RC + 16, tp[1] + 30, 1.2]], 0.8, "#1c1d20", { seg: 5, mat: "rubber" }));
+  // lamps
+  live.push(cyl(CHG.x + 6, CHG.y + 12, 1.6, 12.3, 13, charging ? "#3ddc84" : "#4a4e55", 12, { mat: "plastic", emit: charging ? ["#3ddc84", 1] : undefined, emitK: 2.2 }), cyl(BMS.x + 17, BMS.y + 36, 1.4, 3.6, 5, bms ? "#3ddc84" : "#ff4a3d", 10, { mat: "plastic", emit: [bms ? "#3ddc84" : "#ff4a3d", 0.9], emitK: 2 }));
+  let svg = E.render([{ cache: "bench", rev: 0, parts: benchStatic }, { cache: "tray", rev: sp, parts: trayParts }, { cache: "roll", rev: sp + chem + stg, parts: () => rollParts(stg) }, { parts: live }]);
+  // gas, fire and smoke
+  if (dt > 0) cells.forEach((c, i) => {
+    const [x, y] = posAt(i), top = [x, y, ZT + 2];
+    if (c.vented && c.trAt === null && rn() < dt * 22) fx.push({ k: "gas", p: [x + (rn() - 0.5) * 3, y + (rn() - 0.5) * 3, ZT + 2], v: [(rn() - 0.5) * 14, (rn() - 0.5) * 14, 50 + rn() * 40], life: 0, max: 0.7 + rn() * 0.6, s: 0.5 });
+    if (c.trAt !== null) {
+      const a = now - c.trAt, fire = sm(0, 0.15, a) * (1 - sm(M.burn - 0.8, M.burn, a)), smoke = sm(0.5, 2, a) * Math.exp(-Math.max(0, a - M.burn) / 8);
+      if (fire > 0.02) for (let j = 0; j < 3; j++) if (rn() < fire) fx.push({ k: "flame", p: [x + (rn() - 0.5) * 6, y + (rn() - 0.5) * 6, ZT + 1], v: [(rn() - 0.5) * 26, (rn() - 0.5) * 26, 90 + rn() * 90], life: 0, max: 0.35 + rn() * 0.4, s: 0.8 + rn() * 0.7 });
+      if (fire > 0.3 && rn() < dt * 40) fx.push({ k: "spark", p: [...top], v: [(rn() - 0.5) * 220, (rn() - 0.5) * 220, 120 + rn() * 220], life: 0, max: 0.5 + rn() * 0.6 });
+      if (smoke > 0.03 && rn() < dt * 16 * smoke) fx.push({ k: "smoke", p: [x + (rn() - 0.5) * 6, y + (rn() - 0.5) * 6, ZT + 16], v: [(rn() - 0.5) * 10, (rn() - 0.5) * 10, 26 + rn() * 22], life: 0, max: 2.2 + rn() * 2.2, s: 1 });
+      if (fire > 0.05) E.sprite([x, y, ZT + 6], 16 * fire, "#ffd27a", 0.5 * fire, true, 1);
+    }
+  });
+  const sh = now - shortAt; if (sh < 0.5) { E.sprite([tp[0] - 3, tp[1] + 3, ZT - 20], 9 + sh * 30, "#cfe0ff", Math.exp(-sh / 0.18), true, 1); for (let j = 0; j < 3; j++) E.line([tp[0] - 3, tp[1] + 3, ZT - 20], [tp[0] - 3 + (rn() - 0.5) * 14, tp[1] + 3 + (rn() - 0.5) * 14, ZT - 20 + (rn() - 0.5) * 20], 1.8, "#ffffff", Math.exp(-sh / 0.18), true); }
+  fx = fx.filter((p) => {
+    p.life += dt; if (p.life > p.max) return false;
+    const t = p.life / p.max, o = [p.p[0], p.p[1], p.p[2]];
+    if (p.k === "spark") p.v[2] -= 420 * dt; else { p.v[0] *= 0.97; p.v[1] *= 0.97; }
+    for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * dt;
+    if (p.k === "flame") E.sprite(p.p, (5 + 14 * t) * p.s, t < 0.25 ? "#fff0b8" : t < 0.6 ? "#ff9a2e" : "#d8481a", 0.9 * (1 - t * t), true, 2);
+    else if (p.k === "gas") E.sprite(p.p, (3 + 12 * t) * p.s, lightTheme ? "#b9c2cc" : "#e6ecf2", (lightTheme ? 0.5 : 0.34) * (1 - t));
+    else if (p.k === "smoke") E.sprite(p.p, (6 + 26 * t) * p.s, lightTheme ? "#4a4744" : "#2e2c2b", 0.5 * (1 - t));
+    else E.line(o, p.p, 1.8, t < 0.5 ? "#ffe6a0" : "#ff8a3a", 1 - t, true);
+    return true;
+  });
+  // lettering on the charger and the BMS
+  let m = E.faceMatrix([CHG.x + 4, CHG.y + 5, 12.35], [1, 0, 0], [0, 1, 0]);
+  if (m) svg += '<g transform="' + m + '"><text class="pt lo" x="0" y="2" font-size="3">CHARGER</text><text class="pt" x="5.4" y="8" font-size="2.6">' + (charging ? "charging" : chargeStopped === "bms" ? "full" : "idle") + "</text></g>";
+  m = E.faceMatrix([BMS.x + 3, BMS.y + 22.5, 3.65], [1, 0, 0], [0, 1, 0]);
+  if (m) svg += '<g transform="' + m + '"><text class="pt pcb" x="13" y="0" font-size="2.6">BMS</text></g>';
+  if (E.xray > 0.02) svg += E.callouts([
+    { p: [tp[0] - 4, tp[1] + 4, 44], text: "Jelly roll", sub: stg === 0 ? "anode, separator, cathode" : stg === 1 ? "SEI layer breaking down" : stg === 2 ? "separator's gone: internal short" : stg === 3 ? "thermal runaway" : "what's left" },
+    { p: [tp[0], tp[1] - 2, ZT + 1.4], text: "Vent", sub: "lets the gas out before it bursts" }, { p: [posAt(1)[0], posAt(1)[1], ZT + 1.9], text: "Nickel strip", sub: "joins the cells, and carries the heat" },
+    { p: [BMS.x + 10, BMS.y + 13, 5.2], text: "BMS", sub: bms ? "watching every cell's voltage" : "dead" }, { p: [posAt(4)[0] - RC, posAt(4)[1], 40], text: "Hottest cell", sub: Math.round(Math.max(...cells.map((c) => c.T))) + " °C, runaway at " + ch.tr },
+  ], E.xray, E.fs < 0.62 ? {} : { topL: 70, topR: 70 });
+  if (sceneG.innerHTML !== svg) sceneG.innerHTML = svg;
   const hot = Math.max(...cells.map((c) => c.T)), nTr = cells.filter((c) => c.trAt !== null).length;
   const text = C().name + " · " + Math.round(socSet * 100) + " % · hottest " + Math.round(hot) + " °C · " + ocv(soc).toFixed(2) + " V" + (nTr ? " · " + nTr + " in runaway" : "");
   if (readout.textContent !== text) readout.textContent = text;
@@ -416,8 +294,8 @@ function tick(t) {
   }
   const n = 10;
   for (let i = 0; i < n; i++) step(sdt / n);
-  draw(); syncUi(); story();
-  const idle = !touring && !going && cells.every((c) => c.T < M.amb + 3);
+  draw(sdt); syncUi(); story();
+  const idle = fx.length === 0 && !touring && !going && cells.every((c) => c.T < M.amb + 3);
   if (going && endAt !== null && now - endAt > 2.5 && !touring) going = false;
   frame = visible && !idle ? requestAnimationFrame(tick) : 0;
 }
@@ -443,63 +321,24 @@ ui.go.addEventListener("click", start);
 ui.reset.addEventListener("click", doReset);
 ui.slow.addEventListener("click", () => { slow = !slow; syncUi(); run(); });
 ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; tourClock = 0; actions = []; } syncUi(); run(); });
-stage.addEventListener("click", start);
+onTap(start);
 stage.addEventListener("keydown", (ev) => {
-  const map = { " ": start, Enter: start, r: doReset, l: () => setChem(chem === "nmc" ? "lfp" : "nmc"), b: () => setBms(!bms), "1": () => setAbuse("charge"), "2": () => setAbuse("nail"), "3": () => setAbuse("heat"), s: () => { slow = !slow; syncUi(); run(); } };
+  const map = { x: () => { setX(!E.xrayOn); run(); }, " ": start, Enter: start, r: doReset, l: () => setChem(chem === "nmc" ? "lfp" : "nmc"), b: () => setBms(!bms), "1": () => setAbuse("charge"), "2": () => setAbuse("nail"), "3": () => setAbuse("heat"), s: () => { slow = !slow; syncUi(); run(); } };
   if (map[ev.key]) { ev.preventDefault(); map[ev.key](); }
 });
-window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+window.__fig = { E, freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
 draw(); syncUi(); story();
 `;
 
-const CSS = `.fx-stage{position:relative;cursor:pointer}
-.fx-layer{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.fx-gl{display:block}
-body[data-theme="dark"] .fx-gl{mix-blend-mode:screen}
-.iso-plate{overflow:hidden}
-.iso-pipe{fill:none;stroke:#2b2b2b;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
-body[data-theme="light"] .iso-pipe{stroke:#4a4a4a}
-.iso-pipe-out{fill:none;stroke:var(--anatomy-mid);stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
-.fx-stage{--wrap:#2f6db5;--wrap-t:#4c86c9}.fx-stage[data-chem="lfp"]{--wrap:#3c8a62;--wrap-t:#58a57d}
-.cell .iso-fill,.cell .iso-shade{fill:color-mix(in srgb,var(--wrap),#ff5a1a calc(var(--h,0)*75%))}
-.cell .iso-top{fill:color-mix(in srgb,var(--wrap-t),#ff7a2a calc(var(--h,0)*75%))}
-.cell .cap .iso-fill,.cell .cap .iso-shade,.cell .cap .iso-top{fill:color-mix(in srgb,#c9ccd0,#ff7a2a calc(var(--h,0)*60%))}
-.cell[data-st="dead"] .iso-fill,.cell[data-st="dead"] .iso-shade,.cell[data-st="dead"] .iso-top{fill:color-mix(in srgb,#2a2420,#ff5a1a calc(var(--h,0)*60%))}
-.cell[data-st="dead"] .cap .iso-fill,.cell[data-st="dead"] .cap .iso-top{fill:#1a1614}
-.roll-bg{fill:#3a3d42}.mandrel{fill:#1a1a1a}
-.an{fill:#b0643a}.ca{fill:#55595f}.sep{fill:#f2f2ee}
-.roll[data-stage="1"] .an{fill:#7a4a30}
-.roll[data-stage="2"] .an{fill:#6a3a22}.roll[data-stage="2"] .sep{fill:#5a4a40}
-.roll[data-stage="3"] .an,.roll[data-stage="3"] .ca,.roll[data-stage="3"] .sep,.roll[data-stage="3"] .roll-bg{fill:#ff8a3a}
-.roll[data-stage="4"] .an,.roll[data-stage="4"] .ca,.roll[data-stage="4"] .sep,.roll[data-stage="4"] .roll-bg{fill:#1d1a18}
-.ni .iso-fill,.ni .iso-shade,.ni .iso-top{fill:#c8ccd0}
-.mica .iso-fill,.mica .iso-shade,.mica .iso-top{fill:rgba(225,205,160,.85)}
-.pcb .iso-fill,.pcb .iso-shade,.pcb .iso-top{fill:#1f6a3c}
-.heater .iso-fill,.heater .iso-shade,.heater .iso-top{fill:#8a8f96}.heater[data-on="true"] .iso-fill,.heater[data-on="true"] .iso-top{fill:#ff6a2a}
-.lamp{stroke:var(--anatomy-mid);stroke-width:.3;fill:var(--anatomy-paper)}.lamp[data-on="true"]{fill:#3ddc84}
-.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
-.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.ctl-label{min-width:72px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
-.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
-.ctl button:hover{border-color:var(--anatomy-mid)}
-.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
-.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
-.ctl #go{font-weight:600;letter-spacing:.06em;min-width:110px;text-align:center;border-color:#ff6a3d;color:#ff6a3d}
-.ctl #go:disabled{opacity:.4;cursor:default}
-.slide{position:relative;flex:1;min-width:110px}
-.slide input{width:100%;accent-color:var(--anatomy-lit);margin:0}
-.ctl output{min-width:72px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
-.meter{position:relative;flex:1;min-width:110px;height:10px;margin-top:14px;border:1px solid var(--anatomy-lo);border-radius:5px}
-.meter .fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .1s;background:var(--anatomy-mid)}
-.meter .fill[data-state="ok"]{background:#3ddc84}.meter .fill[data-state="warn"]{background:#ffb347}.meter .fill[data-state="bad"]{background:#ff5a2a}
-.mark{position:absolute;top:-14px;bottom:-3px;width:0;border-left:1px dashed var(--anatomy-lit);pointer-events:none}
-.mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:var(--anatomy-lit)}
-.mark.red{border-left-color:#ff6a3d}.mark.red::after{color:#ff6a3d}
-.mark.quiet::after{content:none}
-#stats{font-size:12px;color:var(--anatomy-mid);line-height:1.5}#stats b{color:var(--anatomy-hi,var(--anatomy-mid));font-weight:600}
-#shot{min-height:3.6em;font-size:12px;line-height:1.4}
-@media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:60px}.ctl button small{display:none}}`;
+const CSS = `.pt{font-family:var(--anatomy-mono);fill:#23262b;font-weight:700}.pt.lo{fill:#5a6068;font-weight:600}.pt.pcb{fill:#d8f0e4}
+.ctl #go{font-weight:600;letter-spacing:.06em}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Lithium pack: space abuses the corner cell, 1 2 3 pick the abuse, L switches chemistry, B the BMS, R resets">${svg}<canvas class="fx-layer fx-gl" aria-hidden="true"></canvas></div>`;
+const stage = stageHtml({
+  W, H, fig: "Fig 12", title: "Lithium thermal runaway", xray: true,
+  label: "A pack of twelve cylindrical lithium-ion cells in a tray with nickel strips across the tops, a charger and a battery management board beside it. The corner cell is cut in half to show the jelly roll inside. An x-ray mode turns the other cans to glass and shows how hot each one is.",
+  keysHelp: "Lithium pack: drag to rotate, X for x-ray, space abuses the corner cell, 1 2 3 pick the abuse, L switches chemistry, B the BMS, R resets",
+  extra: ``,
+});
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Chemistry</span><button type="button" data-chem="nmc" aria-pressed="true">NMC<small>phones, laptops, most EVs</small></button><button type="button" data-chem="lfp" aria-pressed="false">LFP<small>home batteries, some EVs</small></button></div>
@@ -510,25 +349,19 @@ const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Hottest</span><div class="meter"><span id="t-fill" class="fill"></span><span class="mark quiet" style="left:${(80 / 300 * 100).toFixed(1)}%"></span><span class="mark" style="left:${(130 / 300 * 100).toFixed(1)}%" data-label="130"></span><span id="tr-mark" class="mark red" style="left:60%" data-label="180 runaway"></span></div><output id="t-out">25 °C</output></div>
   <div class="ctl-row"><span class="ctl-label">Cell volts</span><div class="meter"><span id="v-fill" class="fill"></span><span id="v-mark" class="mark red" style="left:50%" data-label="4.2 V max"></span></div><output id="v-out">4.20 V</output></div>
   <div class="ctl-row"><span class="ctl-label">Pack</span><span id="stats"></span></div>
-  <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="go">CHARGE IT</button><button type="button" id="reset">Reset</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
-  <div id="shot" aria-live="polite"></div>
+  <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="go" class="danger">CHARGE IT</button><button type="button" id="reset">Reset</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
 </div>`;
 
-const card = k.plateHtml({
-  fig: "Fig 12",
-  title: "Lithium thermal runaway",
-  hint: "Tap: do it",
-  readout: "",
-  keys: [
-    { mark: "lit", label: "Cell temperature on the cans; vent gas, the runaway flame and smoke" },
-    { mark: "raised", label: "Twelve 18650 cells, one cut open: anode (copper), separator (white), cathode (grey)" },
-  ],
-  caption: "A lithium-ion cell is a rolled-up sandwich: anode, separator, cathode, separator, soaked in a flammable electrolyte. Heat it past about 80 °C and the film protecting the anode starts breaking down and making its own heat. At about 130 °C the separator melts and the electrodes short inside the cell. Somewhere around 150 to 250 °C, depending on the chemistry, the cathode starts giving up oxygen and the whole lot runs away: it burns without air and all its energy comes out in seconds. Overcharging, a nail or plain heat will all get it there. The BMS can stop the overcharge and nothing else. What decides how bad it gets is the chemistry, how much charge is in it, and whether one cell going takes its neighbours with it.",
-  body: stageHtml,
-});
 
-const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
-const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a battery safety study. Roughly real, and it varies a lot from cell to cell: SEI breakdown from about 70 to 90 °C, PE separators melting around 130 to 140 °C, runaway around 150 to 200 °C for nickel and cobalt cathodes and about 250 °C for LFP, hot spots near 800 °C, 4.2 V max for NMC and about 3.6 V for LFP, and less charge meaning less energy. Made up: every rate, the heat model, how it spreads, the overcharge curve and the timings, which are squashed so you don't wait an hour.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/lithium" style="color:inherit">Source</a></p>`;
+const foot = footHtml({
+  theme, slug: "lithium",
+  real: "Roughly real, and it varies a lot from cell to cell: SEI breakdown from about 70 to 90 °C, PE separators melting around 130 to 140 °C, runaway around 150 to 200 °C for nickel and cobalt cathodes and about 250 °C for LFP, hot spots near 800 °C, 4.2 V max for NMC and about 3.6 V for LFP, and less charge meaning less energy.",
+  made: "every rate, the heat model, how it spreads, the overcharge curve and the timings, which are squashed so you don't wait an hour.",
+});
 const name = theme === "light" ? "light.html" : "index.html";
-writeFileSync(join(HERE, name), k.pageHtml({ title: "Lithium thermal runaway", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + glScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 700 }));
+writeFileSync(join(HERE, name), pageMk2({
+  k, title: "Lithium thermal runaway", fig: "Fig 12", hint: "Tap: do it", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  caption: "A lithium-ion cell is a rolled-up sandwich: anode, separator, cathode, separator, soaked in a flammable electrolyte. Heat it past about 80 °C and the film protecting the anode starts breaking down and making its own heat. At about 130 °C the separator melts and the electrodes short inside the cell. Somewhere around 150 to 250 °C, depending on the chemistry, the cathode starts giving up oxygen and the whole lot runs away: it burns without air and all its energy comes out in seconds. Overcharging, a nail or plain heat will all get it there. The BMS can stop the overcharge and nothing else. What decides how bad it gets is the chemistry, how much charge is in it, and whether one cell going takes its neighbours with it.",
+  script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
+}));
 console.log("wrote", name);
