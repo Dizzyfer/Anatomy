@@ -233,7 +233,8 @@ export function mk2(stage, P, opt = {}) {
       return nrm([x, y, z]);
     };
     setMat(part, ob, false);
-    for (let s = 0; s < m - 1; s++) for (let i = 0; i < n; i++) { const j = (i + 1) % n; const n00 = vn(s, i, s, i), n01 = vn(s, i, s, j), n10 = vn(s, i, s + 1, i), n11 = vn(s, i, s + 1, j); tri3(b, R[s][i], R[s][j], R[s + 1][j], n00, n01, n11); tri3(b, R[s][i], R[s + 1][j], R[s + 1][i], n00, n11, n10); }
+    const vc = part.vcol, put = (s, i, nn) => { if (vc) { const c = lin(vc[s][i]); cr = c[0]; cg = c[1]; cb = c[2]; } vtx(b, R[s][i], nn[0], nn[1], nn[2]); };
+    for (let s = 0; s < m - 1; s++) for (let i = 0; i < n; i++) { const j = (i + 1) % n; const n00 = vn(s, i, s, i), n01 = vn(s, i, s, j), n10 = vn(s, i, s + 1, i), n11 = vn(s, i, s + 1, j); need(b, ST * 6); put(s, i, n00); put(s, j, n01); put(s + 1, j, n11); put(s, i, n00); put(s + 1, j, n11); put(s + 1, i, n10); }
     if (part.caps !== false) { setMat(part, ob, true); for (const ring of [R[0], R[m - 1]]) { const c = [0, 1, 2].map((k) => ring.reduce((t, p) => t + p[k], 0) / n), nn = newell(ring); for (let i = 0; i < n; i++) flatTri(b, c, ring[i], ring[(i + 1) % n], nn); } }
     if (edges) { const q = Math.max(1, Math.round(n / 4)); for (let s = 0; s < m; s++) for (let i = 0; i < n; i++) { if (s === 0 || s === m - 1 || s % 2 === 0) edgeLine(R[s][i], R[s][(i + 1) % n]); if (s < m - 1 && i % q === 0) edgeLine(R[s][i], R[s + 1][i]); } }
   }
@@ -328,7 +329,7 @@ export function mk2(stage, P, opt = {}) {
   function render(objects) {
     if (!gl || window.__mk2skip) { if (gl) stepView(); let s = ""; for (const ob of objects) if (ob.svg !== undefined) s += ob.svg; return s; }
     if (!open) begin();
-    const t0 = performance.now(), s = addObjects(objects); E.cpu = E.cpu * 0.9 + (performance.now() - t0) * 0.1; E.tris = bufO.n / ST / 3 + bufS.n / ST / 3 + bufT.n / ST / 3;
+    const t0 = performance.now(), s = addObjects(objects); E.cpu = E.cpu * 0.9 + (performance.now() - t0) * 0.1; E.triCount = bufO.n / ST / 3 + bufS.n / ST / 3 + bufT.n / ST / 3;
     if (!pending) { pending = true; queueMicrotask(flush); }
     return s;
   }
@@ -638,7 +639,7 @@ o=vec4(c.rgb+bl,clamp(c.a+max(bl.r,max(bl.g,bl.b))*1.1,0.,1.));}`;
     ok: true, prism, box, cyl, circle, rrect, lathe, tube, sphere, tris, loft, roundPoly, callouts, render, line: (...a) => { if (touch()) line(...a); }, sprite: (...a) => { if (touch()) sprite(...a); },
     project, depthOf, px: () => cam.k, rgb, lin, view, goal, home, setXray, bindTools, get xrayOn() { return !!xrGoal; },
     xray: 0, mat: opt.mat || "satin", bevel: opt.bevel ?? 1.2 / (base.scale * UNIT), ao: opt.ao ?? 0.85, aoRadius: opt.aoRadius ?? 26 / (base.scale * UNIT), ink: opt.ink ?? 0.5, bloom: opt.bloom ?? 1,
-    plate: opt.plate || null, shadowBox: opt.shadowBox || null, ms: 0, cpu: 0, tris: 0, get fs() { return fsNow; }, cam: () => cam,
+    plate: opt.plate || null, shadowBox: opt.shadowBox || null, ms: 0, cpu: 0, triCount: 0, get fs() { return fsNow; }, cam: () => cam,
     light: { sky: [0.4, 0.43, 0.48], gnd: [0.15, 0.145, 0.14], key: [0.98, 0.94, 0.88], skyL: [0.6, 0.61, 0.64], gndL: [0.34, 0.33, 0.32], keyL: [0.78, 0.76, 0.72] },
     get VIEW() { return cam.t; },
   };

@@ -1,15 +1,12 @@
-import { writeFileSync, readFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as k from "../../kit/iso-kit.mjs";
-import { kitScript } from "../../scripts/inline-kit.mjs";
+import { engineScript, stageHtml, pageMk2, footHtml } from "../../mk2/shell.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
-const SOLID = readFileSync(join(HERE, "solid.mjs"), "utf8").replace(/^export /gm, "");
-
-const W = 680;
-const H = 520;
+const W = 960, H = 600;
 
 // Truth: lift = ½ρV²S·CL, CL rising with angle of attack until the flow separates and the wing stalls; induced drag going
 // with CL²; the flow round the section is real potential flow (a Joukowski aerofoil with the Kutta condition), so the
@@ -17,52 +14,30 @@ const H = 520;
 // bottom in tension. Transport certification: limit 2.5 g (25.337), ultimate = 1.5 × limit (25.303), flutter-free past VD
 // (25.629). 787 ultimate test, 28 Mar 2010: 150 % of limit, tips up about 7.6 m. 777-9 test wing failed at 148 % (2019).
 // Toy: a 787-size wing with made-up numbers, one-dimensional bending, flutter as a single growing mode.
-const PLATE = { x: -35, y: -23, w: 44, d: 31, r: 1.4 };
-const PLATE_H = 1.6, FOOT_H = 0.8;
-const P = k.fitProjection([...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [-32, -20, 20], [8, 8, 10], [-32, 8, 10], [8, -20, 10]], W, H, { pad: 10, azimuth: 45 });
-const Sv = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const depth2 = ([x, y]) => k.depthOf([x, y, 0], P);
-const byDepth = (pts) => [...pts].sort((a, b) => depth2(a) - depth2(b));
-function plate() {
-  const out = [`<path class="iso-halo" d="${k.haloOf(PLATE, -PLATE_H - FOOT_H, PLATE_H, P)}"/>`];
-  for (const [x, y] of byDepth(k.corners(PLATE, 2.4))) {
-    out.push(Sv(k.cylinder(x, y, 0.7, -PLATE_H - FOOT_H, 0.16, P, 24), { tone: "lo" }));
-    out.push(Sv(k.cylinder(x, y, 0.55, -PLATE_H - FOOT_H + 0.16, FOOT_H - 0.16, P, 24), { tone: "mid" }));
-  }
-  out.push(Sv(k.slabOf(PLATE, -PLATE_H, PLATE_H, P, 8, 0.16), { tone: "mid", inner: L(k.sideSeam(PLATE, -PLATE_H / 2, P), { tone: "faint" }) }));
-  return out.join("");
-}
-const svg = k.figureSvg({
-  width: W, height: H,
-  label: "One wing of a widebody airliner, about the size of a 787's, on a stand, with a stub of fuselage at the root and an engine underneath. The wing bends up with the load. An inset shows the air flowing round a slice of the wing.",
-  body: [plate(), `<g data-part="wing"></g>`, `<g data-part="fly"></g>`],
-});
-const DATA = { W, H, P };
+const PLATE = { x: -34, y: -21, w: 42, d: 29, r: 1.4 };
+const P = k.fitProjection([...k.boxCorners(PLATE, -0.8, 0), [-31, -19, 16], [7, 7, 10], [-31, 7, 10], [7, -19, 10]], W, H, { pad: 16, azimuth: 118, elevation: 28 });
+const DATA = { W, H, P, PLATE };
 
 const LIVE = `
-${SOLID}
+${engineScript()}
 const D = __DATA__;
-const PR = D.P;
-const stage = document.querySelector(".fx-stage");
-const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const stage = document.querySelector(".mk-stage");
 const readout = document.querySelector("[data-readout]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-const R = solids((p) => iso(p, PR), (p) => depthOf(p, PR));
-const { box, cyl, prism } = R;
-const svgEl = stage.querySelector("svg"), cv = stage.querySelector(".fx-smoke"), ctx = cv.getContext("2d"), flashEl = stage.querySelector(".fx-flash");
-const sec = stage.querySelector(".sec-cv"), sctx = sec.getContext("2d");
-const wingG = q("wing"), flyG = q("fly");
-const sp = (p) => { const a = iso(p, PR); return a[0].toFixed(1) + " " + a[1].toFixed(1); };
-const VIEW = R.VIEW, dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-const LIGHT = (() => { const v = [0.4, 0.6, 1]; const n = Math.hypot(...v); return v.map((a) => a / n); })();
+const lightTheme = document.body.dataset.theme === "light";
+const E = mk2(stage, D.P, { W: D.W, H: D.H, pivot: [-9, -5, 4], plate: { ...D.PLATE, h: 1.6, foot: 0.8 }, shadowBox: [-36, -24, -3, 10, 10, 22] });
+const { box, cyl, prism, circle, lathe, tube, sphere, loft, roundPoly, rrect, tris } = E;
+E.bindTools(stage);
+const xbtn = stage.querySelector('[data-mk="xray"]');
+const setX = (on) => { E.setXray(on); if (xbtn) xbtn.setAttribute("aria-pressed", String(on)); };
+const sceneG = stage.querySelector('[data-part="scene"]');
+const iso = (p) => E.project(p), depthOf = (p) => E.depthOf(p);
+const shakeEls = [stage.querySelector(".mk-gl"), stage.querySelector(".mk-over")];
+const setShake = (x, y) => { const t = x || y ? "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)" : ""; for (const e of shakeEls) if (e.style.transform !== t) e.style.transform = t; };
 const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-function normalOf(pts) { let n = [0, 0, 0]; for (let i = 0; i < pts.length; i++) { const p = pts[i], q2 = pts[(i + 1) % pts.length]; n[0] += (p[1] - q2[1]) * (p[2] + q2[2]); n[1] += (p[2] - q2[2]) * (p[0] + q2[0]); n[2] += (p[0] - q2[0]) * (p[1] + q2[1]); } const l = Math.hypot(...n) || 1; return n.map((v) => v / l); }
-const shade = (c, n) => { const k2 = 0.5 + 0.6 * Math.max(0, dot(n, LIGHT)); return "rgb(" + c.map((v) => Math.round(clamp(v * k2, 0, 255))).join(",") + ")"; };
 const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
 let seed = 9; const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
-
 // ---------------- the aeroplane (toy numbers, 787-ish size) ----------------
 const MASS = 230000, G0 = 9.81, WT = MASS * G0, S = 360, RHO = 1.225, KT = 0.5144, SEMI = 30;
 const N_LIM = 2.5, N_ULT = 3.75, VF = 470, VD = 400, VMO = 340;
@@ -117,7 +92,6 @@ function snap(dir) {
 }
 function reset() { broken = null; flut = 0.01; gust = 0; shake = 0; parts = []; }
 
-// ---------------- the wing ----------------
 // planform: root chord 11 m, tip 2.6 m, swept 32°, dihedral 6°, x = -span (root at 0, tip at -30), y = chordwise (LE at +)
 const NS = 14;
 const station = (s) => { const le = 4 - s * SEMI * Math.tan(32 * Math.PI / 180), c = 11 - 8.4 * s, t = c * (0.14 - 0.04 * s); return { x: -s * SEMI, le, c, t }; };
@@ -135,95 +109,12 @@ function wingPoint(s, u, v, dz, piece) {
   }
   return [x, y, z];
 }
-const SKIN = rgb("#d8dde2"), BLUE = rgb("#3d8bff"), RED = rgb("#ff4a3d");
-function drawWing(dt) {
-  const def = deflection(), wob = flut * 1.6 * Math.sin(flutPh) * 7.6 / 3.75 + (buffet ? (rnd() - 0.5) * buffet * 0.25 : 0);
-  const sb = broken ? broken.s : 2;
-  if (broken) { const b = broken, t = now - b.t; b.r = Math.min(2.4, t * t * 1.4 + t * 1.2); b.x = -t * 2; b.y = -t * t * 6; b.z = 1.5 * t - 4.9 * t * t * 0.6; }
-  const out = [];
-  const comp = clamp(Math.abs(n) / nBreak, 0, 1);
-  for (let i = 0; i < NS; i++) {
-    const s0 = i / NS, s1 = (i + 1) / NS;
-    if (broken && s0 < sb && s1 > sb) { /* split the panel at the break */ }
-    const piece = broken && s0 >= sb - 1e-6 ? 1 : 0;
-    const z0 = piece ? 0 : (def + wob) * bendShape(s0), z1 = piece ? 0 : (def + wob) * bendShape(s1);
-    // stress fades out along the span (bending moment falls off towards the tip)
-    const st = comp * (1 - s0) ** 2, col = mix(SKIN, n >= 0 ? BLUE : RED, piece ? 0 : clamp(st * 1.2, 0, 1));
-    for (let j = 0; j < 6; j++) {
-      const u0 = j / 6, u1 = (j + 1) / 6;
-      for (const v of [1, -1]) {
-        const pts = [wingPoint(s0, u0, v, z0, piece), wingPoint(s1, u0, v, z1, piece), wingPoint(s1, u1, v, z1, piece), wingPoint(s0, u1, v, z0, piece)];
-        let nn = normalOf(pts); if (dot(nn, [0, 0, v]) < 0) nn = nn.map((x) => -x);
-        if (dot(nn, VIEW) <= 0) continue;
-        const c = pts.reduce((a, p) => [a[0] + p[0] / 4, a[1] + p[1] / 4, a[2] + p[2] / 4], [0, 0, 0]);
-        out.push({ d: dot(c, VIEW), s: '<path d="M' + pts.map(sp).join("L") + 'Z" fill="' + shade(v > 0 ? col : mix(SKIN, n >= 0 ? RED : BLUE, piece ? 0 : clamp(st * 1.2, 0, 1)), nn) + '"/>' });
-      }
-    }
-    // leading edge strip and the trailing edge (flaps down if they're out)
-    const le = [wingPoint(s0, 0, 1, z0, piece), wingPoint(s1, 0, 1, z1, piece), wingPoint(s1, 0, -1, z1, piece), wingPoint(s0, 0, -1, z0, piece)];
-    out.push({ d: dot(le[0], VIEW) - 0.01, s: '<path d="M' + le.map(sp).join("L") + 'Z" fill="' + (ice ? "#eef6ff" : "#aeb5bc") + '"/>' });
-    if (flaps && s1 <= 0.75) {
-      const a = wingPoint(s0, 1, 0, z0, piece), b = wingPoint(s1, 1, 0, z1, piece);
-      const dn = 2.2, back = 1.6;
-      out.push({ d: dot(a, VIEW) - 0.5, s: '<path d="M' + [a, b, [b[0], b[1] - back, b[2] - dn], [a[0], a[1] - back, a[2] - dn]].map(sp).join("L") + 'Z" fill="#9aa2aa"/>' });
-    }
-  }
-  out.sort((a, b) => a.d - b.d);
-  let s2 = "";
-  // fuselage stub (cut), the stand, the engine
-  const fus = [{ parts: [prism(R.circle(-3, 3.2, 2.9, 24), "x", 0.2, 6, "#e4e7ea", { cap: "#d9c9a6" })], key: 1e6 }, { parts: [box(1.5, 4.5, -4.5, -1.5, 0, 0.6, "#5a6068"), box(2.5, 3.5, -3.5, -2.5, 0.6, 0.6 + 0.4, "#5a6068")], key: -1e6 }];
-  const stand = R.render([{ parts: [box(2, 4, -4, -2, 0, 0.5, "#4a5058"), box(2.6, 3.4, -3.4, -2.6, 0.5, 0.5, "#4a5058")] }]);
-  s2 += '<path class="post" d="M' + sp([3, -3, 0.4]) + "L" + sp([3, -3, 0.6]) + '"/>';
-  // engine hangs at a third of the span
-  const se = 0.32, ste = station(se), ez = (def + wob) * bendShape(se), ew = wingPoint(se, 0.15, -1, ez, 0);
-  const eng = { parts: [prism(R.circle(ew[1] + 1.5, ew[2] - 1.9, 1.7, 20), "x", ste.x - 1.3, ste.x + 1.3, "#c9ced4"), prism(R.circle(ew[1] + 1.5, ew[2] - 1.9, 1.75, 20), "x", ste.x + 1.25, ste.x + 1.35, "#aab1b8")] };
-  // the engine is really oriented along the flight path (y): draw it as a pod along y
-  const pod = { parts: [prism(R.circle(ste.x, ew[2] - 1.9, 1.7, 20).map(([a, b2]) => [a, b2]), "y", ew[1] - 3.5, ew[1] + 3.2, "#c9ced4", { cap: "#3a3f45" })] };
-  wingG.innerHTML = R.render([{ parts: [box(-4.5, -0.6, -9, 5, 0, 1.2, "#5a6068"), box(-4, -1, -7.5, 3.5, 1.2, 2.4, "#6a7078")], key: -1e9 }]) + out.map((f) => f.s).join("") + (broken && broken.s < se ? "" : R.render([podToY(ste.x, ew)])) ;
-  // root section (cut face): wing box with the skins coloured by stress
-  const rs = station(0), cut = [];
-  for (let u = 0; u <= 1.0001; u += 0.1) cut.push(wingPoint(0, u, 1, 0, 0));
-  for (let u = 1; u >= -0.0001; u -= 0.1) cut.push(wingPoint(0, u, -1, 0, 0));
-  let rsec = '<path class="rootsec" d="M' + cut.map(sp).join("L") + 'Z"/>';
-  const top = (u) => wingPoint(0, u, 1, 0, 0), bot = (u) => wingPoint(0, u, -1, 0, 0);
-  const tc = mix(rgb("#8a9097"), n >= 0 ? BLUE : RED, comp), bc = mix(rgb("#8a9097"), n >= 0 ? RED : BLUE, comp);
-  rsec += '<path stroke="rgb(' + tc.map(Math.round).join(",") + ')" class="skin" d="M' + [0.15, 0.3, 0.45, 0.6].map((u) => sp(top(u))).join("L") + '"/>';
-  rsec += '<path stroke="rgb(' + bc.map(Math.round).join(",") + ')" class="skin" d="M' + [0.15, 0.3, 0.45, 0.6].map((u) => sp(bot(u))).join("L") + '"/>';
-  for (const u of [0.15, 0.6]) rsec += '<path class="spar" d="M' + sp(top(u)) + "L" + sp(bot(u)) + '"/>';
-  if (crack) { const c0 = bot(0.42); rsec += '<path class="crack" d="M' + sp(c0) + 'l3 -1.5l-2 -1l3 -1.6"/>'; }
-  wingG.innerHTML += rsec;
-}
-function podToY(x, ew) {
-  const ring = R.circle(x, ew[2] - 1.9, 1.7, 20);
-  return { parts: [prism(ring, "y", ew[1] - 3.4, ew[1] + 3.2, "#c9ced4", { cap: "#33383e" }), prism(R.circle(x, ew[2] - 1.9, 1.78, 20), "y", ew[1] + 2.4, ew[1] + 3.3, "#aab1b8", { cap: "#2b2f34" }), box(x - 0.25, x + 0.25, ew[1] - 2.5, ew[1] + 1.5, ew[2] - 0.4, ew[2] + 0.2, "#b0b6bd")] };
-}
-
 // ---------------- particles (3D, on the main canvas) ----------------
 let parts = [], vortT = 0;
 function spark(p, s) { const a = rnd() * Math.PI * 2; parts.push({ k: "spark", p: [...p], v: [Math.cos(a) * 6 * s, Math.sin(a) * 6 * s - 4, 4 + rnd() * 8 * s], life: 0, max: 0.5 + rnd() * 0.6 }); }
 function fuel(p) { parts.push({ k: "fuel", p: [...p], v: [(rnd() - 0.5) * 3, -6 - rnd() * 8, (rnd() - 0.3) * 3], life: 0, max: 1.6 + rnd() * 1.2 }); }
 function vapour(p) { parts.push({ k: "vap", p: [...p], v: [0, -10 - rnd() * 4, 0.2], life: 0, max: 0.7 + rnd() * 0.5 }); }
 function sizeCanvas(c) { const r = c.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1); const w = Math.max(1, Math.round(r.width * dpr)), hh = Math.max(1, Math.round(r.height * dpr)); if (c.width !== w || c.height !== hh) { c.width = w; c.height = hh; } }
-let shakeOff = [0, 0];
-function drawParticles(dt) {
-  sizeCanvas(cv);
-  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
-  ctx.setTransform(cv.width / D.W, 0, 0, cv.height / D.H, shakeOff[0] * cv.width / D.W, shakeOff[1] * cv.height / D.H);
-  parts = parts.filter((p) => {
-    p.life += dt; if (p.life > p.max) return false;
-    const t = p.life / p.max;
-    if (p.k === "vort") { p.a += dt * 9 * Math.sign(p.s || 1); p.y -= dt * 9; const r = 0.4 + 1.6 * t; p.p = [p.c[0] + Math.cos(p.a) * r, p.c[1] + p.y, p.c[2] + Math.sin(p.a) * r - t * 0.8]; const P3 = iso(p.p, PR); ctx.fillStyle = "rgba(220,235,255," + (0.6 * (1 - t)).toFixed(2) + ")"; ctx.fillRect(P3[0] - 0.8, P3[1] - 0.8, 1.6, 1.6); return true; }
-    if (p.k === "spark") p.v[2] -= 12 * dt;
-    for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * dt;
-    const P2 = iso(p.p, PR);
-    const soft = (r, c, a) => { const g = ctx.createRadialGradient(P2[0], P2[1], 0, P2[0], P2[1], r); g.addColorStop(0, "rgba(" + c + "," + a.toFixed(3) + ")"); g.addColorStop(1, "rgba(" + c + ",0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(P2[0], P2[1], r, 0, 7); ctx.fill(); };
-    if (p.k === "fuel") soft(4 + 14 * t, "235,240,245", 0.55 * (1 - t));
-    if (p.k === "vap") soft(3 + 6 * t, "240,246,255", 0.35 * (1 - t));
-    if (p.k === "spark") { ctx.fillStyle = "rgba(255," + Math.round(220 - 120 * t) + ",90," + (1 - t).toFixed(2) + ")"; ctx.fillRect(P2[0] - 1, P2[1] - 1, 2, 2); }
-    return true;
-  });
-}
-
 // ---------------- the section: potential flow round a Joukowski aerofoil ----------------
 const cm = (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]];
 const cdv = (a, b) => { const d2 = b[0] * b[0] + b[1] * b[1]; return [(a[0] * b[0] + a[1] * b[1]) / d2, (a[1] * b[0] - a[0] * b[1]) / d2]; };
@@ -257,7 +148,7 @@ function drawSection(dt) {
   sizeCanvas(sec);
   const w2 = sec.width, h2 = sec.height;
   sctx.setTransform(1, 0, 0, 1, 0, 0);
-  sctx.fillStyle = document.body.dataset.theme === "light" ? "#eef2f6" : "#0f1418"; sctx.fillRect(0, 0, w2, h2);
+  sctx.clearRect(0, 0, w2, h2);
   const al = alpha * Math.PI / 180, A = aero(alpha); CA = Math.cos(al); SA = Math.sin(al);
   gammaK = broken ? 0 : A.st ? clamp(A.cl / (A.clmax), 0.4, 1) * 0.85 : 1;
   const U = 0.9 * (broken ? 0.6 : 1), sc = w2 / 6.2;
@@ -310,19 +201,85 @@ function drawSection(dt) {
   sctx.fillText("blue suction · red push · yellow: let go together", 8, h2 * 0.96);
 }
 
+// ---------------- drawing ----------------
+const flashEl = stage.querySelector(".fx-flash"), sec = stage.querySelector(".sec-cv"), sctx = sec.getContext("2d");
+let shakeOff = [0, 0];
+const L3 = (c) => c.map((v) => Math.pow(clamp(v, 0, 255) / 255, 2.2));
+const SKIN = rgb("#d8dde2"), BLUE = rgb("#3d8bff"), RED = rgb("#ff4a3d"), ALU = rgb("#9aa1a8");
+const US = [0, 0.025, 0.08, 0.18, 0.3, 0.45, 0.62, 0.8, 1];
+function skinRing(s, dz, piece) { const r = []; for (const u of US) r.push(wingPoint(s, u, 1, dz, piece)); for (let k = US.length - 2; k >= 1; k--) r.push(wingPoint(s, US[k], -1, dz, piece)); return r; }
+const BOX = [0.15, 0.3, 0.45, 0.6];
+function boxRing(s, dz, piece, v) { const r = []; for (const u of BOX) r.push(wingPoint(s, u, v, dz, piece)); for (let k = BOX.length - 1; k >= 0; k--) r.push(wingPoint(s, BOX[k], -v, dz, piece)); return r; }
+function nacelle(x, ew) {
+  const c = [x, ew[1], ew[2] - 1.95];
+  return [lathe([[0, -4.3], [0.45, -3.5], [0.95, -3.4], [1.35, -2.3], [1.72, -0.6], [1.8, 1.9], [1.72, 2.8], [1.52, 3.15], [1.36, 3.0], [1.32, 2.5]], "#c9ced4", { c, axis: "y", mat: "paint", seg: 28 }),
+    lathe([[0, 2.5], [1.32, 2.5]], "#22262b", { c, axis: "y", mat: "matte", seg: 28 }), lathe([[0, 3.05], [0.2, 2.9], [0.42, 2.5]], "#e8eaec", { c, axis: "y", mat: "gloss", seg: 16 }),
+    prism([[ew[1] - 2.6, ew[2] - 0.35], [ew[1] + 2.2, ew[2] - 0.35], [ew[1] + 1.2, ew[2] + 0.25], [ew[1] - 2.2, ew[2] + 0.25]], "x", x - 0.22, x + 0.22, "#b0b6bd", { mat: "paint" })];
+}
+function drawWing(dt) {
+  const def = deflection(), wob = flut * 1.6 * Math.sin(flutPh) * 7.6 / 3.75 + (buffet ? (rnd() - 0.5) * buffet * 0.25 : 0);
+  if (broken) { const b = broken, t = now - b.t; b.r = Math.min(2.4, t * t * 1.4 + t * 1.2); b.x = -t * 2; b.y = -t * t * 6; b.z = 1.5 * t - 4.9 * t * t * 0.6; }
+  const comp = clamp(Math.abs(n) / nBreak, 0, 1), objs = [];
+  // the rig: plinth under the root, a stub of fuselage, the stand
+  objs.push({ cache: "rig", rev: 0, parts: () => [box(-4.5, -0.6, -9, 5, 0, 1.2, "#5a6068", { mat: "steel" }), box(-4, -1, -7.5, 3.5, 1.2, 2.4, "#6a7078", { mat: "steel" }), prism(circle(-3, 3.2, 2.9, 36), "x", 0.2, 6, "#e4e7ea", { cap: "#d9c9a6", mat: "paint" }), box(1.5, 4.5, -4.5, -1.5, 0, 0.6, "#5a6068", { mat: "steel" }), box(2.6, 3.4, -3.4, -2.6, 0.6, 1.1, "#4a5058", { mat: "steel" }),
+    ...[1.0, 2.3, 3.6, 4.9].map((x) => box(x, x + 0.5, -0.2, -0.1, 3.75, 4.3, "#2a3038", { mat: "gloss", bevel: 0 }))] });
+  const sb = broken ? broken.s : 2, stations = Array.from({ length: NS + 1 }, (_, i) => i / NS);
+  const pieces = broken ? [[...stations.filter((s) => s < sb - 1e-6), sb], [sb, ...stations.filter((s) => s > sb + 1e-6)]] : [stations];
+  pieces.forEach((list, piece) => {
+    const dz = (s) => (piece ? 0 : (def + wob) * bendShape(s)), stress = (s) => (piece ? 0 : clamp(comp * (1 - s) ** 2 * 1.2, 0, 1));
+    const topC = (s) => L3(mix(SKIN, n >= 0 ? BLUE : RED, stress(s))), botC = (s) => L3(mix(SKIN, n >= 0 ? RED : BLUE, stress(s))), iceC = L3(rgb("#f4f9ff"));
+    // skin: one loft over the stations, coloured by what the bending is doing to it
+    objs.push({ shell: true, parts: [loft(list.map((s) => skinRing(s, dz(s), piece)), "#d8dde2", { mat: "paint", cap: "#d9c9a6", vcol: list.map((s) => { const t = topC(s), b = botC(s); return Array.from({ length: 16 }, (_, j) => (ice && (j < 2 || j > 14) ? iceC : j < 9 ? t : b)); }) })] });
+    // inside: two spars, a rib at every station, fuel between them
+    const inner = [];
+    for (const u0 of [0.15, 0.6]) inner.push(loft(list.map((s) => [wingPoint(s, u0, 0.9, dz(s), piece), wingPoint(s, u0 + 0.014, 0.9, dz(s), piece), wingPoint(s, u0 + 0.014, -0.9, dz(s), piece), wingPoint(s, u0, -0.9, dz(s), piece)]), "#9aa1a8", { mat: "metal", crease: 2, vcol: list.map((s) => { const t = L3(mix(ALU, n >= 0 ? BLUE : RED, stress(s))), b = L3(mix(ALU, n >= 0 ? RED : BLUE, stress(s))); return [t, t, b, b]; }) }));
+    for (const s of list) if (s < 0.999) inner.push(loft([boxRing(s, dz(s), piece, 0.86), boxRing(Math.min(1, s + 0.006), dz(s), piece, 0.86)], "#aeb5bc", { mat: "metal", crease: 2 }));
+    const wet = list.filter((s) => s <= 0.72);
+    if (wet.length > 1) inner.push(loft(wet.map((s) => { const r = []; for (const u of [0.17, 0.3, 0.45, 0.58]) r.push(wingPoint(s, u, 0.55, dz(s), piece)); for (const u of [0.58, 0.45, 0.3, 0.17]) r.push(wingPoint(s, u, -0.8, dz(s), piece)); return r; }), "#e0a63a", { mat: "glass", opacity: lightTheme ? 0.3 : 0.22, rough: 0.4 }));
+    objs.push({ parts: inner });
+    // flaps and slats hanging off the back and front of the inboard wing
+    if (flaps) { const fl = []; for (let i = 0; i < list.length - 1; i++) { const s0 = list[i], s1 = list[i + 1]; if (s1 > 0.75) continue; const a = wingPoint(s0, 1, 0, dz(s0), piece), b2 = wingPoint(s1, 1, 0, dz(s1), piece), a2 = [a[0], a[1] - 1.7, a[2] - 2.1], b3 = [b2[0], b2[1] - 1.7, b2[2] - 2.1]; fl.push([a, b2, b3], [a, b3, a2]); const c = wingPoint(s0, 0, 0, dz(s0), piece), d = wingPoint(s1, 0, 0, dz(s1), piece), c2 = [c[0], c[1] + 0.9, c[2] - 0.7], d2 = [d[0], d[1] + 0.9, d[2] - 0.7]; fl.push([c, d, d2], [c, d2, c2]); } objs.push({ parts: [tris(fl, "#9aa2aa", { mat: "paint" })] }); }
+  });
+  // the engine hangs at a third of the span
+  const se = 0.32, ez = (def + wob) * bendShape(se);
+  if (!(broken && broken.s < se)) { const ew = wingPoint(se, 0.15, -1, ez, 0); objs.push({ parts: nacelle(station(se).x, [ew[0], ew[1] + 0.2, ew[2]]) }); }
+  let svg = E.render(objs);
+  // the fatigue crack in the bottom skin
+  if (crack && !broken) { let p = wingPoint(0.2, 0.25, -1.02, def * bendShape(0.2), 0); for (let i = 1; i <= 6; i++) { const q = wingPoint(0.2 + 0.012 * Math.sin(i * 2.1), 0.25 + i * 0.05, -1.02, def * bendShape(0.2), 0); E.line(p, q, 2.2, "#ff3b2e", 0.95, !lightTheme); p = q; } }
+  if (E.xray > 0.02 && !broken) { const P1 = (s, u, v) => wingPoint(s, u, v, def * bendShape(s), 0); svg += E.callouts([
+    { p: P1(0.45, 0.15, 0.5), text: "Front spar", sub: "" }, { p: P1(0.62, 0.6, 0.5), text: "Rear spar", sub: "the two spars carry the bending" }, { p: P1(0.3, 0.38, 0.9), text: "Ribs", sub: "keep the skin in shape" },
+    { p: P1(0.12, 0.4, -0.2), text: "Fuel", sub: "the wing box is the tank" }, { p: P1(0.2, 0.3, 1), text: "Top skin", sub: n >= 0 ? "squeezed when the wing bends up" : "stretched when the wing bends down" }, { p: P1(0.85, 0.5, 0), text: "Tip", sub: "up " + (def * bendShape(1)).toFixed(1) + " m" },
+  ], E.xray, E.fs < 0.62 ? {} : { topR: 250 }); }
+  return svg;
+}
+function drawParticles(dt) {
+  parts = parts.filter((p) => {
+    p.life += dt; if (p.life > p.max) return false;
+    const t = p.life / p.max;
+    if (p.k === "vort") { p.a += dt * 9 * Math.sign(p.s || 1); p.y -= dt * 9; const r = 0.4 + 1.6 * t; p.p = [p.c[0] + Math.cos(p.a) * r, p.c[1] + p.y, p.c[2] + Math.sin(p.a) * r - t * 0.8]; E.sprite(p.p, 0.22, lightTheme ? "#3a78c0" : "#dcebff", 0.7 * (1 - t), !lightTheme, 1); return true; }
+    if (p.k === "spark") p.v[2] -= 12 * dt;
+    const o = [p.p[0], p.p[1], p.p[2]];
+    for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * dt;
+    if (p.k === "fuel") E.sprite(p.p, 0.5 + 1.9 * t, lightTheme ? "#aeb6bd" : "#ebf0f5", 0.5 * (1 - t));
+    if (p.k === "vap") E.sprite(p.p, 0.4 + 0.9 * t, lightTheme ? "#b8c4d0" : "#f0f6ff", 0.32 * (1 - t));
+    if (p.k === "spark") E.line(o, p.p, 1.8, t < 0.5 ? "#ffe6a0" : "#ff8a3a", 1 - t, true);
+    return true;
+  });
+}
+
 // ---------------- frame ----------------
 function draw(dt) {
-  drawWing(dt);
-  flyG.innerHTML = "";
+  const svg = drawWing(dt);
   if (!broken && Math.abs(CL) > 0.2) { vortT += dt * (6 + 14 * Math.abs(CL)); while (vortT > 1) { vortT -= 1; const tp = wingPoint(1, 0.95, 0, (deflection()) * bendShape(1), 0); parts.push({ k: "vort", c: [...tp], a: rnd() * 6.28, y: 0, life: 0, max: 2.2, s: CL }); } }
   if (!broken && Math.abs(n) > 2.2 && rnd() < dt * 20) { const s2 = rnd() * 0.8; const p = wingPoint(s2, 0.1 + rnd() * 0.4, 1, deflection() * bendShape(s2), 0); vapour(p); }
   if (broken && now - broken.t < 3 && rnd() < 0.7) { const s2 = broken.s; fuel(wingPoint(s2, 0.3 + rnd() * 0.3, 0, deflection() * bendShape(s2), 0)); }
   shake = Math.max(0, shake - dt * 0.8);
   const amp = shake * 6 + buffet * 2.2 + Math.min(4, flut * 3);
   shakeOff = amp > 0.05 ? [(rnd() - 0.5) * amp, (rnd() - 0.5) * amp] : [0, 0];
-  svgEl.style.transform = amp > 0.05 ? "translate(" + shakeOff[0].toFixed(1) + "px," + shakeOff[1].toFixed(1) + "px)" : "";
+  setShake(shakeOff[0], shakeOff[1]);
   const ft = now - flashT; flashEl.style.opacity = ft < 0.4 ? String((1 - ft / 0.4) * 0.7) : "0";
   drawParticles(dt);
+  sceneG.innerHTML = svg;
   drawSection(dt);
   const text = broken ? "WING SEPARATED" : V + " kt · α " + alpha.toFixed(1) + "° · " + n.toFixed(2) + " g" + (stalled ? " · STALL" : "");
   if (readout.textContent !== text) readout.textContent = text;
@@ -397,46 +354,24 @@ ui.fresh.addEventListener("click", act(() => reset()));
 ui.slow.addEventListener("click", () => { slow = !slow; run(); });
 ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; actions = []; } syncUi(); run(); });
 stage.addEventListener("keydown", (ev) => {
-  const map = { ArrowUp: () => { mode = "manual"; alpha = clamp(alpha + 1, -6, 24); }, ArrowDown: () => { mode = "manual"; alpha = clamp(alpha - 1, -6, 24); }, ArrowRight: () => { V = Math.min(520, V + 10); }, ArrowLeft: () => { V = Math.max(110, V - 10); }, f: () => { flaps = !flaps; setShape(); }, g: () => { gust = 1.6; }, i: () => { ice = !ice; } };
+  const map = { x: () => setX(!E.xrayOn), ArrowUp: () => { mode = "manual"; alpha = clamp(alpha + 1, -6, 24); }, ArrowDown: () => { mode = "manual"; alpha = clamp(alpha - 1, -6, 24); }, ArrowRight: () => { V = Math.min(520, V + 10); }, ArrowLeft: () => { V = Math.max(110, V - 10); }, f: () => { flaps = !flaps; setShape(); }, g: () => { gust = 1.6; }, i: () => { ice = !ice; } };
   if (map[ev.key]) { ev.preventDefault(); act(map[ev.key])(); }
   if (ev.key === "s") { slow = !slow; run(); }
 });
 new IntersectionObserver((es) => { visible = es[es.length - 1].isIntersecting; if (visible) run(); }, { rootMargin: "120px 0px" }).observe(stage);
 if (still.matches) touring = false;
-window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+window.__fig = { E, freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
 setShape(); physics(0.5); draw(0); syncUi(); story();
 `;
 
-const CSS = `.fx-stage{position:relative;overflow:hidden}
-.fx-stage svg{display:block;position:relative}
-.fx-smoke{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle 50% at 45% 45%,#fff6dc 0%,#ffcf8a 40%,rgba(255,160,80,0) 100%)}
-.sec-wrap{position:absolute;right:2.5%;top:3%;width:42%;aspect-ratio:2/1;border:1px solid var(--anatomy-lo);border-radius:6px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.3);pointer-events:none}
-.sec-cv{width:100%;height:100%;display:block}
-.rootsec{fill:#d9c9a6;stroke:rgba(0,0,0,.45);stroke-width:.5}.skin{fill:none;stroke-width:2.4;stroke-linecap:round}.spar{stroke:#6d6458;stroke-width:1.4}.crack{fill:none;stroke:#111;stroke-width:1.2}
-.post{stroke:#4a5058;stroke-width:3}
-.fx-stage path{stroke-linejoin:round}
-.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
-.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.ctl-label{min-width:72px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
-.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
-.ctl button:hover{border-color:var(--anatomy-mid)}
-.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
-.ctl #crack[aria-pressed="true"],.ctl [data-g="4"],.ctl #ice[aria-pressed="true"]{color:#ff6a3d;border-color:#ff6a3d}
-.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
-.ctl output{min-width:96px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
-.slide{position:relative;flex:1;min-width:120px}.slide input{width:100%;accent-color:var(--anatomy-lit);margin:0}
-.meter{position:relative;flex:1;min-width:110px;height:10px;margin-top:14px;border:1px solid var(--anatomy-lo);border-radius:5px}
-.meter .fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .1s;background:#3ddc84}
-.meter .fill[data-state="warn"]{background:#ffb347}.meter .fill[data-state="bad"]{background:#ff5a2a}
-.mark{position:absolute;top:-14px;bottom:-3px;width:0;border-left:1px dashed #ff6a3d;pointer-events:none}
-.mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:#ff6a3d}
-.mark.l::after{left:auto;right:4px}
-#stats{font-size:12px;color:var(--anatomy-mid);line-height:1.5}#stats b{color:var(--anatomy-hi,var(--anatomy-mid));font-weight:600}
-#shot{min-height:3.6em;font-size:12px;line-height:1.4}
-@media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:80px}.ctl button small{display:none}.sec-wrap{width:56%}}`;
+const CSS = `.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle 50% at 45% 45%,#fff6dc 0%,#ffcf8a 40%,rgba(255,160,80,0) 100%)}.sec-wrap{left:auto;right:14px;top:52px;width:38%;aspect-ratio:2/1}@media (max-width:560px){.sec-wrap{width:54%;right:auto;left:10px;top:auto}}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Wing: left and right for speed, up and down for angle of attack, F flaps, G gust, I ice">${svg}<canvas class="fx-smoke" aria-hidden="true"></canvas><div class="sec-wrap" aria-hidden="true"><canvas class="sec-cv"></canvas></div><div class="fx-flash" aria-hidden="true"></div></div>`;
+const stage = stageHtml({
+  W, H, fig: "Fig 24", title: "Aeroplane wing", xray: true,
+  label: "An airliner wing on a test rig, bending under load with its skin coloured by stress, an engine hanging under it, and an inset showing the air flowing round the wing section. An x-ray mode shows the spars, ribs and fuel inside.",
+  keysHelp: "Wing: drag to rotate, X for x-ray, left and right for speed, up and down for angle of attack, F flaps, G gust, I ice",
+  extra: `<div class="fx-flash" aria-hidden="true"></div><div class="mk-inset sec-wrap" aria-hidden="true"><canvas class="sec-cv"></canvas></div>`,
+});
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Controls">
   <div class="ctl-row"><span class="ctl-label">Speed</span><div class="slide"><input id="spd" type="range" min="110" max="520" step="5" value="300" aria-label="Airspeed, knots"></div><output id="spd-out">300 kt</output></div>
@@ -447,26 +382,20 @@ const CONTROLS = `<div class="ctl" role="group" aria-label="Controls">
   <div class="ctl-row"><span class="ctl-label">Drag</span><div class="meter"><span id="d-fill" class="fill"></span></div><output id="d-out">0 kN</output></div>
   <div class="ctl-row"><span class="ctl-label">Bending</span><div class="meter"><span id="s-fill" class="fill"></span><span class="mark" style="left:${(100 / 1.1).toFixed(1)}%" data-label="ultimate"></span></div><output id="s-out">27 %</output></div>
   <div class="ctl-row"><span class="ctl-label">Flutter</span><div class="meter"><span id="f-fill" class="fill"></span></div><output id="f-out">damped</output></div>
-  <div class="ctl-row"><span class="ctl-label">Wing</span><span id="stats"></span></div>
+  <div class="ctl-row wide"><span class="ctl-label">Wing</span><span id="stats"></span></div>
   <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="fresh">New wing</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
-  <div id="shot" aria-live="polite"></div>
 </div>`;
 
-const card = k.plateHtml({
-  fig: "Fig 24",
-  title: "Aeroplane wing",
-  hint: "Fly it slow, pull hard, dive fast",
-  readout: "",
-  keys: [
-    { mark: "lit", label: "Inset: real potential flow round a slice of the wing; skins coloured blue for squashed, red for stretched" },
-    { mark: "raised", label: "A 787-size wing on a stand, bending with the load; cut face at the root shows the wing box" },
-  ],
-  caption: "A wing makes lift by turning air downwards. Tilt it to the oncoming air (angle of attack) and the air over the curved top speeds up and its pressure drops, the air underneath slows and pushes up, and the whole flow leaves the trailing edge heading down. Lift goes with the speed squared, so slow down and the wing has to tilt more, until the air can't follow the top surface any more and the wing stalls. All that lift bends the wing up like a diving board: the top skin is squashed, the bottom skin is stretched, and the root carries the lot. Go too fast and a different thing can happen: the air starts pumping energy into the wing's own wobble, and that's flutter.",
-  body: stageHtml,
-});
 
-const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
-const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a structural analysis. Real: lift = ½ρV²S·CL, the stall, induced drag, ice and flaps changing the stall, the flow in the inset (potential flow round a Joukowski aerofoil with the Kutta condition, so the timelines really do show the top arriving first), a wing as a cantilever with the top skin in compression and the bottom in tension, and flutter. Real rules: limit load 2.5 g (14 CFR 25.337), ultimate = 1.5 × limit (25.303), free from flutter beyond the dive speed (25.629). Real tests: the 787's ultimate load test (March 2010, 150 %, tips up about 7.6 m) and the 777-9 test wing that failed at 148 % (2019). Made up: the aeroplane's numbers, the flutter speed, the stall model, the separation picture, the fatigue crack, and where it breaks.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/wing" style="color:inherit">Source</a></p>`;
+const foot = footHtml({
+  theme, slug: "wing",
+  real: "lift = ½ρV²S·CL, the stall, induced drag, ice and flaps changing the stall, the flow in the inset (potential flow round a Joukowski aerofoil with the Kutta condition, so the timelines really do show the top arriving first), a wing as a cantilever with the top skin in compression and the bottom in tension, and flutter. Real rules: limit load 2.5 g (14 CFR 25.337), ultimate = 1.5 × limit (25.303), free from flutter beyond the dive speed (25.629). Real tests: the 787's ultimate load test (March 2010, 150 %, tips up about 7.6 m) and the 777-9 test wing that failed at 148 % (2019).",
+  made: "the aeroplane's numbers, the flutter speed, the stall model, the separation picture, the fatigue crack, and where it breaks.",
+});
 const name = theme === "light" ? "light.html" : "index.html";
-writeFileSync(join(HERE, name), k.pageHtml({ title: "Aeroplane wing", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 720 }));
+writeFileSync(join(HERE, name), pageMk2({
+  k, title: "Aeroplane wing", fig: "Fig 24", hint: "Fly it slow, pull hard, dive fast", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  caption: "A wing makes lift by turning air downwards. Tilt it to the oncoming air (angle of attack) and the air over the curved top speeds up and its pressure drops, the air underneath slows and pushes up, and the whole flow leaves the trailing edge heading down. Lift goes with the speed squared, so slow down and the wing has to tilt more, until the air can't follow the top surface any more and the wing stalls. All that lift bends the wing up like a diving board: the top skin is squashed, the bottom skin is stretched, and the root carries the lot. Go too fast and a different thing can happen: the air starts pumping energy into the wing's own wobble, and that's flutter.",
+  script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
+}));
 console.log("wrote", name);
