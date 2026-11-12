@@ -377,7 +377,7 @@ const foot = footHtml({
 });
 const name = theme === "light" ? "light.html" : "index.html";
 writeFileSync(join(HERE, name), pageMk2({
-  k, title: "Ex m, encapsulation", fig: "Fig 6", hint: "Drag: load · tap: switch", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  k, title: "Ex m, encapsulation", fig: "Fig 6", hint: "Tap: switch · tap the fuse: pull it", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
   caption: "Ex m doesn't stop the sparks. It buries them. The relay and the hot parts sit in solid compound, so the gas never gets to them. That only holds while the compound is whole: too thin a pour cracks as it heats and cools, parts run hotter than the compound is rated for and it splits, and without the upstream fuse a short circuit cooks the parts until the compound fails. Any crack that reaches the contacts lets the gas in.",
   script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
 }));

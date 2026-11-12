@@ -420,7 +420,7 @@ const foot = footHtml({
 });
 const name = theme === "light" ? "light.html" : "index.html";
 writeFileSync(join(HERE, name), pageMk2({
-  k, title: "Ex t, dust and housekeeping", fig: "Fig 7", hint: "Drag: weeks · tap: tip", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  k, title: "Ex t, dust and housekeeping", fig: "Fig 7", hint: "Tap: tip a bag · tap the box: pull the plug", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
   caption: "Ex t does two jobs, and each piece of kit here shows one failing. The light has to stay cool enough: its T135 °C marking only holds with up to 5 mm of dust on it, so months without cleaning bury it until the layer underneath smoulders, and the next cloud from the bag station finds it. The junction box has to keep dust out: lose a blanking plug and dust gets in, and if it's conductive (group IIIC, like aluminium) it piles up until it bridges two live terminals. The short arcs, blows the dust inside into a cloud and lights it. Either way that's the primary. Its blast throws everything settled on the beams into the air, and that's the secondary, the one that takes the building. How big it gets is down to housekeeping.",
   script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
 }));

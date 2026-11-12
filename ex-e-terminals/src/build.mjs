@@ -395,7 +395,7 @@ const CSS = `.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;b
 #mdp-mark{left:50%;border-left-color:var(--anatomy-mid)}#mdp-mark::after{color:var(--anatomy-muted)}
 #t4-mark{border-left-color:var(--anatomy-mid)}#t4-mark::after{color:var(--anatomy-muted)}
 .tmeter{margin-top:24px}#ait-mark{top:-17px}
-.slide.marked{padding-top:12px}.slide.marked .mark{top:8px;bottom:-2px}#creep-mark{border-left-style:dashed}`;
+.slide.marked{padding-top:12px}.slide.marked .mark{top:8px;bottom:-2px}#creep-mark{border-left-style:dashed}#creep-mark::after{left:auto;right:-2px}`;
 
 const stage = stageHtml({
   W, H, fig: "Fig 5", title: "Ex e, MDP and creepage", xray: true,
@@ -423,7 +423,7 @@ const foot = footHtml({
 });
 const name = theme === "light" ? "light.html" : "index.html";
 writeFileSync(join(HERE, name), pageMk2({
-  k, title: "Ex e, MDP and creepage", fig: "Fig 5", hint: "Drag: amps · tap: power", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  k, title: "Ex e, MDP and creepage", fig: "Fig 5", hint: "Tap: power · tap the drum: gas", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
   caption: "Ex e has no flamepath to save it. It works by never making a spark or a hot surface in the first place. Heat: every circuit dissipates I²R, and the box is only certified to keep its surface inside T4 (135 °C) up to its maximum dissipated power. A gas lights itself on hot metal at its autoignition temperature, no spark needed, so the gas must ignite above the box's T-class. Insulation: creepage is the distance along the surface between terminals. Leakage over a dirty, damp surface cooks the plastic into a carbon track, the track bridges, and the short arcs. Clearance is the distance through air; exceed it and it flashes straight over.",
   script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
 }));

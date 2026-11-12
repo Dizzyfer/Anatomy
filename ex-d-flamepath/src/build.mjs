@@ -378,7 +378,7 @@ const foot = footHtml({
 });
 const name = theme === "light" ? "light.html" : "index.html";
 writeFileSync(join(HERE, name), pageMk2({
-  k, title: "Ex d flamepath, cutaway", fig: "Fig 3", hint: "Drag: gap · tap: fire", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  k, title: "Ex d flamepath, cutaway", fig: "Fig 3", hint: "Drag the lid: gap · tap: fire", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
   caption: "The spark plug fires the gas inside. The flame front runs into the joint (watch the sectioned gap at the cut). Below the gas's MESG the walls pull heat out faster than the flame makes it, so it dies inside the 25 mm and only cooled gas leaves; at or above MESG it survives the full length and lights the outside. MESG (g0), IEC 60079-20-1 reference gases: methane 1.14, propane 0.92, ethylene 0.65, hydrogen 0.29 mm. Real Ex d joints are certified well below these to the IEC 60079-1 tables. How far the flame gets along the joint is illustrative; the gap is drawn heavily enlarged.",
   script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
 }));

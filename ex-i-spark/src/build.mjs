@@ -364,7 +364,7 @@ const foot = footHtml({
 });
 const name = theme === "light" ? "light.html" : "index.html";
 writeFileSync(join(HERE, name), pageMk2({
-  k, title: "Ex i, cable length", fig: "Fig 4", hint: "Drag: cable · tap: spark", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  k, title: "Ex i, cable length", fig: "Fig 4", hint: "Drag the drum: cable · tap: spark", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
   caption: "An intrinsically safe loop stores energy in its cable: about 200 pF per metre, charged to the barrier voltage. Let a wire come off its terminal live (an open circuit) and that energy comes out as a spark, ½CV². Under the gas's minimum ignition energy it fizzles; over it, Zone 1 goes up. More cable means more capacitance, so a loop that was fine at 50 m can be a bomb at 500 m. MIE values: methane 280, propane 250, ethylene 70, hydrogen 17 µJ.",
   script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
 }));
