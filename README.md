@@ -32,13 +32,24 @@ Interactive engineering toys you can break. Poke them, push them past the limit,
 | [Car crash](crash/) · [play](https://dizzyfer.github.io/Anatomy/crash/) | A 1959-style and a 2009-style sedan into the same offset barrier, side cut away: crumple zone, safety cage, belt and airbag, chest g and HIC, tuned to the IIHS Bel Air vs Malibu test. |
 | [F1 car](f1/) · [play](https://dizzyfer.github.io/Anatomy/f1/) | A 2026-style car lapping a made-up circuit: downforce and drag, Straight and Corner Mode, airflow, brakes past 1,000 °C, dirty air, and losing the rear wing at 340 km/h. |
 
-All built with [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22), an open-source kit for interactive isometric figures. The drawing kit, isometric camera and WebGL layer are his work.
+All built on [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22), an open-source kit for interactive isometric figures. The kit, the isometric camera and the page conventions are his work.
 
 They're toys, not design tools.
+
+## Mark II
+
+Every figure is now drawn in real 3D. A small dependency-free WebGL2 renderer in [`mk2/`](mk2/) does soft shadows, ambient occlusion, ink outlines and bloom on top of Anatomy's camera, and it's bundled into each page, so a figure is still one HTML file.
+
+- **Drag** to turn a figure round. Pinch or ctrl-scroll to zoom, double click to reset the view.
+- **X**, or the X-RAY button, to see inside: casings turn to glass, lids come off, cutaways open up.
+- Tap or drag the thing itself where it makes sense: lift the Ex d lid to open the gap, drag the Ex i drum to pay out cable, pull the fuse on the potted module, pull the blanking plug on the dusty junction box.
+
+The models, numbers and wording behind each toy are the same as the first versions. Only the drawing changed. Each figure's footer still says what's real and what's made up.
 
 ## Adding a new figure
 
 1. Make a folder, e.g. `my-thing/`, with its own `index.html` (and `src/`, `docs/` if needed).
+   To build it the Mark II way, copy `mk2/` into an Anatomy checkout and start from any figure's `src/build.mjs`.
 2. Give its page footer a `../` link back to the gallery.
 3. Add a card to the root `index.html` and a row to the table above.
 

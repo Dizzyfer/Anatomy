@@ -5,243 +5,285 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Anatomy figures</title>
 <meta name="description" content="Interactive engineering toys by Eben Ferreira, built with the open-source Anatomy kit.">
+<meta name="color-scheme" content="dark light">
 <style>
-:root{--bg:#f6f6f2;--card:#ffffff;--ink:#1b1b19;--mute:#6d6d66;--line:#d9d9d2;--hot:#d2581c;
+:root{--bg:#0d0f12;--bg2:#12151a;--card:#161a20;--ink:#eef1f4;--mute:#8e98a4;--line:#252b34;--hot:#ff9a52;--acc:#58b8ff;
   --sans:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
-@media (prefers-color-scheme:dark){:root{--bg:#111110;--card:#181817;--ink:#ededea;--mute:#8d8d86;--line:#2a2a28;--hot:#ff9a52}}
+@media (prefers-color-scheme:light){:root{--bg:#f3f4f1;--bg2:#eceee9;--card:#ffffff;--ink:#16181b;--mute:#636b74;--line:#d7dbd5;--hot:#c8501a;--acc:#0b6fc2}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
-main{max-width:980px;margin:0 auto;padding:56px 16px 40px}
-header p{margin:0 0 6px;font:12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
-h1{margin:0;font-size:clamp(30px,5vw,44px);line-height:1.05;letter-spacing:-.02em}
-.lede{max-width:56ch;margin:14px 0 40px;color:var(--mute);font-size:16px;line-height:1.5}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
-.card{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;color:inherit;text-decoration:none;transition:border-color .2s,transform .2s}
-.card:hover{border-color:var(--hot);transform:translateY(-2px)}
-.card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#111;border-bottom:1px solid var(--line)}
-.card div{padding:16px 18px 18px}
+body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,var(--bg2),var(--bg));background-color:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;min-height:100vh}
+main{max-width:1180px;margin:0 auto;padding:64px 20px 44px}
+header p{margin:0 0 10px;font:12px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+header p b{color:var(--hot);font-weight:600}
+h1{margin:0;font-size:clamp(34px,6vw,60px);line-height:1.02;letter-spacing:-.03em;max-width:14ch}
+.lede{max-width:60ch;margin:18px 0 0;color:var(--mute);font-size:17px;line-height:1.55}
+.how{display:flex;flex-wrap:wrap;gap:8px 18px;margin:18px 0 0;padding:0;list-style:none;font:12px/1.4 var(--mono);color:var(--mute)}
+.how kbd{font:inherit;color:var(--ink);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;margin-right:6px;background:var(--card)}
+.bar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:34px -20px 22px;padding:12px 20px;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.chip{font:12px/1 var(--mono);letter-spacing:.04em;color:var(--mute);background:transparent;border:1px solid var(--line);border-radius:999px;padding:8px 12px;cursor:pointer;transition:color .15s,border-color .15s,background .15s}
+.chip i{font-style:normal;opacity:.6;margin-left:4px}
+.chip:hover{color:var(--ink);border-color:var(--mute)}
+.chip[aria-pressed="true"]{color:var(--bg);background:var(--ink);border-color:var(--ink)}
+.find{margin-left:auto;flex:0 1 220px;min-width:140px;font:13px var(--mono);color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:8px 14px;outline:none}
+.find:focus{border-color:var(--acc)}
+.find::placeholder{color:var(--mute)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:22px}
+.card{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;color:inherit;text-decoration:none;transition:border-color .2s,transform .2s,box-shadow .2s}
+.card:hover,.card:focus-visible{border-color:var(--hot);transform:translateY(-3px);box-shadow:0 14px 40px -18px rgba(0,0,0,.6);outline:none}
+.card figure{margin:0;overflow:hidden;background:#0d0f12;border-bottom:1px solid var(--line);aspect-ratio:800/551}
+.card img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .5s cubic-bezier(.2,.7,.2,1)}
+.card:hover img{transform:scale(1.045)}
+.card div{padding:16px 18px 20px}
 .card small{font:11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--hot)}
-.card h2{margin:8px 0 6px;font-size:19px;letter-spacing:-.01em}
-.card span{color:var(--mute);font-size:14px;line-height:1.45}
-.soon{border-style:dashed;justify-content:center;align-items:center;min-height:200px;color:var(--mute);font:12px var(--mono);letter-spacing:.08em;text-transform:uppercase}
-footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);font:12px/1.7 var(--mono);color:var(--mute)}
+.card h2{margin:9px 0 7px;font-size:20px;letter-spacing:-.015em}
+.card span{color:var(--mute);font-size:14px;line-height:1.5}
+.card[hidden]{display:none}
+.none{display:none;margin:30px 0;color:var(--mute);font:13px var(--mono)}
+.none.on{display:block}
+footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);font:12px/1.7 var(--mono);color:var(--mute)}
 footer a{color:inherit}
+@media (max-width:560px){main{padding-top:38px}.bar{position:static;margin-top:26px}.chip{padding:7px 10px}.find{flex-basis:100%;margin-left:0}.grid{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.card,.card img{transition:none}.card:hover{transform:none}.card:hover img{transform:none}}
 </style>
 </head>
 <body>
 <main>
   <header>
-    <p>Anatomy figures</p>
+    <p>Anatomy figures · <b>Mark II</b></p>
     <h1>Engineering toys you can break.</h1>
   </header>
   <p class="lede">Interactive drawings of real engineering ideas. Poke them, push them past the limit, watch what happens. They're toys, not design tools.</p>
+  <ul class="how" aria-label="How to drive them">
+    <li><kbd>drag</kbd>turn it round</li>
+    <li><kbd>X</kbd>x-ray, to see inside</li>
+    <li><kbd>pinch</kbd>or ctrl-scroll to zoom</li>
+    <li><kbd>double click</kbd>reset the view</li>
+  </ul>
+  <div class="bar" role="group" aria-label="Filter the figures">
+    <button type="button" class="chip" data-f="all" aria-pressed="true">All <i>25</i></button><button type="button" class="chip" data-f="hazardous-areas" aria-pressed="false">Hazardous areas <i>7</i></button><button type="button" class="chip" data-f="lighting" aria-pressed="false">Lighting <i>2</i></button><button type="button" class="chip" data-f="electrical-safety" aria-pressed="false">Electrical safety <i>1</i></button><button type="button" class="chip" data-f="electrical" aria-pressed="false">Electrical <i>1</i></button><button type="button" class="chip" data-f="batteries" aria-pressed="false">Batteries <i>1</i></button><button type="button" class="chip" data-f="just-for-fun" aria-pressed="false">Just for fun <i>1</i></button><button type="button" class="chip" data-f="things-that-blow-up" aria-pressed="false">Things that blow up <i>7</i></button><button type="button" class="chip" data-f="things-that-break" aria-pressed="false">Things that break <i>5</i></button>
+    <input class="find" type="search" placeholder="Find a figure" aria-label="Find a figure by name">
+  </div>
   <section class="grid">
-    <a class="card" href="ex-d-flamepath/">
-      <img src="ex-d-flamepath/docs/thumb.jpg" alt="A cut-away flameproof enclosure going up in a fireball, gas bottles knocked over" loading="lazy">
+    <a class="card" href="ex-d-flamepath/" data-cat="hazardous-areas">
+      <figure><img src="ex-d-flamepath/docs/thumb.jpg" alt="A flameproof enclosure with its front quarter cut away, an igniter flashing inside, a dial gauge on the lid and four gas bottles beside it" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Hazardous areas</small>
         <h2>Ex d flamepath</h2>
         <span>Pick a gas, set the flange gap, hit fire. Under MESG the box holds. Over it, the bench goes up.</span>
       </div>
     </a>
-    <a class="card" href="ex-i-spark/">
-      <img src="ex-i-spark/docs/thumb.jpg" alt="A cable drum and junction box on a bench, with Zone 1 going up in a fireball while the safe area stays untouched" loading="lazy">
+    <a class="card" href="ex-i-spark/" data-cat="hazardous-areas">
+      <figure><img src="ex-i-spark/docs/thumb.jpg" alt="A zener barrier on a panel feeding a glowing blue cable through a drum to an open junction box across a hazard strip, gas bottles beside it" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Hazardous areas</small>
         <h2>Ex i: cable length</h2>
         <span>Pay out cable, hit spark. Every metre stores more energy. Past the gas's MIE, Zone 1 goes up.</span>
       </div>
     </a>
-    <a class="card" href="ex-e-terminals/">
-      <img src="ex-e-terminals/docs/thumb.jpg" alt="An open Ex e terminal box with its terminals glowing hot next to a drum of diethyl ether" loading="lazy">
+    <a class="card" href="ex-e-terminals/" data-cat="hazardous-areas">
+      <figure><img src="ex-e-terminals/docs/thumb.jpg" alt="An Ex e terminal box with glass walls, its sixteen terminals glowing hot, next to a blue drum of diethyl ether" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Hazardous areas</small>
         <h2>Ex e: MDP and creepage</h2>
         <span>Load up the terminals until the box cooks past T4, or crank the voltage on a grubby surface until it tracks and arcs.</span>
       </div>
     </a>
-    <a class="card" href="ex-m-potted/">
-      <img src="ex-m-potted/docs/thumb.jpg" alt="A potted relay module cut open to show resin compound, a relay and a glowing hot resistor" loading="lazy">
+    <a class="card" href="ex-m-potted/" data-cat="hazardous-areas">
+      <figure><img src="ex-m-potted/docs/thumb.jpg" alt="A potted relay module turned to glass, showing a relay and a glowing hot resistor on a circuit board inside the compound" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Hazardous areas</small>
         <h2>Ex m: encapsulation</h2>
         <span>The relay sparks away inside the resin and nothing happens. Thin the pour, cook the parts or pull the fuse, and the gas gets in.</span>
       </div>
     </a>
-    <a class="card" href="ex-t-dust/">
-      <img src="ex-t-dust/docs/thumb.jpg" alt="A dusty plant: a floodlight smouldering under coal dust, a junction box and a bag-tip hopper" loading="lazy">
+    <a class="card" href="ex-t-dust/" data-cat="hazardous-areas">
+      <figure><img src="ex-t-dust/docs/thumb.jpg" alt="A dusty plant: a floodlight smouldering under coal dust below a steel beam, a junction box on a stand and a bag-tip hopper" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Hazardous areas</small>
         <h2>Ex t: dust and housekeeping</h2>
         <span>A light buried until it smoulders, and a box with a missing plug filling with conductive dust until it shorts. Primary, then the secondary.</span>
       </div>
     </a>
-    <a class="card" href="ex-p-purge/">
-      <img src="ex-p-purge/docs/thumb.jpg" alt="A pressurised cabinet cut open, being purged, with a pressure gauge on its controller and air drawn from the safe area" loading="lazy">
+    <a class="card" href="ex-p-purge/" data-cat="hazardous-areas">
+      <figure><img src="ex-p-purge/docs/thumb.jpg" alt="A pressurised cabinet turned to glass while it is purged, with a pressure gauge on its controller and air piped in from the safe area" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Hazardous areas</small>
         <h2>Ex p: purge and pressure</h2>
         <span>Purge five volumes, hold 50 Pa, keep the door shut. Or put the intake in the zone and fool the interlock completely.</span>
       </div>
     </a>
-    <a class="card" href="led/">
-      <img src="led/docs/thumb.jpg" alt="A power LED cut open on its board and heatsink, lit, with a constant current driver beside it" loading="lazy">
+    <a class="card" href="led/" data-cat="lighting">
+      <figure><img src="led/docs/thumb.jpg" alt="A power LED on its board and finned heatsink with a corner cut away" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Lighting</small>
         <h2>How an LED works</h2>
         <span>Current makes light, voltage barely moves, most of it is heat. Run it off constant voltage on a weak heatsink and watch it run away.</span>
       </div>
     </a>
-    <a class="card" href="arc-flash/">
-      <img src="arc-flash/docs/thumb.jpg" alt="A switchboard with its door open, an arc between the busbars and a fireball knocking the worker in front of it to the floor" loading="lazy">
+    <a class="card" href="arc-flash/" data-cat="electrical-safety">
+      <figure><img src="arc-flash/docs/thumb.jpg" alt="A switchboard with its door open and an arc flash fireball throwing sparks across the floor" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Electrical safety</small>
         <h2>Arc flash</h2>
         <span>Fault level, clearing time, distance, PPE. Drop the spanner. Less fault current can mean way more energy.</span>
       </div>
     </a>
-    <a class="card" href="motor/">
-      <img src="motor/docs/thumb.jpg" alt="An induction motor cut open with a fan on its shaft, the magnetic poles glowing on its windings, a starter panel and a dimming light behind it" loading="lazy">
+    <a class="card" href="motor/" data-cat="electrical">
+      <figure><img src="motor/docs/thumb.jpg" alt="An induction motor cut open with a fan on its shaft, glowing poles on its windings, a starter panel and a lamp behind it" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Electrical</small>
         <h2>How a motor starts</h2>
         <span>Direct on line, star-delta or VFD, on a fan, a loaded conveyor or a jammed rotor. Watch the inrush, then bypass the overload.</span>
       </div>
     </a>
-    <a class="card" href="lithium/">
-      <img src="lithium/docs/thumb.jpg" alt="A pack of lithium cells with one cut in half, the cells glowing orange and a flame and smoke coming off the top" loading="lazy">
+    <a class="card" href="lithium/" data-cat="batteries">
+      <figure><img src="lithium/docs/thumb.jpg" alt="A pack of lithium cells with one cut in half and glowing, a jet of flame coming off the top" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Batteries</small>
         <h2>Lithium thermal runaway</h2>
         <span>Overcharge, nail or cook one cell. Chemistry, charge level and spacing decide whether it takes the whole pack.</span>
       </div>
     </a>
-    <a class="card" href="lost-neutral/">
-      <img src="lost-neutral/docs/thumb.jpg" alt="Three rows of LED high bays on a gantry with a lighting board, one fitting popping after the neutral broke" loading="lazy">
+    <a class="card" href="lost-neutral/" data-cat="lighting">
+      <figure><img src="lost-neutral/docs/thumb.jpg" alt="Rows of LED high bays on a gantry over a floor, with a lighting board in front" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Lighting</small>
         <h2>Lost neutral</h2>
         <span>Break one circuit's neutral and the row goes off, with a live neutral. Break the shared link and nothing goes off: the star point floats and the drivers cook.</span>
       </div>
     </a>
-    <a class="card" href="lock/">
-      <img src="lock/docs/thumb.jpg" alt="A pin tumbler lock cut in half showing its pin stacks, springs and shear line, with a pick under one pin" loading="lazy">
+    <a class="card" href="lock/" data-cat="just-for-fun">
+      <figure><img src="lock/docs/thumb.jpg" alt="A brass pin tumbler lock with a glass front showing its pin stacks, with a pick under the pins" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Just for fun</small>
         <h2>How a lock gets picked</h2>
         <span>Shear line, binding order, set pins, oversets and spool false sets. Drag the pins up yourself and pick it.</span>
       </div>
     </a>
-    <a class="card" href="zones/">
-      <img src="zones/docs/thumb.jpg" alt="A process area indoors with a Zone 1 envelope surrounded by Zone 2 around a sample point" loading="lazy">
+    <a class="card" href="zones/" data-cat="hazardous-areas">
+      <figure><img src="zones/docs/thumb.jpg" alt="A process room with glass walls and a zone envelope glowing round a sample point on a pipe" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Hazardous areas</small>
         <h2>Hazardous area zones</h2>
         <span>Grade of release, dilution and availability through the zone table. Shrink the ventilation and watch Zone 2 turn into Zone 1.</span>
       </div>
     </a>
-    <a class="card" href="hot-water/">
-      <img src="hot-water/docs/thumb.jpg" alt="A hot water system bursting up through the eave of a house in a cloud of steam" loading="lazy">
+    <a class="card" href="hot-water/" data-cat="things-that-blow-up">
+      <figure><img src="hot-water/docs/thumb.jpg" alt="A hot water tank cut open against a brick wall under a tiled eave" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Things that blow up</small>
         <h2>Hot water system</h2>
         <span>Stuck thermostat, welded cutout, capped relief valve. Water at 224 °C that can't boil, until the tank lets go.</span>
       </div>
     </a>
-    <a class="card" href="silo/">
-      <img src="silo/docs/thumb.jpg" alt="A grain plant with a dust explosion running through the receiving building and the silo roofs blowing off" loading="lazy">
+    <a class="card" href="silo/" data-cat="things-that-blow-up">
+      <figure><img src="silo/docs/thumb.jpg" alt="A grain plant with fire bursting through the elevator leg and gallery beside the silos" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Things that blow up</small>
         <h2>Grain dust explosion</h2>
         <span>A hot bearing lights the elevator leg. Then the dust on the beams does the real damage. Housekeeping, vents, isolation.</span>
       </div>
     </a>
-    <a class="card" href="gas-leak/">
-      <img src="gas-leak/docs/thumb.jpg" alt="A kitchen cut open with a layer of leaked gas igniting under the ceiling and the door blowing off" loading="lazy">
+    <a class="card" href="gas-leak/" data-cat="things-that-blow-up">
+      <figure><img src="gas-leak/docs/thumb.jpg" alt="A kitchen with glass walls and leaked gas shown in orange layers through the room" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Things that blow up</small>
         <h2>Gas leak in the kitchen</h2>
         <span>Natural gas fills it from the ceiling, LPG from the floor. Too lean, flammable, too rich. Then somebody flicks the light.</span>
       </div>
     </a>
-    <a class="card" href="truss/">
-      <img src="truss/docs/thumb.jpg" alt="A steel truss bridge over a river with a road train crossing and the members glowing red and blue" loading="lazy">
+    <a class="card" href="truss/" data-cat="things-that-break">
+      <figure><img src="truss/docs/thumb.jpg" alt="A steel truss bridge over a river with a road train crossing and the members glowing red and blue" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Things that break</small>
         <h2>Truss bridge</h2>
         <span>Drive cars, road trains and a 620 t haul truck over a steel truss. Red pulls, blue pushes. Cut a member and it's in the river.</span>
       </div>
     </a>
-    <a class="card" href="overclock/">
-      <img src="overclock/docs/thumb.jpg" alt="A motherboard on a test bench with a frosted liquid nitrogen pot on the CPU and a monitor showing a render" loading="lazy">
+    <a class="card" href="overclock/" data-cat="things-that-blow-up">
+      <figure><img src="overclock/docs/thumb.jpg" alt="A motherboard on a test bench with a tower cooler on the CPU and lit memory sticks" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Things that blow up</small>
         <h2>Overclocking a CPU</h2>
         <span>Clock up, voltage up, blue screen, repeat. Tower, AIO or LN2 pot. Turn the safeties off and the VRM lets go.</span>
       </div>
     </a>
-    <a class="card" href="jet/">
-      <img src="jet/docs/thumb.jpg" alt="A cutaway GE9X-sized turbofan on a test stand, with air streaming through the bypass and the core" loading="lazy">
+    <a class="card" href="jet/" data-cat="things-that-blow-up">
+      <figure><img src="jet/docs/thumb.jpg" alt="A turbofan on a test stand with a glass nacelle, air streaming through the fan and a glowing core" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Things that blow up</small>
         <h2>Jet engine</h2>
         <span>The biggest airliner engine, cut in half. Throttle to the 597 kN record, then feed it a goose, a flock or a fan blade.</span>
       </div>
     </a>
-    <a class="card" href="dam/">
-      <img src="dam/docs/thumb.jpg" alt="A concrete gravity dam failing, with the flood wave heading down the valley towards a town" loading="lazy">
+    <a class="card" href="dam/" data-cat="things-that-break">
+      <figure><img src="dam/docs/thumb.jpg" alt="A concrete gravity dam with water going over the spillway and a valley and town downstream" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Things that break</small>
         <h2>Hydro dam</h2>
         <span>Make a gigawatt, trip the grid, bring a flood. Jam the spillway, block the drains, and the town's in trouble.</span>
       </div>
     </a>
-    <a class="card" href="reactor/">
-      <img src="reactor/docs/thumb.jpg" alt="A cutaway RBMK reactor hall with the upper shield blown into the air above a glowing graphite core" loading="lazy">
+    <a class="card" href="reactor/" data-cat="things-that-blow-up">
+      <figure><img src="reactor/docs/thumb.jpg" alt="A reactor hall cut open showing a glowing core under its shield, with steam drums either side" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Things that blow up</small>
         <h2>Nuclear reactor</h2>
         <span>Chernobyl's RBMK or a modern PWR on a toggle. Same abuse, very different endings. Run the 1986 test yourself.</span>
       </div>
     </a>
-    <a class="card" href="wing/">
-      <img src="wing/docs/thumb.jpg" alt="An airliner wing on a stand bending up under load, with an inset of air flowing round a slice of the wing" loading="lazy">
+    <a class="card" href="wing/" data-cat="things-that-break">
+      <figure><img src="wing/docs/thumb.jpg" alt="An airliner wing with an engine under it, seen along the span" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Things that break</small>
         <h2>Aeroplane wing</h2>
         <span>Real airflow round a slice of it. Fly it slow and stall it, pull 4 g and snap it, or dive past the flutter speed.</span>
       </div>
     </a>
-    <a class="card" href="transformer/">
-      <img src="transformer/docs/thumb.jpg" alt="A substation power transformer burning after a tank rupture, smoke rising behind a concrete firewall" loading="lazy">
+    <a class="card" href="transformer/" data-cat="things-that-blow-up">
+      <figure><img src="transformer/docs/thumb.jpg" alt="A substation power transformer with a glass tank showing glowing windings, beside a concrete firewall" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Things that blow up</small>
         <h2>Power transformer</h2>
         <span>Cook the paper in a heatwave, kill the fans, hit it with lightning. Buchholz and differential save it, unless you turn them off.</span>
       </div>
     </a>
-    <a class="card" href="crash/">
-      <img src="crash/docs/thumb.jpg" alt="A 1959-style sedan folding up against an offset crash barrier, its crash dummy thrown onto the steering wheel" loading="lazy">
+    <a class="card" href="crash/" data-cat="things-that-break">
+      <figure><img src="crash/docs/thumb.jpg" alt="A 1959-style sedan with its side cut away driving at an offset crash barrier" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Things that break</small>
         <h2>Car crash</h2>
         <span>A 1959 car and a 2009 car into the same barrier. Crumple zone, cage, belt and airbag, and how many g the dummy takes.</span>
       </div>
     </a>
-    <a class="card" href="f1/">
-      <img src="f1/docs/thumb.jpg" alt="A Formula 1 car spinning off with its rear wing gone, tyre smoke behind it and a tyre wall ahead" loading="lazy">
+    <a class="card" href="f1/" data-cat="things-that-break">
+      <figure><img src="f1/docs/thumb.jpg" alt="A Formula 1 car on a track with its brakes glowing" width="800" height="551" loading="lazy"></figure>
       <div>
         <small>Things that break</small>
         <h2>F1 car</h2>
         <span>Downforce, drag and 2026 active aero. Sit in dirty air, cook the brakes past 1,000 °C, or lose the rear wing at 340 km/h.</span>
       </div>
     </a>
-    <div class="card soon">More coming</div>
   </section>
+  <p class="none" aria-live="polite">Nothing by that name. Try a different word.</p>
   <footer>
     By Eben Ferreira · <a href="https://github.com/Dizzyfer/Anatomy">Source</a><br>
     Built with <a href="https://github.com/wheresryan22/anatomy">Anatomy</a> by Ryan (MIT)
   </footer>
 </main>
+<script>
+(() => {
+  const cards = [...document.querySelectorAll(".card")], chips = [...document.querySelectorAll(".chip")], find = document.querySelector(".find"), none = document.querySelector(".none");
+  let cat = "all";
+  const apply = () => {
+    const q = find.value.trim().toLowerCase(); let n = 0;
+    for (const c of cards) { const ok = (cat === "all" || c.dataset.cat === cat) && (!q || c.textContent.toLowerCase().includes(q)); c.hidden = !ok; if (ok) n++; }
+    none.classList.toggle("on", n === 0);
+  };
+  for (const b of chips) b.addEventListener("click", () => { cat = b.dataset.f; for (const o of chips) o.setAttribute("aria-pressed", String(o === b)); apply(); });
+  find.addEventListener("input", apply);
+  addEventListener("keydown", (ev) => { if (ev.key === "/" && document.activeElement !== find) { ev.preventDefault(); find.focus(); } });
+})();
+</script>
 </body>
 </html>
