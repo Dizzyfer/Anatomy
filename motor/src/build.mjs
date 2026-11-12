@@ -325,7 +325,7 @@ function tick(t) {
   hist.push({ t: now, i: Iline, w }); while (hist.length && hist[0].t < now - 10.5) hist.shift();
   draw(sdt); syncUi(); drawScope(); story();
   const idle = parts.length === 0 && !touring && !on && w < 0.001 && Math.abs(temp - M.amb) < 0.5 && !dead && hist.every((h) => h.i < 0.001);
-  frame = visible && !idle ? requestAnimationFrame(tick) : 0;
+  frame = visible ? requestAnimationFrame(tick) : 0;
 }
 const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
 const takeOver = () => { touring = false; actions = []; };

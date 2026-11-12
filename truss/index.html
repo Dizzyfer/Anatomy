@@ -486,6 +486,14 @@ function mk2(stage, P, opt = {}) {
     return '<g class="mk-co" opacity="' + alpha.toFixed(2) + '">' + out + "</g>";
   }
 
+  // an SVG transform that lays overlay content flat on a plane in the scene: origin o, u = one unit to the right, v = one unit down.
+  // Returns "" when the plane is seen from behind (so text on the back of a box doesn't show through the front).
+  function faceMatrix(o, u, v) {
+    const p0 = project(o), p1 = project([o[0] + u[0], o[1] + u[1], o[2] + u[2]]), p2 = project([o[0] + v[0], o[1] + v[1], o[2] + v[2]]);
+    const a = p1[0] - p0[0], b = p1[1] - p0[1], c = p2[0] - p0[0], d = p2[1] - p0[1];
+    if (a * d - b * c <= 1e-9) return "";
+    return "matrix(" + [a, b, c, d, p0[0], p0[1]].map((n) => n.toFixed(4)).join(" ") + ")";
+  }
   // ---------------- frame bookkeeping ----------------
   let open = false, pending = false, haveFrame = false;
   function begin() {
@@ -552,7 +560,7 @@ function mk2(stage, P, opt = {}) {
   let lastFlush = 0;
   if (!gl) {
     stage.classList.add("mk-nogl");
-    const E0 = { ok: false, prism, box, cyl, circle, rrect, lathe, tube, sphere, tris, loft, roundPoly, callouts, render, line() {}, sprite() {}, project, depthOf, px: () => cam.k, rgb, xray: 0, setXray() {}, view, bevel: 0, mat: "satin", bindTools() {}, VIEW: [0, 0, 1] };
+    const E0 = { ok: false, prism, box, cyl, circle, rrect, lathe, tube, sphere, tris, loft, roundPoly, callouts, faceMatrix, render, line() {}, sprite() {}, project, depthOf, px: () => cam.k, rgb, xray: 0, setXray() {}, view, bevel: 0, mat: "satin", bindTools() {}, VIEW: [0, 0, 1] };
     return E0;
   }
   const VS_CAM = `uniform vec4 uCam;uniform vec3 uOK;uniform vec4 uScr;uniform vec2 uDep;
@@ -835,7 +843,7 @@ o=vec4(c.rgb+bl,clamp(c.a+max(bl.r,max(bl.g,bl.b))*1.1,0.,1.));}`;
   new ResizeObserver(() => { if (haveFrame && !open && !window.__mk2skip) { drawFrame(); } }).observe(cv);
 
   const E = {
-    ok: true, prism, box, cyl, circle, rrect, lathe, tube, sphere, tris, loft, roundPoly, callouts, render, line: (...a) => { if (touch()) line(...a); }, sprite: (...a) => { if (touch()) sprite(...a); },
+    ok: true, prism, box, cyl, circle, rrect, lathe, tube, sphere, tris, loft, roundPoly, callouts, faceMatrix, render, line: (...a) => { if (touch()) line(...a); }, sprite: (...a) => { if (touch()) sprite(...a); },
     project, depthOf, px: () => cam.k, rgb, lin, view, goal, home, setXray, bindTools, get xrayOn() { return !!xrGoal; },
     xray: 0, mat: opt.mat || "satin", bevel: opt.bevel ?? 1.2 / (base.scale * UNIT), ao: opt.ao ?? 0.85, aoRadius: opt.aoRadius ?? 26 / (base.scale * UNIT), ink: opt.ink ?? 0.5, inkDepth: opt.inkDepth ?? 1.5, bloom: opt.bloom ?? 1,
     plate: opt.plate || null, shadowBox: opt.shadowBox || null, ms: 0, cpu: 0, triCount: 0, get fs() { return fsNow; }, cam: () => cam,
@@ -859,6 +867,11 @@ const setX = (on) => { E.setXray(on); if (xbtn) xbtn.setAttribute("aria-pressed"
 const sceneG = stage.querySelector('[data-part="scene"]');
 const iso = (p) => E.project(p), depthOf = (p) => E.depthOf(p);
 const shakeEls = [stage.querySelector(".mk-gl"), stage.querySelector(".mk-over")];
+// a tap on the stage that isn't a drag or a press on the toolbar
+const onTap = (fn) => { let d0 = null; stage.addEventListener("pointerdown", (ev) => { d0 = ev.target.closest(".mk-tools,button,a") ? null : [ev.clientX, ev.clientY]; }); stage.addEventListener("pointerup", (ev) => { if (d0 && Math.hypot(ev.clientX - d0[0], ev.clientY - d0[1]) < 6) fn(ev); d0 = null; }); };
+// 3x4 matrix for a cached object turning about a vertical axis through (cx, cy)
+const rotZ = (cx, cy, a) => { const c = Math.cos(a), s = Math.sin(a); return [c, -s, 0, s, c, 0, 0, 0, 1, cx - c * cx + s * cy, cy - s * cx - c * cy, 0]; };
+const mixHex = (a, b, t) => { const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)), A = h(a), B = h(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * Math.min(1, Math.max(0, t))).toString(16).padStart(2, "0")).join(""); };
 const setShake = (x, y) => { const t = x || y ? "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)" : ""; for (const e of shakeEls) if (e.style.transform !== t) e.style.transform = t; };
 // planar truss, direct stiffness. Units: m, kN.
 function trussGeom(kind) {
@@ -1075,8 +1088,7 @@ function deflAt(xm) {
 function buildBridge() {}
 const TAU = Math.PI * 2;
 const REST = lightTheme ? "#8b939c" : "#9aa2ab";
-const hx = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-const mixHex = (a, b, t) => { const A = hx(a), B = hx(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, "0")).join(""); };
+
 const XA0 = D.X0, XA1 = D.X0 + D.SPAN * D.U, PX0 = D.PLATE.x + 2, PX1 = D.PLATE.x + D.PLATE.w - 2, PY0 = D.PLATE.y + 2, PY1 = D.PLATE.y + D.PLATE.d - 2;
 function siteStatic() {
   const o = [], RK = { mat: "matte" }, DZ = D.DZ, YT = D.YT;
@@ -1342,7 +1354,7 @@ function tick(t) {
   }
   step(sdt); draw(); syncUi(); story();
   const idle = !touring && !cars.length && fallAt === null && now - snapAt > 1 && false;
-  frame = visible && !idle ? requestAnimationFrame(tick) : 0;
+  frame = visible ? requestAnimationFrame(tick) : 0;
 }
 const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
 const takeOver = () => { if (touring) { touring = false; actions = []; stream = 0; } };

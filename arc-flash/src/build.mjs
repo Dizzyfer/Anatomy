@@ -278,7 +278,7 @@ function tick(t) {
   }
   draw(sdt); syncUi();
   const idle = fx.length === 0 && !touring && arcAt === null;
-  frame = visible && !idle ? requestAnimationFrame(tick) : 0;
+  frame = visible ? requestAnimationFrame(tick) : 0;
 }
 const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
 const takeOver = () => { touring = false; actions = []; };

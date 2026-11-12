@@ -38,6 +38,11 @@ const setX = (on) => { E.setXray(on); if (xbtn) xbtn.setAttribute("aria-pressed"
 const sceneG = stage.querySelector('[data-part="scene"]');
 const iso = (p) => E.project(p), depthOf = (p) => E.depthOf(p);
 const shakeEls = [stage.querySelector(".mk-gl"), stage.querySelector(".mk-over")];
+// a tap on the stage that isn't a drag or a press on the toolbar
+const onTap = (fn) => { let d0 = null; stage.addEventListener("pointerdown", (ev) => { d0 = ev.target.closest(".mk-tools,button,a") ? null : [ev.clientX, ev.clientY]; }); stage.addEventListener("pointerup", (ev) => { if (d0 && Math.hypot(ev.clientX - d0[0], ev.clientY - d0[1]) < 6) fn(ev); d0 = null; }); };
+// 3x4 matrix for a cached object turning about a vertical axis through (cx, cy)
+const rotZ = (cx, cy, a) => { const c = Math.cos(a), s = Math.sin(a); return [c, -s, 0, s, c, 0, 0, 0, 1, cx - c * cx + s * cy, cy - s * cx - c * cy, 0]; };
+const mixHex = (a, b, t) => { const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)), A = h(a), B = h(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * Math.min(1, Math.max(0, t))).toString(16).padStart(2, "0")).join(""); };
 const setShake = (x, y) => { const t = x || y ? "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)" : ""; for (const e of shakeEls) if (e.style.transform !== t) e.style.transform = t; };
 ${SOLVER}
 const P = D.P;
@@ -177,8 +182,7 @@ function deflAt(xm) {
 function buildBridge() {}
 const TAU = Math.PI * 2;
 const REST = lightTheme ? "#8b939c" : "#9aa2ab";
-const hx = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-const mixHex = (a, b, t) => { const A = hx(a), B = hx(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, "0")).join(""); };
+
 const XA0 = D.X0, XA1 = D.X0 + D.SPAN * D.U, PX0 = D.PLATE.x + 2, PX1 = D.PLATE.x + D.PLATE.w - 2, PY0 = D.PLATE.y + 2, PY1 = D.PLATE.y + D.PLATE.d - 2;
 function siteStatic() {
   const o = [], RK = { mat: "matte" }, DZ = D.DZ, YT = D.YT;
@@ -444,7 +448,7 @@ function tick(t) {
   }
   step(sdt); draw(); syncUi(); story();
   const idle = !touring && !cars.length && fallAt === null && now - snapAt > 1 && false;
-  frame = visible && !idle ? requestAnimationFrame(tick) : 0;
+  frame = visible ? requestAnimationFrame(tick) : 0;
 }
 const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
 const takeOver = () => { if (touring) { touring = false; actions = []; stream = 0; } };
