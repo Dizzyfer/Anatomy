@@ -2,14 +2,11 @@ import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as k from "../../kit/iso-kit.mjs";
-import { glCamera } from "../../kit/gl.mjs";
-import { kitScript, glScript } from "../../scripts/inline-kit.mjs";
+import { engineScript, stageHtml, pageMk2, footHtml } from "../../mk2/shell.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
-
-const W = 640;
-const H = 420;
+const W = 960, H = 600;
 
 // Truth: IEC 60079-14 dust Tmax = min(2/3 × cloud ignition temp, 5 mm layer ignition temp − 75 K); the layer rule only holds to 5 mm.
 // Literature values (5 mm layer / cloud ignition, °C).
@@ -22,8 +19,6 @@ const DUSTS = [
 // Toy: dust settles at 0.4 mm a week. The light is marked T135 °C and reaches it with exactly 5 mm on top
 // (90 °C bare, +9 K per mm). Thicker layers light lower (3 K per mm past 5 mm). A JB with a missing plug fills in ~20 weeks.
 const MODEL = { mmPerWeek: 0.4, bare: 90, perMm: 9, marked: 135, thickDrop: 3, tau: 2.2, maxWeeks: 60, jbFillWeeks: 20, jbBurn: 0.45 };
-
-const PLATE = { x: -124, y: -84, w: 256, d: 166, r: 8 };
 const PLATE_H = 12, FOOT_H = 5;
 const COL = { x: -108, y: -5, w: 10, d: 10 };
 const BEAM = { x0: -108, x1: 118, y: 0, z0: 84 };
@@ -37,296 +32,36 @@ const JB_HOT = [-56, 24, 28];
 const HOP = { x: 58, y: 14, w: 40, d: 34, z1: 26 };
 const CLOUD_SRC = [HOP.x + HOP.w / 2, HOP.y + HOP.d / 2, HOP.z1 + 4];
 const BAG = { x: 64, y: 54, w: 28, d: 16 };
-
-const P = k.fitProjection(
-  [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [BEAM.x0, 0, BEAM.z0 + 16], [BEAM.x1, 0, BEAM.z0 + 16]],
-  W, H, { pad: 20, azimuth: 45 },
-);
-
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const Dt = (points, style) => k.dotsSvg(points, style);
-const depth2 = ([x, y]) => k.depthOf([x, y, 0], P);
-const byDepth = (pts) => [...pts].sort((a, b) => depth2(a) - depth2(b));
-const slab = (plan, z, h, r = 1.2, bevel = 0.5) => k.slabOf({ r, ...plan }, z, h, P, 4, bevel);
-const lRing = ({ x, y, w, d }, [cx, cy]) => [[x, y], [x + w, y], [x + w, cy], [cx, cy], [cx, y + d], [x, y + d]];
-const lSolid = (plan, cut, z, h) => k.extrude(lRing(plan, cut), z, h, P, { convex: false });
-
-function plate() {
-  const out = [`<path class="iso-halo" d="${k.haloOf(PLATE, -PLATE_H - FOOT_H, PLATE_H, P)}"/>`];
-  for (const [x, y] of byDepth(k.corners(PLATE, 22))) {
-    out.push(S(k.cylinder(x, y, 7, -PLATE_H - FOOT_H, 1.6, P, 28), { tone: "lo" }));
-    out.push(S(k.cylinder(x, y, 5.4, -PLATE_H - FOOT_H + 1.6, FOOT_H - 1.6, P, 28), { tone: "mid" }));
-  }
-  out.push(S(k.slabOf(PLATE, -PLATE_H, PLATE_H, P, 8, 1.6), { tone: "mid", inner: L(k.sideSeam(PLATE, -PLATE_H / 2, P), { tone: "faint" }) }));
-  out.push(L(k.planOutline(k.insetPlan(PLATE, 5), 0, P), { tone: "lo" }));
-  const screws = k.corners(PLATE, 10);
-  out.push(L(screws.map(([x, y]) => k.ring(x, y, 2.2, 0, P, 16)).join(""), { tone: "lo" }));
-  out.push(Dt(screws.map(([x, y]) => at([x, y, 0])), { size: 0.5 }));
-  out.push(k.faceTextSvg(k.topMatrix([-30, 74], 0, P, "x"), "ZONE 21 · BAG TIP", { size: 4.6, tone: "lo" }));
-  out.push(`<g data-part="floordust"></g>`);
-  return out.join("");
-}
-
-function column() {
-  const out = [];
-  out.push(S(slab({ x: COL.x - 4, y: COL.y - 4, w: COL.w + 8, d: COL.d + 8 }, 0, 1.6, 1, 0.3), { tone: "mid" }));
-  out.push(Dt(k.corners({ x: COL.x - 4, y: COL.y - 4, w: COL.w + 8, d: COL.d + 8 }, 2).map(([x, y]) => at([x, y, 1.6])), { size: 0.5 }));
-  out.push(S(slab(COL, 1.6, BEAM.z0 + 14 - 1.6, 0.4, 0.3), { tone: "mid", inner: L(k.segment([COL.x + COL.w, COL.y + 5, 2], [COL.x + COL.w, COL.y + 5, BEAM.z0 + 12], P), { tone: "faint" }) }));
-  return out.join("");
-}
-
-function beam() {
-  const out = [];
-  const { x0, x1, y, z0 } = BEAM;
-  out.push(S(slab({ x: x0, y: y - 7, w: x1 - x0, d: 14 }, z0, 2, 0.3, 0.2), { tone: "mid" }));
-  out.push(S(slab({ x: x0, y: y - 1, w: x1 - x0, d: 2 }, z0 + 2, 10, 0.2, 0), { tone: "mid", inner: L([0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => k.segment([x0 + 24 + i * 24, y + 1, z0 + 3], [x0 + 24 + i * 24, y + 1, z0 + 11], P)).join(""), { tone: "faint" }) }));
-  out.push(S(slab({ x: x0, y: y - 7, w: x1 - x0, d: 14 }, z0 + 12, 2, 0.3, 0.2), { tone: "mid" }));
-  out.push(`<g data-part="beamdust"></g>`);
-  const c = [[LUM.x + 2, LUM.y + 4, LUM.z1 + 1], [LUM.x - 4, LUM.y + 4, LUM.z1 + 8], [LUM.x - 8, -6, BEAM.z0 - 0.6], [COL.x + COL.w + 1, -6, BEAM.z0 - 0.6], [COL.x + COL.w + 1, -6, JB.z1 + 6], [JB.x + 6, JB.y + 4, JB.z1]].map(at);
-  out.push(`<path class="iso-line iso-cable" data-tone="mid" d="${k.pathOf(c)}"/>`);
-  return out.join("");
-}
-
-function luminaire() {
-  const out = [];
-  const { x, y, w, d, z0, z1 } = LUM;
-  for (const sy of [y - 2, y + d]) out.push(S(slab({ x: x + w / 2 - 2.5, y: sy, w: 5, d: 2 }, z0 + 3, BEAM.z0 - z0 - 3, 0.4, 0.2), { tone: "mid" }));
-  out.push(S(slab({ x: x + w / 2 - 5, y: -7, w: 10, d: 14 }, BEAM.z0 - 1.6, 1.6, 0.4, 0.2), { tone: "mid" }));
-  out.push(Dt([at([x + w / 2, y - 1, z0 + 6]), at([x + w / 2, y + d + 1, z0 + 6])], { size: 0.7, tone: "hi" }));
-  out.push(S(slab({ x, y, w, d }, z0, z1 - z0, 2, 0.6), { tone: "hi", inner: L(k.sideSeam({ x, y, w, d, r: 2 }, z0 + 2.5, P), { tone: "faint" }) }));
-  for (let i = 0; i < 9; i++) out.push(S(slab({ x: x + 4 + i * 5, y: y + 2, w: 1.4, d: d - 4 }, z1, FIN_H, 0.3, 0), { tone: "hi" }));
-  const m = k.sideMatrix([x + 6, y + d + 0.01], z0 + 8.2, P, "left");
-  out.push(`<g transform="${m}"><rect x="0" y="0" width="30" height="5.2" rx=".5" style="fill:var(--anatomy-paper);stroke:var(--anatomy-mid);stroke-width:.3"/><text class="iso-face-text" data-tone="mid" x="1.4" y="3.7" font-size="2.6">Ex tb IIIC T135°C</text></g>`);
-  out.push(`<g data-part="lumdust"></g>`);
-  return `<g data-part="lum">${out.join("")}</g>`;
-}
-
-function junctionBox() {
-  const out = [];
-  const j = JB, cut = JB_CUT;
-  out.push(`<path class="iso-halo" d="${k.haloOf({ ...k.insetPlan({ ...j, r: 2 }, -4) }, 0, 0.1, P)}"/>`);
-  // stand
-  for (const [lx, ly] of byDepth(k.corners(j, 3))) out.push(S(slab({ x: lx - 1.5, y: ly - 1.5, w: 3, d: 3 }, 0, j.z0, 0.3, 0), { tone: "mid" }));
-  out.push(S(lSolid(j, cut, j.z0, 2.5), { tone: "mid" }));
-  // back walls
-  out.push(S(slab({ x: j.x, y: j.y, w: j.w, d: 2.5 }, j.z0 + 2.5, j.z1 - j.z0 - 2.5, 0.4, 0.2), { tone: "hi" }));
-  out.push(S(slab({ x: j.x, y: j.y + 2.5, w: 2.5, d: j.d - 2.5 }, j.z0 + 2.5, j.z1 - j.z0 - 2.5, 0.4, 0.2), { tone: "hi" }));
-  // terminal rail and terminals inside
-  out.push(S(slab({ x: j.x + 5, y: j.y + 9, w: j.w - 9, d: 4 }, j.z0 + 2.5, 1.5, 0.3, 0), { tone: "mid" }));
-  for (let i = 0; i < 7; i++) {
-    const tx = j.x + 7 + i * 4.4;
-    out.push(S(slab({ x: tx, y: j.y + 5, w: 3.6, d: 12 }, j.z0 + 4, 7, 0.4, 0.2), { tone: "hi" }));
-    out.push(Dt([at([tx + 1.8, j.y + 7.5, j.z0 + 11]), at([tx + 1.8, j.y + 14.5, j.z0 + 11])], { size: 0.4 }));
-  }
-  out.push(`<g data-part="jbdust"></g>`);
-  // front walls, cut and hatched
-  const fx = { x: j.x + j.w - 2.5, y: j.y + 2.5, w: 2.5, d: cut[1] - j.y - 2.5 };
-  const fy = { x: j.x + 2.5, y: j.y + j.d - 2.5, w: cut[0] - j.x - 2.5, d: 2.5 };
-  out.push(S(slab(fx, j.z0 + 2.5, j.z1 - j.z0 - 2.5, 0.2, 0), { tone: "hi" }));
-  out.push(S(slab(fy, j.z0 + 2.5, j.z1 - j.z0 - 2.5, 0.2, 0), { tone: "hi" }));
-  // gland and the plug that should be there
-  const gy = j.y + j.d;
-  out.push(S(slab({ x: j.x + 6, y: gy, w: 6, d: 2 }, j.z0 + 7, 6, 1.6, 0.3), { tone: "mid" }));
-  out.push(`<g data-part="plug">` + S(slab({ x: j.x + 15, y: gy, w: 5, d: 1.4 }, j.z0 + 7.5, 5, 1.6, 0.3), { tone: "mid" }) + `</g>`);
-  out.push(`<g data-part="hole" style="display:none"><path class="iso-hole" d="${k.pathOf([[j.x + 15.4, gy + 0.02, j.z0 + 8], [j.x + 19.6, gy + 0.02, j.z0 + 8], [j.x + 19.6, gy + 0.02, j.z0 + 12], [j.x + 15.4, gy + 0.02, j.z0 + 12]].map(at), true)}"/></g>`);
-  const m = k.sideMatrix([j.x + 4, gy + 0.01], j.z1 - 2, P, "left");
-  out.push(`<g transform="${m}"><rect x="0" y="0" width="22" height="5" rx=".5" style="fill:var(--anatomy-paper);stroke:var(--anatomy-mid);stroke-width:.3"/><text class="iso-face-text" data-tone="mid" x="1.3" y="3.6" font-size="2.5">Ex tb IIIC IP66</text></g>`);
-  out.push(`<g data-part="jbtop"></g>`);
-  return `<g data-part="jb">${out.join("")}</g>`;
-}
-
-function hopper() {
-  const out = [];
-  const h = HOP;
-  out.push(`<path class="iso-halo" d="${k.haloOf({ ...k.insetPlan({ ...h, r: 2 }, -4) }, 0, 0.1, P)}"/>`);
-  out.push(S(slab(h, 0, h.z1, 1, 0.5), { tone: "mid", inner: L(k.sideSeam({ ...h, r: 1 }, 12, P), { tone: "faint" }) }));
-  // grate on top
-  const g = [];
-  for (let x = h.x + 4; x < h.x + h.w - 2; x += 4) g.push(k.segment([x, h.y + 3, h.z1], [x, h.y + h.d - 3, h.z1], P));
-  out.push(L(k.planOutline({ ...k.insetPlan({ ...h, r: 1 }, 3) }, h.z1, P), { tone: "lo" }));
-  out.push(L(g.join(""), { tone: "faint" }));
-  out.push(S(slab({ x: h.x - 2, y: h.y - 2, w: h.w + 4, d: 3 }, h.z1, 10, 0.4, 0.2), { tone: "mid" }));
-  // shelf for the bags
-  out.push(S(slab({ x: BAG.x - 4, y: BAG.y - 4, w: BAG.w + 8, d: BAG.d + 8 }, 14, 2, 0.6, 0.2), { tone: "mid" }));
-  for (const [lx, ly] of byDepth(k.corners({ x: BAG.x - 4, y: BAG.y - 4, w: BAG.w + 8, d: BAG.d + 8 }, 2))) out.push(S(slab({ x: lx - 1, y: ly - 1, w: 2, d: 2 }, 0, 14, 0.2, 0), { tone: "mid" }));
-  return out.join("");
-}
-function bag() {
-  const b = BAG;
-  return `<g data-part="bag">` + S(slab(b, 16, 9, 4, 0.8), { tone: "hi", inner: L(k.segment([b.x, b.y + b.d, 20.5], [b.x + b.w, b.y + b.d, 20.5], P), { tone: "faint" }) }) + S(slab({ x: b.x + 1, y: b.y + 1, w: b.w - 2, d: b.d - 2 }, 25, 5, 4, 0.8), { tone: "hi" }) + `</g>`;
-}
-
 const START = { dust: 0, weeks: 6, sealed: true };
-const fig = k.figureSvg({
-  width: W, height: H,
-  label: "A dusty plant area: a bag-tip hopper, a dust-tight floodlight under a steel beam, and a dust-tight junction box on a stand, cut open. Weeks without cleaning pile dust on the light and the beam; a missing blanking plug lets dust into the box. Tipping a bag raises a cloud.",
-  body: [plate(), column(), junctionBox(), hopper(), luminaire(), beam(), bag()],
-});
-
-const DATA = {
-  W, H, camera: glCamera(P), P, DUSTS, MODEL, LUM, FIN_H, DUST_K, BEAM, COL, LAMP_C, JB, JB_CUT, JB_HOT, HOP, CLOUD_SRC, BAG, start: START,
-  pivots: { lum: at([LUM.x + LUM.w / 2, 0, BEAM.z0]), bag: at([BAG.x + BAG.w / 2, BAG.y, 16]), jb: at([JB.x + JB.w, JB.y + JB.d, 0]) },
-};
-
-const GLSL = `
-uniform float uLight;
-uniform float uLamp;
-uniform float uSmoulder;
-uniform float uDustTop;
-uniform float uJbFire;
-uniform float uArc;
-uniform float uIngress;
-uniform float uCloud;
-uniform float uPrimary;
-uniform vec3 uPrimAt;
-uniform float uBoom;
-uniform float uBig;
-uniform vec3 uDustCol;
-const vec2 LC=vec2(${LAMP_C.map((v) => v.toFixed(1)).join(",")});
-const vec4 LP=vec4(${LUM.x.toFixed(1)},${LUM.y.toFixed(1)},${(LUM.x + LUM.w).toFixed(1)},${(LUM.y + LUM.d).toFixed(1)});
-const vec3 JH=vec3(${JB_HOT.map((v) => v.toFixed(1)).join(",")});
-const vec3 HOLE=vec3(${(JB.x + 17.5).toFixed(1)},${(JB.y + JB.d).toFixed(1)},${(JB.z0 + 10).toFixed(1)});
-const vec3 CS=vec3(${CLOUD_SRC.map((v) => v.toFixed(1)).join(",")});
-vec4 inkFor(vec3 seen,float cover){vec3 ab=1.-seen;float a=max(max(ab.r,max(ab.g,ab.b)),cover);return vec4(vec3(a)-ab,a);}
-vec4 over(vec4 t,vec4 u){return t+u*(1.-t.a);}
-vec4 fireInk(float e,float core){
-  vec3 hue=mix(vec3(.55,.16,.06),mix(vec3(1.,.36,.08),vec3(1.,.66,.28),smoothstep(.45,1.,core)),smoothstep(0.,.5,core));
-  vec3 c=tonemap(hue*e,1.4);float a=max(c.r,max(c.g,c.b));
-  float la=1.-exp(-1.8*e);
-  vec3 seen=mix(vec3(1.),mix(vec3(.82,.28,.06),vec3(1.,.78,.4),smoothstep(.6,1.,core)*smoothstep(.5,1.,la)),la);
-  return mix(vec4(c,a),inkFor(seen,.9*smoothstep(.75,1.,la)*core)*la,uLight);
-}
-vec4 lightInk(float e){
-  vec3 c=tonemap(vec3(1.,.93,.78)*e,1.2);float a=max(c.r,max(c.g,c.b));
-  float la=1.-exp(-1.2*e);
-  vec3 seen=mix(vec3(1.),vec3(.97,.86,.55),la);
-  return mix(vec4(c,a)*.9,inkFor(seen,0.)*la*.55,uLight);
-}
-vec4 arcInk(float e){
-  vec3 c=tonemap(vec3(.62,.78,1.)*e,1.6)+tonemap(vec3(1.)*max(0.,e-1.2),1.);
-  c=min(c,vec3(1.));float a=max(c.r,max(c.g,c.b));
-  float la=1.-exp(-1.6*e);
-  vec3 seen=mix(vec3(1.),mix(vec3(.18,.3,.85),vec3(.75,.85,1.),smoothstep(1.,2.,e)),la);
-  return mix(vec4(c,a),inkFor(seen,.85*smoothstep(1.2,2.2,e))*la,uLight);
-}
-vec4 smokeInk(float d,vec3 col){float a=1.-exp(-d);return vec4(col*a,a);}
-float edgeFade(vec2 vb){return smoothstep(0.,80.,min(min(vb.x,uView.x-vb.x),min(vb.y,uView.y-vb.y)));}
-vec4 ball(vec2 vb,vec3 C,float c,float rmax,float decay){
-  vec2 dv=(vb-project(C))/uK;
-  float d=length(dv), R=8.+rmax*(1.-exp(-c/.18));
-  float n=fbm3(vec3(dv*.06,c*2.));
-  float e=(exp(-pow((d-R*(.82+.3*n))/(5.+R*.12),2.))*1.2+(1.-smoothstep(R*.3,R*.9,d))*(.6+.6*n))*smoothstep(0.,.04,c)*exp(-c/decay);
-  return fireInk(e*edgeFade(vb),clamp(1.2-c*2.,0.,1.));
-}
-void main(){
-  vec2 vb=viewOf(gl_FragCoord.xy);
-  vec4 o=vec4(0.);
-  if(uLamp>.002){
-    vec3 f=onFloor(vb,0.);
-    float pool=exp(-pow(length(f.xy-LC)/44.,2.))*.5;
-    float cone=0.;
-    for(int i=0;i<10;i++){
-      float z=(float(i)+.5)*5.4;
-      vec3 p=onFloor(vb,z);
-      float rr=length(p.xy-LC), rad=14.+30.*(1.-z/56.);
-      float mote=step(.985,hash13(floor(p*.9)+floor(uTime*3.)))*.6;
-      cone+=exp(-pow(rr/rad,2.))*(.035+mote*.12);
-    }
-    o=over(lightInk((pool+cone)*uLamp),o);
-  }
-  if(uIngress>.002){
-    // dust drifting in through the open plug hole
-    vec2 h=project(HOLE);
-    vec2 dv=(vb-h)/uK;
-    float stream=exp(-pow(length(dv*vec2(1.,.6)-vec2(-2.,2.))/4.,2.))*fbm2(dv*.6+vec2(uTime*1.5,0.));
-    o=over(smokeInk(stream*.9*uIngress,uDustCol),o);
-  }
-  if(uSmoulder>.002){
-    vec3 p=onFloor(vb,uDustTop);
-    vec2 q=max(vec2(LP.x,LP.y)-p.xy,p.xy-vec2(LP.z,LP.w));
-    float inside=1.-smoothstep(-2.,0.,max(q.x,q.y));
-    float n=fbm2(p.xy*.18+vec2(0.,uTime*.4));
-    float ember=inside*smoothstep(.55,.85,n)*(.7+.3*sin(uTime*7.+n*20.));
-    o=over(fireInk(ember*1.6*uSmoulder,.35),o);
-    float smoke=0.;
-    for(int i=0;i<8;i++){
-      float z=uDustTop+3.+float(i)*6.;
-      vec3 s=onFloor(vb,z);
-      vec2 c=LC+vec2(4.+sin(z*.08+uTime)*6.,-2.);
-      smoke+=exp(-pow(length(s.xy-c)/(3.+z*.08),2.))*fbm2(s.xy*.1+vec2(0.,-uTime*.6))*.35;
-    }
-    o=over(smokeInk(smoke*uSmoulder,mix(vec3(.55),vec3(.45),uLight)),o);
-  }
-  if(uJbFire>.002){
-    // burning dust inside the box, seen through the cut, and a lick of flame at the hole
-    vec2 dv=(vb-project(JH))/uK;
-    float n=fbm2(dv*.35+vec2(0.,-uTime*1.2));
-    float glow=exp(-pow(length(dv*vec2(.8,1.2))/7.,2.))*(.5+.8*n);
-    vec2 hv=(vb-project(HOLE+vec3(0.,1.,0.)))/uK;
-    float lick=exp(-pow(length(hv*vec2(1.,.5)-vec2(0.,-3.))/2.6,2.))*(.4+.8*noise2(hv*.8+vec2(0.,-uTime*6.)));
-    o=over(fireInk((glow*1.3+lick*1.1)*uJbFire,.5),o);
-  }
-  if(uArc>.002){
-    vec2 a=project(JH+vec3(-3.,-2.,-6.)), b=project(JH+vec3(1.4,-2.,-6.));
-    vec2 pa=vb-a, ba=b-a; float t=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);
-    float jag=(noise2(vec2(t*9.,uTime*70.))-.5)*1.2*uK*sin(t*3.1416);
-    float d=length(pa-ba*t-vec2(0.,jag))/uK;
-    float c=length(vb-mix(a,b,.5))/uK;
-    o=over(arcInk((exp(-pow(d/.35,2.))*2.4+exp(-pow(c/7.,2.))*.9)*uArc),o);
-  }
-  if(uCloud>.002){
-    float d=0.;
-    for(int i=0;i<9;i++){
-      float z=4.+float(i)*8.;
-      vec3 p=onFloor(vb,z);
-      vec2 c=CS.xy+vec2(-uCloud*46.,-uCloud*14.);
-      float rr=length((p.xy-c)*vec2(.6,1.));
-      float shape=exp(-pow(rr/(12.+56.*uCloud),2.))*exp(-pow((z-20.-26.*uCloud)/(14.+16.*uCloud),2.));
-      d+=shape*(.4+.8*fbm2(p.xy*.05+vec2(uTime*.2,0.)+z*.1));
-    }
-    o=over(smokeInk(d*.6*uCloud*edgeFade(vb),uDustCol),o);
-  }
-  if(uPrimary>0.) o=over(ball(vb,uPrimAt,uPrimary,30.,.35),o);
-  if(uBoom>0.){
-    float c=uBoom;
-    vec2 a=project(vec3(-96.,0.,70.)), b=project(vec3(110.,0.,70.));
-    float t=clamp(dot(vb-a,b-a)/dot(b-a,b-a),0.,1.);
-    vec2 pr=a+(b-a)*t;
-    float sweep=smoothstep(0.,.8,c*2.2-abs(t-.45)*1.4);
-    float d=length(vb-pr-vec2(0.,-24.*uK*c))/uK;
-    float R=(8.+58.*(1.-exp(-c/.25)))*(.35+.65*uBig);
-    float n=fbm3(vec3((vb-pr)/uK*.045,c*1.6));
-    float shell=exp(-pow((d-R*(.84+.28*n))/(7.+R*.13),2.));
-    float core=(1.-smoothstep(R*.35,R*(.8+.25*n),d))*(.5+.7*n);
-    float life=sweep*exp(-c/.7)*uBig;
-    vec3 fp=onFloor(vb,0.);
-    float ring=exp(-pow((length(fp.xy)-(30.+380.*c))/6.,2.))*exp(-c/.32)*.6*uBig;
-    float ef=edgeFade(vb);
-    float e=((shell*1.4+core*1.1)*life+ring)*ef;
-    float hot=(core*life*exp(-c/.45)*1.4+ring*.6)*ef+e*.35;
-    o=over(fireInk(e,clamp(hot/max(e,1e-4),0.,1.)),o);
-  }
-  o.rgb=min(o.rgb,vec3(o.a));
-  float dd=(hash12(gl_FragCoord.xy+uTime)-.5)/255.*smoothstep(0.,1.5/255.,o.a);
-  gl_FragColor=max(o+dd,0.);
-}`;
-
+const PLATE = { x: -124, y: -84, w: 256, d: 166, r: 8 };
+const P = k.fitProjection([...k.boxCorners(PLATE, -0.8, 0), [-108, -5, 122], [118, 0, 100], [-84, 46, 44], [98, 48, 40]], W, H, { pad: 22, azimuth: 45, elevation: 30 });
+const DATA = { W, H, P, PLATE };
+Object.assign(DATA, { DUSTS, MODEL, LUM, FIN_H, DUST_K, BEAM, COL, LAMP_C, JB, JB_HOT, HOP, CLOUD_SRC, BAG, start: START });
 const LIVE = `
+${engineScript()}
 const D = __DATA__;
-const { P, MODEL: M } = D;
-const stage = document.querySelector(".fx-stage");
-const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const stage = document.querySelector(".mk-stage");
 const readout = document.querySelector("[data-readout]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
-const LIGHT = document.body.dataset.theme === "light" ? 1 : 0;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lightTheme = document.body.dataset.theme === "light";
+const E = mk2(stage, D.P, { W: D.W, H: D.H, pivot: [4, 0, 40], plate: { ...D.PLATE, h: 12, foot: 5 }, shadowBox: [-132, -92, -18, 140, 90, 140] });
+const { box, cyl, prism, circle, lathe, tube, sphere, loft, roundPoly, rrect, tris } = E;
+E.bindTools(stage);
+const xbtn = stage.querySelector('[data-mk="xray"]');
+const setX = (on) => { E.setXray(on); if (xbtn) xbtn.setAttribute("aria-pressed", String(on)); };
+const sceneG = stage.querySelector('[data-part="scene"]');
+const iso = (p) => E.project(p), depthOf = (p) => E.depthOf(p);
+const shakeEls = [stage.querySelector(".mk-gl"), stage.querySelector(".mk-over")];
+// a tap on the stage that isn't a drag or a press on the toolbar
+const onTap = (fn) => { let d0 = null; stage.addEventListener("pointerdown", (ev) => { d0 = ev.target.closest(".mk-tools,button,a") ? null : [ev.clientX, ev.clientY]; }); stage.addEventListener("pointerup", (ev) => { if (d0 && Math.hypot(ev.clientX - d0[0], ev.clientY - d0[1]) < 6) fn(ev); d0 = null; }); };
+// 3x4 matrix for a cached object turning about a vertical axis through (cx, cy)
+const rotZ = (cx, cy, a) => { const c = Math.cos(a), s = Math.sin(a); return [c, -s, 0, s, c, 0, 0, 0, 1, cx - c * cx + s * cy, cy - s * cx - c * cy, 0]; };
+const mixHex = (a, b, t) => { const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)), A = h(a), B = h(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * Math.min(1, Math.max(0, t))).toString(16).padStart(2, "0")).join(""); };
+const setShake = (x, y) => { const t = x || y ? "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)" : ""; for (const e of shakeEls) if (e.style.transform !== t) e.style.transform = t; };
+const M = D.MODEL, P = D.P;
 const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
-const gl = glLayer({ canvas: stage.querySelector(".fx-gl"), fragment: ${JSON.stringify(GLSL)}, view: [D.W, D.H], camera: D.camera, uniforms: ["uLamp", "uSmoulder", "uDustTop", "uJbFire", "uArc", "uIngress", "uCloud", "uPrimary", "uPrimAt", "uBoom", "uBig", "uDustCol"], fixed: { uLight: LIGHT } });
-if (gl) stage.setAttribute("data-gl", "");
-
+const burst = (age, rise, fall) => (age > 0 ? sm(0, rise, age) * Math.exp(-Math.max(0, age - rise) / fall) : 0);
 let dust = D.start.dust, weeks = D.start.weeks, sealed = D.start.sealed, lamp = true, lampLevel = 1, temp = M.bare;
 let shortAt = null, smoulder = 0, jbFire = 0, tipAt = null, cloudAt = null, primaryAt = null, primSrc = "", boomAt = null, big = 0;
 let frame = 0, last = 0, now = 0, visible = false, touring = true, slow = false, tourClock = 0, tourStep = -1, tourEnd = 0, lastShot = "", pendingTip = null, ageing = false;
@@ -339,28 +74,6 @@ const layerIgn = () => Dd().layer === null ? 9999 : Dd().layer - (mm() > 5 ? M.t
 const tmax = () => Dd().layer === null ? 9999 : Math.min(Dd().cloud * 2 / 3, Dd().layer - 75);
 const jbFill = () => sealed ? 0 : clamp(weeks / M.jbFillWeeks, 0, 1);
 const weeksFor5mm = 5 / M.mmPerWeek;
-
-const lumG = q("lum"), lumDust = q("lumdust"), beamDust = q("beamdust"), floorDust = q("floordust"), jbDust = q("jbdust"), jbTop = q("jbtop"), plugG = q("plug"), holeG = q("hole"), bagG = q("bag"), jbG = q("jb"), flash = stage.querySelector(".fx-flash");
-function applyDustColour() { const c = LIGHT ? Dd().light : Dd().colour; stage.style.setProperty("--dust", c[0]); stage.style.setProperty("--dust-top", c[1]); }
-let built = "";
-function buildDust() {
-  const key = weeks + "|" + dust + "|" + sealed;
-  if (key === built) return;
-  built = key;
-  const Lm = D.LUM, h = mm() * D.DUST_K, B = D.BEAM, J = D.JB;
-  const lay = (plan, z, hh, r = 3) => hh > 0.06 ? solidSvg(slabOf({ ...plan, r }, z, hh, P, 4, 0.4), { tone: "mid", crease: "none", className: "dust" }) : "";
-  lumDust.innerHTML = lay({ x: Lm.x + 1, y: Lm.y + 1, w: Lm.w - 2, d: Lm.d - 2 }, Lm.z1, h, 2);
-  beamDust.innerHTML = lay({ x: B.x0 + 2, y: -6, w: B.x1 - B.x0 - 4, d: 12 }, B.z0 + 14, h * 0.8);
-  const jh = h * 0.7;
-  jbTop.innerHTML = jh > 0.06 ? solidSvg(extrude([[J.x + 1, J.y + 1], [J.x + J.w - 1, J.y + 1], [J.x + J.w - 1, D.JB_CUT[1]], [D.JB_CUT[0], D.JB_CUT[1]], [D.JB_CUT[0], J.y + J.d - 1], [J.x + 1, J.y + J.d - 1]], J.z1, jh, P, { convex: false }), { tone: "mid", crease: "none", className: "dust" }) : "";
-  floorDust.innerHTML = [[-70, -60, 30, 14], [14, 40, 30, 12], [100, -50, 22, 12], [-40, 60, 26, 10]].map(([x, y, w, d]) => lay({ x, y, w: w * (0.6 + Math.min(1, weeks / 30)), d }, 0, Math.max(0.1, h * 0.25), 5)).join("");
-  // inside the JB: dust that came in through the plug hole, piled against the terminals
-  const f = jbFill();
-  jbDust.innerHTML = f > 0.02 ? solidSvg(extrude([[J.x + 2.5, J.y + 2.5], [J.x + J.w - 2.5, J.y + 2.5], [J.x + J.w - 2.5, D.JB_CUT[1]], [D.JB_CUT[0], D.JB_CUT[1]], [D.JB_CUT[0], J.y + J.d - 2.5], [J.x + 2.5, J.y + J.d - 2.5]], J.z0 + 2.5, f * 12, P, { convex: false }), { tone: "mid", crease: "none", className: "dust" }) : "";
-  plugG.style.display = sealed ? "" : "none";
-  holeG.style.display = sealed ? "none" : "";
-}
-
 const ui = {
   dust: [...document.querySelectorAll("[data-dust]")], weeks: document.querySelector("#weeks"), wOut: document.querySelector("#weeks-out"),
   tFill: document.querySelector("#temp-fill"), tOut: document.querySelector("#temp-out"), mk: document.querySelector("#mark-t135"), lim: document.querySelector("#mark-limit"), ign: document.querySelector("#mark-ign"),
@@ -442,37 +155,151 @@ function chaos() {
   return { c, back: 1 - sm(3.2, 4.1, c) };
 }
 const tipFn = (c, delay, target) => { const u = Math.max(0, c - delay); return u <= 0 ? 0 : target * (1 - Math.exp(-u / 0.11) * Math.cos(u * 13)); };
-
-function draw() {
-  buildDust();
-  const K = chaos();
-  // bag tipping into the hopper
-  const tAge = tipAt === null ? 99 : now - tipAt;
-  const bagA = tAge < 2 ? 70 * sm(0, 0.4, tAge) * (1 - sm(1.2, 2, tAge)) : 0;
-  bagG.setAttribute("transform", bagA ? "rotate(" + bagA.toFixed(1) + " " + D.pivots.bag[0].toFixed(1) + " " + D.pivots.bag[1].toFixed(1) + ")" : "");
+// ---------------- the dusty plant, in real 3D ----------------
+const TAU = Math.PI * 2, rn = () => Math.random(), LM = D.LUM, BM = D.BEAM, JB = D.JB, HP = D.HOP, BG = D.BAG, CL = D.COL;
+const flashEl = stage.querySelector(".fx-flash"), overEl = stage.querySelector(".mk-over"), STEELC = "#7f8b96", HOLE = [JB.x + 17.5, JB.y + JB.d, JB.z0 + 10];
+let built = ""; function applyDustColour() {}
+const tipM = (piv, ang, axis) => { const c = Math.cos(ang), s = Math.sin(ang), R = axis === "x" ? [1, 0, 0, 0, c, -s, 0, s, c] : [c, 0, s, 0, 1, 0, -s, 0, c]; return [...R, ...[0, 1, 2].map((i) => piv[i] - (R[i * 3] * piv[0] + R[i * 3 + 1] * piv[1] + R[i * 3 + 2] * piv[2]))]; };
+function plantParts() {
+  const o = [], z0 = BM.z0;
+  // column, beam, the cable from the light to the box
+  o.push(prism(rrect(CL.x - 4, CL.x + CL.w + 4, CL.y - 4, CL.y + CL.d + 4, 1), "z", 0, 1.6, "#5f6872", { mat: "paint" }), box(CL.x, CL.x + CL.w, CL.y, CL.y + CL.d, 1.6, z0 + 14, STEELC, { mat: "paint", bevel: 0.4 }));
+  for (const [x, y] of [[CL.x - 2, CL.y - 2], [CL.x + CL.w + 2, CL.y - 2], [CL.x - 2, CL.y + CL.d + 2], [CL.x + CL.w + 2, CL.y + CL.d + 2]]) o.push(cyl(x, y, 1.1, 1.6, 2.5, "#c9ced3", 6, { mat: "steel" }));
+  o.push(box(BM.x0, BM.x1, -7, 7, z0, z0 + 2, STEELC, { mat: "paint", bevel: 0.3 }), box(BM.x0, BM.x1, -1, 1, z0 + 2, z0 + 12, STEELC, { mat: "paint", bevel: 0 }), box(BM.x0, BM.x1, -7, 7, z0 + 12, z0 + 14, STEELC, { mat: "paint", bevel: 0.3 }));
+  for (let i = 0; i < 9; i++) o.push(box(BM.x0 + 23.6 + i * 24, BM.x0 + 24.4 + i * 24, -6.6, 6.6, z0 + 2, z0 + 12, STEELC, { mat: "paint", bevel: 0 }));
+  o.push(tube([[LM.x + 2, LM.y + 4, LM.z1 + 0.5], [LM.x - 3, LM.y + 4, LM.z1 + 5], [LM.x - 6, -3, z0 - 3], [LM.x - 10, -6, z0 - 1], [CL.x + CL.w + 5, -6, z0 - 1], [CL.x + CL.w + 1.2, -6, z0 - 5], [CL.x + CL.w + 1.2, -4, JB.z1 + 14], [CL.x + CL.w + 4, 6, JB.z1 + 8], [JB.x + 6, JB.y + 5, JB.z1 + 4], [JB.x + 6, JB.y + 5, JB.z1 + 1]], 0.9, "#26282c", { seg: 8, mat: "rubber" }));
+  // bag-tip hopper with its grate, splash board, and the shelf for the bags
+  o.push(prism(rrect(HP.x, HP.x + HP.w, HP.y, HP.y + HP.d, 1), "z", 0, HP.z1, "#6f8a7a", { mat: "paint", bevel: 0.5, shell: true }), box(HP.x + 3, HP.x + HP.w - 3, HP.y + 3, HP.y + HP.d - 3, HP.z1, HP.z1 + 0.06, "#15181c", { bevel: 0, flat: true }));
+  for (let x = HP.x + 4; x < HP.x + HP.w - 2; x += 4) o.push(box(x - 0.35, x + 0.35, HP.y + 3, HP.y + HP.d - 3, HP.z1 + 0.06, HP.z1 + 0.7, "#c9ced3", { mat: "steel", bevel: 0 }));
+  o.push(box(HP.x - 2, HP.x + HP.w + 2, HP.y - 2, HP.y + 1, HP.z1, HP.z1 + 10, "#6f8a7a", { mat: "paint", bevel: 0.3 }));
+  o.push(box(BG.x - 4, BG.x + BG.w + 4, BG.y - 4, BG.y + BG.d + 4, 14, 16, "#8f9aa4", { mat: "paint", bevel: 0.3 }));
+  for (const [x, y] of [[BG.x - 2, BG.y - 2], [BG.x + BG.w + 2, BG.y - 2], [BG.x - 2, BG.y + BG.d + 2], [BG.x + BG.w + 2, BG.y + BG.d + 2]]) o.push(box(x - 1, x + 1, y - 1, y + 1, 0, 14, "#8f9aa4", { mat: "paint", bevel: 0 }));
+  return o;
+}
+function lumParts(lv) {
+  const o = [], { x, y, w, d, z0, z1 } = LM, cx = x + w / 2, C = "#c3c9cf";
+  for (const sy of [y - 2, y + d]) o.push(box(cx - 2.5, cx + 2.5, sy, sy + 2, z0 + 3, BM.z0, "#8f9aa4", { mat: "paint", bevel: 0.3 }), prism(circle(cx, z0 + 6, 1.4, 6), "y", sy - 0.4, sy + 2.4, "#e2e5e8", { mat: "steel" }));
+  o.push(box(cx - 5, cx + 5, -7, 7, BM.z0 - 1.6, BM.z0, "#8f9aa4", { mat: "paint", bevel: 0.3 }));
+  o.push(prism(rrect(x, x + w, y, y + d, 2), "z", z0, z1, C, { mat: "paint", bevel: 0.6, shell: true }));
+  for (let i = 0; i < 9; i++) o.push(box(x + 4 + i * 5, x + 5.4 + i * 5, y + 2, y + d - 2, z1, z1 + D.FIN_H, C, { mat: "paint", bevel: 0.2 }));
+  o.push(box(x + 3, x + w - 3, y + 3, y + d - 3, z0 - 0.7, z0, "#fff4d6", { mat: "glass", bevel: 0.3, emit: lv > 0 ? ["#ffe9b0", lv * 0.16] : undefined, emitK: 2 }));
+  o.push(box(x + 6, x + w - 6, y + 5, y + d - 5, z0 + 1, z0 + 1.8, "#f4f2ec", { mat: "matte", bevel: 0, emit: lv > 0 ? ["#ffe9b0", lv * 0.1] : undefined }), box(x + 8, x + 24, y + 9, y + 21, z0 + 3, z0 + 8, "#3a3e44", { mat: "plastic", bevel: 0.4 }));
+  o.push(box(x + 6, x + 36, y + d, y + d + 0.4, z0 + 3, z0 + 8.2, "#e9e6df", { mat: "matte", bevel: 0 }));
+  return o;
+}
+function jbParts(sealedNow) {
+  const o = [], j = JB, W = 2.5, C = "#aeb7c0", S = { mat: "paint", shell: true, bevel: 0.3 }, zi = j.z0 + W;
+  for (const [x, y] of [[j.x + 3, j.y + 3], [j.x + j.w - 3, j.y + 3], [j.x + 3, j.y + j.d - 3], [j.x + j.w - 3, j.y + j.d - 3]]) o.push(box(x - 1.5, x + 1.5, y - 1.5, y + 1.5, 0, j.z0, "#8f9aa4", { mat: "paint", bevel: 0 }));
+  o.push(box(j.x, j.x + j.w, j.y, j.y + j.d, j.z0, zi, C, { mat: "paint", bevel: 0.3 }));
+  o.push(box(j.x, j.x + j.w, j.y, j.y + W, zi, j.z1, C, S), box(j.x, j.x + W, j.y + W, j.y + j.d - W, zi, j.z1, C, S), box(j.x + j.w - W, j.x + j.w, j.y + W, j.y + j.d - W, zi, j.z1, C, S), box(j.x, j.x + j.w, j.y + j.d - W, j.y + j.d, zi, j.z1, C, S));
+  o.push(prism(rrect(j.x - 0.8, j.x + j.w + 0.8, j.y - 0.8, j.y + j.d + 0.8, 1.6), "z", j.z1, j.z1 + 1.6, C, { mat: "paint", xhide: true }));
+  for (const [x, y] of [[j.x + 2, j.y + 2], [j.x + j.w - 2, j.y + 2], [j.x + 2, j.y + j.d - 2], [j.x + j.w - 2, j.y + j.d - 2]]) o.push(cyl(x, y, 1.2, j.z1 + 1.6, j.z1 + 2.4, "#e2e5e8", 6, { mat: "steel", xhide: true }));
+  // terminal rail and terminals inside
+  o.push(box(j.x + 5, j.x + j.w - 4, j.y + 9, j.y + 13, zi, zi + 1.5, "#aeb4bb", { mat: "steel", bevel: 0 }));
+  for (let i = 0; i < 7; i++) { const tx = j.x + 7 + i * 4.4; o.push(box(tx, tx + 3.6, j.y + 5, j.y + 17, zi + 1.5, zi + 8.5, "#e6dcc3", { mat: "plastic", bevel: 0.3 })); for (const yy of [j.y + 7.5, j.y + 14.5]) o.push(cyl(tx + 1.8, yy, 1, zi + 8.5, zi + 8.9, "#d8dce0", 8, { mat: "steel" })); }
+  // gland, the blanking plug (or the hole where it should be), rating plate
+  const gy = j.y + j.d;
+  o.push(prism(circle(j.x + 9, j.z0 + 10, 3.4, 6), "y", gy, gy + 2, "#c9a24a", { mat: "metal" }), prism(circle(j.x + 9, j.z0 + 10, 2.5, 14), "y", gy + 2, gy + 5, "#c9a24a", { mat: "metal" }), tube([[j.x + 9, gy + 5, j.z0 + 10], [j.x + 9, gy + 10, j.z0 + 8], [j.x + 7, gy + 16, 3], [j.x + 2, gy + 24, 1.4], [j.x - 12, gy + 30, 1.4]], 1.5, "#26282c", { seg: 8, mat: "rubber" }));
+  if (sealedNow) o.push(prism(circle(HOLE[0], HOLE[2], 3, 6), "y", gy, gy + 1.6, "#c9a24a", { mat: "metal" }));
+  else o.push(prism(circle(HOLE[0], HOLE[2], 2.5, 16), "y", gy, gy + 0.08, "#050505", { bevel: 0, flat: true }));
+  o.push(box(j.x + 22, j.x + 38, gy, gy + 0.4, j.z1 - 8, j.z1 - 2, "#e9e6df", { mat: "matte", bevel: 0 }));
+  return o;
+}
+function bagParts() { return [prism(rrect(BG.x, BG.x + BG.w, BG.y, BG.y + BG.d, 4), "z", 16, 25, "#cdb98f", { mat: "matte", bevel: 1.2 }), prism(rrect(BG.x + 1, BG.x + BG.w - 1, BG.y + 1, BG.y + BG.d - 1, 4), "z", 25, 29.6, "#c4ae82", { mat: "matte", bevel: 1.2 }), box(BG.x + 3, BG.x + BG.w - 3, BG.y + BG.d - 0.2, BG.y + BG.d + 0.25, 18.5, 22.5, "#8a5a3a", { bevel: 0, flat: true })]; }
+function dustParts(col, sq) {
+  const o = [], h = mm() * D.DUST_K, em = sq > 0 ? { emit: ["#ff5a1a", sq * 0.0022] } : {}, O = { mat: "matte", bevel: 0.5 };
+  if (h > 0.06) {
+    o.push(prism(rrect(LM.x + 1, LM.x + LM.w - 1, LM.y + 1, LM.y + LM.d - 1, 2), "z", LM.z1, LM.z1 + h, col, { ...O, ...em }));
+    o.push(prism(rrect(BM.x0 + 2, BM.x1 - 2, -6, 6, 3), "z", BM.z0 + 14, BM.z0 + 14 + h * 0.8, col, O), prism(rrect(JB.x, JB.x + JB.w, JB.y, JB.y + JB.d, 3), "z", JB.z1 + 1.6, JB.z1 + 1.6 + h * 0.7, col, { ...O, xhide: true }));
+    o.push(prism(rrect(HP.x - 1, HP.x + HP.w + 1, HP.y - 1.6, HP.y + 0.6, 1), "z", HP.z1 + 10, HP.z1 + 10 + h * 0.5, col, O));
+  }
+  for (const [x, y, w, d] of [[-70, -60, 30, 14], [14, 40, 30, 12], [100, -50, 22, 12], [-40, 60, 26, 10]]) o.push(prism(rrect(x, x + w * (0.6 + Math.min(1, weeks / 30)), y, y + d, 5), "z", 0, Math.max(0.1, h * 0.25), col, { mat: "matte", bevel: 0.1 }));
+  // inside the JB: dust that came in through the plug hole, piled up round the terminals
+  const f = jbFill();
+  if (f > 0.02) o.push(box(JB.x + 2.6, JB.x + JB.w - 2.6, JB.y + 2.6, JB.y + JB.d - 2.6, JB.z0 + 2.5, JB.z0 + 2.5 + f * 12, col, { mat: "matte", bevel: 0.3 }));
+  return o;
+}
+const hash4 = (i) => { const h = (n2) => { const s = Math.sin(i * 12.9898 + n2 * 78.233) * 43758.5453; return s - Math.floor(s); }; return [h(1), h(2), h(3), h(4)]; };
+const EMB = Array.from({ length: 14 }, (_, i) => hash4(i));
+let fx = [];
+function draw(dt = 0) {
+  const K = chaos(), g = Dd(), PL = D.PLATE, DC = (lightTheme ? g.light : g.colour)[1], h = mm() * D.DUST_K, inside = E.xray > 0.5;
+  const tAge = tipAt === null ? 99 : now - tipAt, bagA = tAge < 2 ? 70 * sm(0, 0.4, tAge) * (1 - sm(1.2, 2, tAge)) : 0;
+  let lm, jm;
   if (K.c >= 0) {
-    const c = K.c, B = K.back * big;
-    const fall = c < 0.9 ? 260 * c * c : 210;
-    lumG.setAttribute("transform", "translate(" + (20 * Math.min(c, 0.9) * B).toFixed(1) + " " + (fall * B).toFixed(1) + ") rotate(" + (tipFn(c, 0.02, 30) * B).toFixed(1) + " " + D.pivots.lum[0].toFixed(1) + " " + D.pivots.lum[1].toFixed(1) + ")");
-    jbG.setAttribute("transform", "rotate(" + (tipFn(c, 0.06, 60) * B).toFixed(1) + " " + D.pivots.jb[0].toFixed(1) + " " + D.pivots.jb[1].toFixed(1) + ")");
-    for (const g of [beamDust, floorDust, lumDust, jbTop]) g.style.opacity = String(1 - K.back * sm(0, 0.3, c));
-    const A = (4 + 6 * big) * Math.exp(-c / 0.4);
-    stage.style.transform = "translate(" + (A * Math.sin(c * 90)).toFixed(1) + "px," + (A * Math.cos(c * 71)).toFixed(1) + "px)";
-    flash.style.opacity = ((0.3 + 0.55 * big) * burst(c, 0.03, 0.25)).toFixed(3);
-  } else if (boomAt !== null && now - boomAt > BOOM_END) {
+    const c = K.c, B = K.back * big, drop = (LM.z0 - 4) * Math.min(1, (c / 0.9) ** 2);
+    if (B > 0.001) { lm = tipM([LM.x + LM.w / 2, 0, BM.z0], (tipFn(c, 0.02, 30) * B * Math.PI) / 180, "y"); lm[9] += 8 * Math.min(c, 0.9) * B; lm[11] -= drop * B; jm = tipM([JB.x + JB.w, JB.y + JB.d, 0], (tipFn(c, 0.06, 60) * B * Math.PI) / 180, "y"); }
+  }
+  const lv = K.c >= 0 ? 0 : lampLevel, sq = Math.round((K.c >= 0 ? 0 : smoulder) * 6), dustOn = !(K.c >= 0.12 && K.back > 0.5);
+  const objs = [{ cache: "plant", rev: 0, parts: plantParts }, { cache: "lum", rev: Math.round(lv * 8), m: lm, parts: () => lumParts(Math.round(lv * 8) / 8) }, { cache: "jb", rev: sealed ? 1 : 0, m: jm, parts: () => jbParts(sealed) },
+    { cache: "bag", rev: 0, m: bagA ? tipM([BG.x + BG.w / 2, BG.y, 16], (bagA * Math.PI) / 180, "x") : undefined, parts: bagParts }];
+  if (dustOn) objs.push({ cache: "dust", rev: Math.round(weeks * 4) + dust * 1000 + sq * 10000 + (sealed ? 0 : 100000), parts: () => dustParts(DC, sq) });
+  let svg = E.render(objs);
+  // the light: a pool under it, and a glow in the air
+  if (lv > 0.02) { const cx = D.LAMP_C[0]; E.sprite([cx, 0, 1], 44, "#ffe9b0", 0.11 * lv, true); E.sprite([cx, 0, 28], 26, "#ffe9b0", 0.06 * lv, true); E.sprite([cx, 0, LM.z0 - 4], 16, "#fff4d6", 0.16 * lv, true); }
+  // a smouldering nest under the blanket of dust
+  const sm0 = K.c >= 0 ? 0 : smoulder;
+  if (sm0 > 0.03) {
+    for (const [a, b, c, d] of EMB) { const fl = 0.5 + 0.5 * Math.sin(now * (3 + d * 5) + c * 9); E.sprite([LM.x + 2 + a * (LM.w - 4), b < 0.5 ? LM.y + 1 : LM.y + LM.d - 1, LM.z1 + 0.4 + c * Math.min(h, 3)], 1.2 + d, "#ff6a1a", sm0 * fl * 0.9, true, 1); }
+    E.sprite([D.LAMP_C[0], 0, LM.z1 + h / 2], 20, "#ff5a1a", 0.1 * sm0, true);
+    if (dt > 0 && rn() < sm0 * 0.5) fx.push({ k: "smoke", p: [LM.x + rn() * LM.w, LM.y + rn() * LM.d, LM.z1 + h], v: [(rn() - 0.5) * 4, (rn() - 0.5) * 4, 10 + rn() * 8], life: 0, max: 1.6 + rn(), s: 0.25 });
+  }
+  // dust finding its way in through the hole where the plug should be
+  if (dt > 0 && !sealed && K.c < 0 && rn() < 0.35 + 0.65 * (ageing ? 1 : 0.3)) fx.push({ k: "in", p: [HOLE[0] + (rn() - 0.5) * 16, HOLE[1] + 10 + rn() * 12, HOLE[2] + (rn() - 0.3) * 14], life: 0, max: 0.7 });
+  // the short inside the box
+  if (shortAt !== null && K.c < 0.3) {
+    const arc = burst(now - shortAt, 0.01, 0.3) * (0.7 + 0.3 * Math.sin(now * 120)), hp = D.JB_HOT;
+    if (arc > 0.02) { E.sprite(hp, 2.4, "#ffffff", arc, true, 1); E.sprite(hp, 12, "#8fb4ff", 0.7 * arc, true, 1); }
+    if (dt > 0 && jbFire > 0.05) for (let j = 0; j < 2; j++) fx.push({ k: "flame", p: [JB.x + 6 + rn() * (JB.w - 12), JB.y + 6 + rn() * (JB.d - 12), JB.z0 + 8 + rn() * 10], v: [(rn() - 0.5) * 30, (rn() - 0.5) * 30 + 20, 20 + rn() * 40], life: 0, max: 0.3 + rn() * 0.3, s: 0.6 * jbFire });
+  }
+  // the cloud from the bag: normal for a bag-tip station
+  const cl = K.c >= 0 || cloudAt === null || now < cloudAt ? 0 : sm(0, 1.2, now - cloudAt) * (1 - sm(2.4, 4, now - cloudAt));
+  if (dt > 0 && cl > 0.05 && now - cloudAt < 2.6) for (let j = 0; j < 3; j++) fx.push({ k: "dust", p: [D.CLOUD_SRC[0] + (rn() - 0.5) * 24, D.CLOUD_SRC[1] + (rn() - 0.5) * 20, D.CLOUD_SRC[2] + rn() * 6], v: [-18 - rn() * 34, -8 - rn() * 16, 14 + rn() * 22], life: 0, max: 2 + rn() * 1.4, s: 1 });
+  // primary, then (if the place is dirty) the secondary
+  const src = primSrc === "jb" ? [JB.x + 18, JB.y + JB.d + 4, JB.z0 + 14] : [D.LAMP_C[0], D.LAMP_C[1], LM.z1 + 2];
+  if (primaryAt !== null && boomAt === null) { const pa2 = now - primaryAt; E.sprite(src, 6 + 50 * pa2, "#ffb04a", 0.6, true, 1); E.sprite(src, 3 + 20 * pa2, "#fff0c8", 0.7, true, 1); if (dt > 0) for (let j = 0; j < 4; j++) fx.push({ k: "flame", p: [src[0] + (rn() - 0.5) * 20, src[1] + (rn() - 0.5) * 20, src[2] + (rn() - 0.5) * 10], v: [(rn() - 0.5) * 80, (rn() - 0.5) * 80, 10 + rn() * 60], life: 0, max: 0.3 + rn() * 0.3, s: 1 }); }
+  if (K.c >= 0) {
+    const c = K.c, life = Math.exp(-c / 0.5), sc = 0.45 + 0.75 * big, Rr = (18 + 70 * (1 - Math.exp(-c / 0.2))) * sc, C = [src[0], src[1], src[2] + 20 * c];
+    if (life > 0.02) { E.sprite(C, Rr * 0.8, "#ffb04a", 0.5 * life, true, 1); E.sprite(C, Rr * 0.35, "#fff0c8", 0.6 * life, true, 1); }
+    if (dt > 0 && c < 0.4 + 0.8 * big) for (let j = 0; j < 3 + Math.round(8 * big); j++) { const wide = big > 0.4; fx.push({ k: "flame", p: wide ? [PL.x + 8 + rn() * (PL.w - 16), (rn() - 0.5) * (rn() < 0.5 ? 20 : PL.d - 20), rn() < 0.5 ? BM.z0 + 10 + rn() * 14 : 6 + rn() * 70] : [src[0] + (rn() - 0.5) * 50, src[1] + (rn() - 0.5) * 50, src[2] + (rn() - 0.5) * 20], v: [(rn() - 0.5) * 130, (rn() - 0.5) * 130, 30 + rn() * 110], life: 0, max: 0.45 + rn() * 0.6, s: (1 + rn()) * (0.7 + big) }); }
+    if (dt > 0 && c >= 0.3 && c < 2.8 && rn() < dt * 40 * sc) fx.push({ k: "smoke", p: [(rn() - 0.5) * 200 * sc + src[0] * (1 - big), (rn() - 0.5) * 120 * sc, 30 + rn() * 60], v: [(rn() - 0.5) * 20, (rn() - 0.5) * 20, 30 + rn() * 40], life: 0, max: 2 + rn() * 2, s: 1.5 * sc });
+  }
+  fx = fx.filter((p) => {
+    p.life += dt; if (p.life > p.max) return false;
+    const t = p.life / p.max;
+    if (p.k === "in") { const u = t * t; E.sprite([p.p[0] + (HOLE[0] - p.p[0]) * u, p.p[1] + (HOLE[1] - p.p[1]) * u, p.p[2] + (HOLE[2] - p.p[2]) * u], 1.8 * (1 - 0.5 * t), DC, 0.6 * Math.sin(t * Math.PI)); return true; }
+    if (p.k === "flame") { p.v[0] *= 0.93; p.v[1] *= 0.93; }
+    if (p.k === "dust") { p.v[0] *= 0.985; p.v[1] *= 0.985; p.v[2] *= 0.98; }
+    for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * dt;
+    if (p.k === "flame") E.sprite(p.p, (5 + 15 * t) * p.s, t < 0.25 ? "#fff0b8" : t < 0.6 ? "#ff9a2e" : "#d8481a", 0.8 * (1 - t * t), true, 2);
+    else if (p.k === "dust") E.sprite(p.p, 7 + 16 * t, DC, 0.3 * Math.sin(Math.min(1, t * 1.4) * Math.PI) ** 0.7);
+    else E.sprite(p.p, (12 + 40 * t) * p.s, lightTheme ? "#4a4744" : "#2e2c2b", 0.45 * (1 - t));
+    return true;
+  });
+  // lettering
+  let m = E.faceMatrix([PL.x + PL.w - 96, PL.y + PL.d - 13, 0.05], [1, 0, 0], [0, 1, 0]);
+  if (m) svg += '<g transform="' + m + '"><text class="pt bench" x="0" y="5" font-size="4.6">ZONE 21 · BAG TIP</text></g>';
+  if (K.c < 0) {
+    m = E.faceMatrix([LM.x + 6, LM.y + LM.d + 0.45, LM.z0 + 8.2], [1, 0, 0], [0, 0, -1]);
+    if (m) svg += '<g transform="' + m + '"><text class="pt" x="1.4" y="3.7" font-size="2.6">Ex tb IIIC T135°C</text></g>';
+    m = E.faceMatrix([JB.x + 22, JB.y + JB.d + 0.45, JB.z1 - 2], [1, 0, 0], [0, 0, -1]);
+    if (m) svg += '<g transform="' + m + '"><text class="pt" x="1" y="2.8" font-size="2">Ex tb IIIC</text><text class="pt lo" x="1" y="5.2" font-size="2">IP66</text></g>';
+    // what the light is doing under its blanket
+    const p = E.project([D.LAMP_C[0], 0, BM.z0 + 26]), deep = mm() > 5;
+    svg += '<text class="mk-lab tlab" data-s="' + (smoulder > 0 ? "fire" : temp > tmax() ? "hot" : "ok") + '" text-anchor="middle" x="' + p[0].toFixed(1) + '" y="' + (p[1] - 14).toFixed(1) + '">' + Math.round(temp) + ' °C</text><text class="mk-lab dlab" data-bad="' + deep + '" text-anchor="middle" x="' + p[0].toFixed(1) + '" y="' + p[1].toFixed(1) + '">' + mm().toFixed(1) + " mm of dust</text>";
+  }
+  if (E.xray > 0.02 && K.c < 0) svg += E.callouts([
+    { p: [LM.x + 4, LM.y + LM.d, LM.z0 + 5], text: "Floodlight", sub: "has to stay cool enough" }, { p: [JB.x + 8, JB.y + JB.d, JB.z0 + 18], text: "Junction box", sub: sealed ? "has to keep the dust out" : "blanking plug missing" },
+    { p: [BM.x1 - 30, 0, BM.z0 + 14], text: "Beam", sub: "what settles up here feeds the secondary" }, { p: [HP.x + HP.w, HP.y + HP.d / 2, HP.z1], text: "Bag tip", sub: "makes a cloud every shift" },
+  ], E.xray, E.fs < 0.62 ? {} : { topL: 70, topR: 70 });
+  if (sceneG.innerHTML !== svg) sceneG.innerHTML = svg;
+  if (K.c >= 0) { const A = (4 + 6 * big) * Math.exp(-K.c / 0.4); setShake(A * Math.sin(K.c * 90), A * Math.cos(K.c * 71)); flashEl.style.opacity = ((0.3 + 0.55 * big) * burst(K.c, 0.03, 0.25)).toFixed(3); }
+  else if (boomAt !== null && now - boomAt > BOOM_END) {
     boomAt = null; primaryAt = null; shortAt = null; smoulder = 0; jbFire = 0; cloudAt = null; tipAt = null; temp = M.bare; weeks = 0; built = ""; lamp = true;
-    lumG.removeAttribute("transform"); jbG.removeAttribute("transform");
-    for (const g of [beamDust, floorDust, lumDust, jbTop]) g.style.opacity = "";
-    stage.style.transform = ""; flash.style.opacity = "0";
+    setShake(0, 0); flashEl.style.opacity = "0";
     say("Reset to a freshly cleaned plant. The bag station still makes a cloud every shift. That's normal, it's why it's Zone 21. The cloud only matters when it finds something burning.");
   }
-  if (gl) {
-    const c = LIGHT ? Dd().light[0] : Dd().colour[1];
-    const cl = cloudAt === null || now < cloudAt ? 0 : sm(0, 1.2, now - cloudAt) * (1 - sm(2.4, 4, now - cloudAt));
-    const prim = primaryAt !== null ? now - primaryAt : -1;
-    const at = primSrc === "jb" ? [D.JB.x + 18, D.JB.y + D.JB.d + 4, D.JB.z0 + 14] : [D.LAMP_C[0], D.LAMP_C[1], D.LUM.z1 + 2];
-    gl.draw({ uLamp: K.c >= 0 ? 0 : lampLevel, uSmoulder: K.c >= 0 ? 0 : smoulder, uDustTop: D.LUM.z1 + mm() * D.DUST_K + 0.1, uJbFire: K.c >= 0 ? 0 : jbFire, uArc: shortAt === null ? 0 : burst(now - shortAt, 0.01, 0.3) * (0.7 + 0.3 * Math.sin(now * 120)), uIngress: sealed || K.c >= 0 ? 0 : 0.35 + 0.65 * (ageing ? 1 : 0.3), uCloud: K.c >= 0 ? 0 : cl, uPrimary: prim, uPrimAt: at, uBoom: K.c, uBig: big, uDustCol: hex(c) }, now);
-  }
+
   const text = K.c >= 0 ? (K.c < 3.2 ? (big > 0.4 ? "BOOM · secondary explosion" : "BOOM · primary only") : "resetting…")
     : primaryAt !== null ? (primSrc === "jb" ? "PRIMARY · the arc lit the dust in the box" : "PRIMARY · the cloud found the smoulder")
     : Math.round(weeks) + " wk · " + mm().toFixed(1) + " mm · " + Math.round(temp) + " °C" + (smoulder > 0.3 ? " · SMOULDERING" : "") + " · JB " + (sealed ? "sealed" : shortAt !== null ? "SHORT" : Math.round(jbFill() * 100) + " %");
@@ -491,7 +318,6 @@ function draw() {
     else if (!cl) say(Math.round(weeks) + " weeks since the last clean. " + mm().toFixed(1) + " mm on the light, " + Math.round(temp) + " °C under it. Fine.");
   }
 }
-
 const TOUR = [
   { dust: 0, weeks: 4, sealed: true, tip: 2.5, hold: 7 },
   { dust: 0, weeks: 44, sealed: true, tip: 6.5, hold: 12 },
@@ -514,10 +340,10 @@ function tick(t) {
     if (pendingTip !== null && now >= pendingTip) { pendingTip = null; tip(); }
   }
   step(sdt);
-  draw(); syncUi();
+  draw(sdt); syncUi();
   const settled = Math.abs(temp - (lamp ? tUnder() : 25)) < 0.3 && Math.abs(lampLevel - (lamp ? 1 : 0)) < 0.01;
   const busy = touring || ageing || !settled || cloudAt !== null || (tipAt !== null && now - tipAt < 2.5) || (smoulder > 0 && smoulder < 1) || smoulder > 0 || jbFire > 0 || (!sealed) || primaryAt !== null || boomAt !== null || drag;
-  frame = visible && busy ? requestAnimationFrame(tick) : 0;
+  frame = visible ? requestAnimationFrame(tick) : 0;
 }
 const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
 const takeOver = () => { touring = false; pendingTip = null; };
@@ -542,64 +368,41 @@ ui.age.addEventListener("click", toggleAge);
 ui.lamp.addEventListener("click", toggleLamp);
 ui.slow.addEventListener("click", () => { slow = !slow; run(); });
 ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; tourClock = 0; } run(); });
-
 let drag = null;
-stage.addEventListener("pointerdown", (ev) => { drag = { x: ev.clientX, y: ev.clientY, from: weeks, moved: false }; stage.setPointerCapture(ev.pointerId); });
-stage.addEventListener("pointermove", (ev) => {
-  if (!drag) return;
-  const dy = drag.y - ev.clientY;
-  if (!drag.moved && Math.hypot(dy, ev.clientX - drag.x) < 5) return;
-  drag.moved = true;
-  setWeeks(drag.from + dy / (stage.getBoundingClientRect().height * 0.5) * M.maxWeeks);
+// tap the junction box to pull or refit its blanking plug, tap anywhere else to tip a bag
+onTap((ev) => {
+  const m0 = overEl.getScreenCTM(); if (!m0) return doTip();
+  const pt = overEl.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY; const q2 = pt.matrixTransform(m0.inverse()), c = E.project([JB.x + JB.w / 2, JB.y + JB.d / 2, (JB.z0 + JB.z1) / 2]);
+  const rpx = Math.abs(E.project([JB.x + JB.w, JB.y, 0])[0] - E.project([JB.x, JB.y + JB.d, 0])[0]) / 2;
+  if (Math.abs(q2.x - c[0]) < rpx && Math.abs(q2.y - c[1]) < rpx * 0.8) setJb(!sealed); else doTip();
 });
-stage.addEventListener("pointerup", () => { if (!drag) return; const was = drag; drag = null; if (!was.moved) doTip(); else run(); });
-stage.addEventListener("pointercancel", () => { drag = null; });
 stage.addEventListener("keydown", (ev) => {
-  const map = { ArrowUp: () => setWeeks(weeks + 2), ArrowDown: () => setWeeks(weeks - 2), " ": doTip, Enter: doTip, c: doClean, p: () => setJb(!sealed), l: toggleLamp, g: () => setDust((dust + 1) % D.DUSTS.length), s: () => { slow = !slow; run(); } };
+  const map = { x: () => { setX(!E.xrayOn); run(); }, X: () => { setX(!E.xrayOn); run(); }, ArrowUp: () => setWeeks(weeks + 2), ArrowDown: () => setWeeks(weeks - 2), " ": doTip, Enter: doTip, c: doClean, p: () => setJb(!sealed), l: toggleLamp, g: () => setDust((dust + 1) % D.DUSTS.length), s: () => { slow = !slow; run(); } };
   if (map[ev.key]) { ev.preventDefault(); map[ev.key](); }
 });
-window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
-applyDustColour(); buildDust(); syncUi(); draw();
+window.__fig = { E, freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+setX(true); syncUi(); draw();
 `;
 
-const CSS = `.fx-stage{position:relative;cursor:ns-resize;touch-action:none}
-.fx-layer{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.fx-gl{display:block}
-body[data-theme="dark"] .fx-gl{mix-blend-mode:screen}
-.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(closest-side at 50% 42%,#fff8e8 0%,#ffd9a0 40%,rgba(255,170,90,0) 100%)}
-.iso-plate{overflow:hidden}
-.iso-cable{stroke-width:1.4}
-.iso-hole{fill:#050505;stroke:var(--anatomy-mid);stroke-width:.3}
-.dust .iso-fill,.dust .iso-shade{fill:var(--dust,#555)}.dust .iso-top{fill:var(--dust-top,#666)}
-.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
-.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.ctl-label{min-width:72px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
-.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
-.ctl button:hover{border-color:var(--anatomy-mid)}
-.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
-.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
-.ctl #tip{border-color:#ff6a3d;color:#ff6a3d;font-weight:600;letter-spacing:.06em}
-.ctl #clean{border-color:var(--anatomy-lit);color:var(--anatomy-lit);font-weight:600;letter-spacing:.06em}
-.slide{position:relative;flex:1;min-width:110px;padding-top:16px}
-.slide input{width:100%;accent-color:var(--anatomy-lit);margin:0}
-.ctl output{min-width:96px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
-.ctl output[data-bad="true"]{color:#ff6a3d}
-.notch{position:absolute;top:0;bottom:-2px;width:0;border-left:2px solid var(--anatomy-mid);pointer-events:none}
-.notch::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:var(--anatomy-mid)}
-.meter{position:relative;flex:1;min-width:110px;height:10px;margin-top:28px;border:1px solid var(--anatomy-lo);border-radius:5px}
-.meter.plain{margin-top:14px}
-.meter span.fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--anatomy-mid);transition:width .15s}
-.meter span.fill[data-state="hot"]{background:#ffb347}
-.meter span.fill[data-state="fire"]{background:#ff5a2a}
-.mark{position:absolute;bottom:-3px;width:0;pointer-events:none;transition:left .3s}
-.mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap}
-#mark-t135{top:-14px;border-left:1px solid var(--anatomy-mid)}#mark-t135::after{color:var(--anatomy-mid)}
-#mark-limit{top:-14px;border-left:1px dashed var(--anatomy-lit)}#mark-limit::after{color:var(--anatomy-lit)}
-#mark-ign{top:-28px;border-left:1px dashed #ff6a3d}#mark-ign::after{color:#ff6a3d}
-#mark-burn{top:-14px;border-left:1px dashed #ff6a3d}#mark-burn::after{color:#ff6a3d}
-#shot{min-height:4.2em;font-size:12px;line-height:1.4}
-@media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:72px}.ctl button small{display:none}}`;
+const CSS = `.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle 70% at 50% 42%,#fff8e8 0%,#ffd9a0 40%,rgba(255,170,90,0) 100%)}
+.pt{font-family:var(--anatomy-mono);fill:#23262b;font-weight:700}.pt.lo{fill:#5a6068;font-weight:600}.pt.bench{fill:var(--anatomy-muted);font-weight:600;letter-spacing:.08em;opacity:.8}
+.tlab{font-size:calc(13px*var(--mk-ts,1))}.tlab[data-s="hot"]{fill:var(--mk-warn)}.tlab[data-s="fire"]{fill:var(--mk-danger)}.dlab{font-weight:400;font-size:calc(10px*var(--mk-ts,1))}.dlab[data-bad="true"]{fill:var(--mk-danger)}
+.mk-hint{top:46px}
+.ctl #tip,.ctl #clean{font-weight:600;letter-spacing:.06em}
+.ctl output[data-bad="true"]{color:var(--mk-danger)}
+.slide{padding-top:12px}.notch{position:absolute;top:8px;bottom:0;width:0;border-left:2px solid var(--anatomy-mid);pointer-events:none}.notch::after{content:attr(data-label);position:absolute;bottom:100%;left:-2px;font-size:9.5px;white-space:nowrap;color:var(--anatomy-muted)}
+.meter{margin:26px 0 12px}.meter.plain{margin:12px 0 0}.mark{transition:left .3s}
+.meter .fill[data-state="hot"]{background:var(--mk-warn)}.meter .fill[data-state="fire"]{background:var(--mk-danger)}
+#mark-t135{border-left-color:var(--anatomy-mid)}#mark-t135::after{color:var(--anatomy-muted)}
+#mark-limit{border-left-style:dashed;border-left-color:var(--mk-accent)}#mark-limit::after{color:var(--mk-accent);bottom:auto;top:100%}
+#mark-ign{top:-17px}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="slider" aria-label="Weeks since cleaning: drag up and down or arrow keys; space tips a bag; C cleans; P toggles the blanking plug" aria-valuemin="0" aria-valuemax="${MODEL.maxWeeks}" aria-valuenow="${START.weeks}">${fig}<canvas class="fx-layer fx-gl" aria-hidden="true"></canvas><div class="fx-flash" aria-hidden="true"></div></div>`;
+const stage = stageHtml({
+  W, H, fig: "Fig 7", title: "Ex t, dust and housekeeping", xray: true,
+  label: "A dusty plant area: a bag-tip hopper, a dust-tight floodlight under a steel beam, and a dust-tight junction box on a stand. Weeks without cleaning pile dust on the light and the beam; a missing blanking plug lets dust into the box. Tipping a bag raises a cloud. An x-ray mode takes the lid off the junction box and turns its walls to glass.",
+  keysHelp: "Weeks since cleaning: drag to rotate, X for x-ray, tap the junction box to pull its plug, drag up and down or arrow keys; space tips a bag; C cleans; P toggles the blanking plug",
+  extra: `<div class="fx-flash" aria-hidden="true"></div>`,
+});
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Dust</span>${DUSTS.map((d, i) => `<button type="button" data-dust="${i}" aria-pressed="${i === START.dust}">${d.btn}<small>${d.group} · ${d.cond ? "conductive" : "layer " + d.layer + " °C"}</small></button>`).join("")}</div>
@@ -607,24 +410,18 @@ const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Light °C</span><div class="meter" aria-hidden="true"><span id="temp-fill" class="fill"></span><span id="mark-t135" class="mark" data-label="T135"></span><span id="mark-limit" class="mark" data-label="limit"></span><span id="mark-ign" class="mark" data-label="layer lights"></span></div><output id="temp-out">90 °C</output></div>
   <div class="ctl-row"><span class="ctl-label">JB</span><button type="button" data-jb="sealed" aria-pressed="true">Sealed</button><button type="button" data-jb="open" aria-pressed="false">Plug missing</button><div class="meter plain" aria-hidden="true"><span id="jb-fill" class="fill"></span><span id="mark-burn" class="mark" style="left:${(MODEL.jbBurn * 100).toFixed(0)}%" data-label="bridges terminals"></span></div><output id="jb-out">clean</output></div>
   <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="tip">TIP A BAG</button><button type="button" id="clean">CLEAN</button><button type="button" id="age" aria-pressed="false">Let it go</button><button type="button" id="lamp" aria-pressed="true">Light on</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
-  <div id="shot" aria-live="polite">Tip a bag: that cloud is normal. Then let the place go a few months without cleaning, or lose a blanking plug with a conductive dust about.</div>
 </div>`;
 
-const card = k.plateHtml({
-  fig: "Fig 7",
-  title: "Ex t, dust and housekeeping",
-  hint: "Drag: weeks · tap: tip",
-  readout: "",
-  keys: [
-    { mark: "lit", label: "The light, smoulder, fire in the box, the clouds" },
-    { mark: "raised", label: "Floodlight, junction box (cut open), hopper, beam and the dust on all of it" },
-  ],
-  caption: "Ex t does two jobs, and each piece of kit here shows one failing. The light has to stay cool enough: its T135 °C marking only holds with up to 5 mm of dust on it, so months without cleaning bury it until the layer underneath smoulders, and the next cloud from the bag station finds it. The junction box has to keep dust out: lose a blanking plug and dust gets in, and if it's conductive (group IIIC, like aluminium) it piles up until it bridges two live terminals. The short arcs, blows the dust inside into a cloud and lights it. Either way that's the primary. Its blast throws everything settled on the beams into the air, and that's the secondary, the one that takes the building. How big it gets is down to housekeeping.",
-  body: stageHtml,
-});
 
-const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
-const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a certified anything. Real: dust groups (IIIC = conductive), the IEC 60079-14 dust rule (Tmax = the lower of ⅔ × cloud ignition temperature and 5 mm layer ignition temperature − 75 K, layers up to 5 mm) and the dusts' literature ignition temperatures. Made up: how fast dust settles, how hot the light runs under it, how fast the box fills, and the timings.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/ex-t-dust" style="color:inherit">Source</a></p>`;
+const foot = footHtml({
+  theme, slug: "ex-t-dust",
+  real: "dust groups (IIIC = conductive), the IEC 60079-14 dust rule (Tmax = the lower of ⅔ × cloud ignition temperature and 5 mm layer ignition temperature − 75 K, layers up to 5 mm) and the dusts' literature ignition temperatures.",
+  made: "how fast dust settles, how hot the light runs under it, how fast the box fills, and the timings.",
+});
 const name = theme === "light" ? "light.html" : "index.html";
-writeFileSync(join(HERE, name), k.pageHtml({ title: "Ex t dust", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + glScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 700 }));
+writeFileSync(join(HERE, name), pageMk2({
+  k, title: "Ex t, dust and housekeeping", fig: "Fig 7", hint: "Drag: weeks · tap: tip", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  caption: "Ex t does two jobs, and each piece of kit here shows one failing. The light has to stay cool enough: its T135 °C marking only holds with up to 5 mm of dust on it, so months without cleaning bury it until the layer underneath smoulders, and the next cloud from the bag station finds it. The junction box has to keep dust out: lose a blanking plug and dust gets in, and if it's conductive (group IIIC, like aluminium) it piles up until it bridges two live terminals. The short arcs, blows the dust inside into a cloud and lights it. Either way that's the primary. Its blast throws everything settled on the beams into the air, and that's the secondary, the one that takes the building. How big it gets is down to housekeeping.",
+  script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
+}));
 console.log("wrote", name);
