@@ -2,21 +2,16 @@ import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as k from "../../kit/iso-kit.mjs";
-import { glCamera } from "../../kit/gl.mjs";
-import { kitScript, glScript } from "../../scripts/inline-kit.mjs";
+import { engineScript, stageHtml, pageMk2, footHtml } from "../../mk2/shell.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
-
-const W = 640;
-const H = 420;
+const W = 960, H = 600;
 
 // Truth (IEC 60079-2, px): at least 50 Pa overpressure; pre-purge at least 5 enclosure volumes before power-on;
 // on loss of pressure the power goes off automatically and stays off until a fresh purge; purge air from the safe area.
 // Toy: outside sits at 150 % LEL; air doesn't mix perfectly, so each purged volume only knocks the gas down by e^-0.3.
 const MODEL = { minPa: 50, runPa: 82, purgeVols: 5, volPerSec: 0.55, mix: 0.3, outside: 150, lel: 100, seep: 2.6, tauP: 0.35 };
-
-const PLATE = { x: -124, y: -84, w: 254, d: 168, r: 8 };
 const PLATE_H = 12, FOOT_H = 5;
 const DIVIDE = -72;
 const CAB = { x: -30, y: -34, w: 70, d: 60 };
@@ -29,307 +24,42 @@ const INLET = [-20, CAB.y + CAB.d];
 const SAFE_IN = [-102, 46];
 const ZONE_IN = [70, 62];
 
-const P = k.fitProjection(
-  [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [CAB.x, CAB.y, ZTOP + 10], [CAB.x + CAB.w, CAB.y, ZTOP]],
-  W, H, { pad: 22, azimuth: 45 },
-);
-
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const Dt = (points, style) => k.dotsSvg(points, style);
-const depth2 = ([x, y]) => k.depthOf([x, y, 0], P);
-const byDepth = (pts) => [...pts].sort((a, b) => depth2(a) - depth2(b));
-const slab = (plan, z, h, r = 1.2, bevel = 0.5) => k.slabOf({ r, ...plan }, z, h, P, 4, bevel);
-const lRing = ({ x, y, w, d }) => [[x, y], [x + w, y], [x + w, CUT[1]], [CUT[0], CUT[1]], [CUT[0], y + d], [x, y + d]];
-const lSolid = (plan, z, h) => k.extrude(lRing(plan), z, h, P, { convex: false });
-
-function plate() {
-  const out = [`<path class="iso-halo" d="${k.haloOf(PLATE, -PLATE_H - FOOT_H, PLATE_H, P)}"/>`];
-  for (const [x, y] of byDepth(k.corners(PLATE, 22))) {
-    out.push(S(k.cylinder(x, y, 7, -PLATE_H - FOOT_H, 1.6, P, 28), { tone: "lo" }));
-    out.push(S(k.cylinder(x, y, 5.4, -PLATE_H - FOOT_H + 1.6, FOOT_H - 1.6, P, 28), { tone: "mid" }));
-  }
-  out.push(S(k.slabOf(PLATE, -PLATE_H, PLATE_H, P, 8, 1.6), { tone: "mid", inner: L(k.sideSeam(PLATE, -PLATE_H / 2, P), { tone: "faint" }) }));
-  out.push(L(k.planOutline(k.insetPlan(PLATE, 5), 0, P), { tone: "lo" }));
-  const screws = k.corners(PLATE, 10);
-  out.push(L(screws.map(([x, y]) => k.ring(x, y, 2.2, 0, P, 16)).join(""), { tone: "lo" }));
-  out.push(Dt(screws.map(([x, y]) => at([x, y, 0])), { size: 0.5 }));
-  const strip = { x: DIVIDE - 3, y: PLATE.y + 6, w: 6, d: PLATE.d - 12, r: 0.6 };
-  out.push(S(slab(strip, 0, 0.6, 0.6, 0), { tone: "lo", crease: "none" }));
-  const stripes = [];
-  for (let y = strip.y + 2; y < strip.y + strip.d - 6; y += 5) stripes.push(k.segment([strip.x, y, 0.6], [strip.x + strip.w, y + 4, 0.6], P));
-  out.push(L(stripes.join(""), { tone: "mid" }));
-  out.push(k.faceTextSvg(k.topMatrix([-118, -76], 0, P, "x"), "SAFE AREA", { size: 5, tone: "lo" }));
-  out.push(k.faceTextSvg(k.topMatrix([-50, 74], 0, P, "x"), "ZONE 1", { size: 5, tone: "lo" }));
-  return out.join("");
-}
-
-function intake([x, y], tag) {
-  const out = [];
-  out.push(S(slab({ x: x - 8, y: y - 8, w: 16, d: 16 }, 0, 2, 1.5, 0.4), { tone: "mid" }));
-  // blower
-  out.push(S(slab({ x: x - 6, y: y - 6, w: 12, d: 12 }, 2, 10, 2, 0.5), { tone: "hi", inner: L(k.sideSeam({ x: x - 6, y: y - 6, w: 12, d: 12, r: 2 }, 7, P), { tone: "faint" }) }));
-  // intake cowl with mesh
-  out.push(S(k.cylinder(x, y, 5, 12, 6, P, 32, 0.4), { tone: "hi" }));
-  out.push(L(k.ring(x, y, 3.8, 18, P, 28), { tone: "lo" }));
-  const mesh = [];
-  for (let d = -3; d <= 3; d += 1.5) { const h = Math.sqrt(Math.max(0, 14.4 - d * d)); mesh.push(k.segment([x + d, y - h, 18], [x + d, y + h, 18], P), k.segment([x - h, y + d, 18], [x + h, y + d, 18], P)); }
-  out.push(L(mesh.join(""), { tone: "faint" }));
-  return `<g data-intake="${tag}">${out.join("")}</g>`;
-}
-function pipe(points, tag) {
-  const d = k.pathOf(points.map(at));
-  return `<g data-pipe="${tag}"><path class="iso-pipe-out" d="${d}"/><path class="iso-pipe" d="${d}"/></g>`;
-}
-
-function cabinetBack() {
-  const out = [`<path class="iso-halo" d="${k.haloOf({ ...k.insetPlan({ ...CAB, r: 2 }, -5) }, 0, 0.1, P)}"/>`];
-  out.push(S(slab({ x: CAB.x - 2, y: CAB.y - 2, w: CAB.w + 4, d: CAB.d + 4 }, 0, Z0, 1, 0.4), { tone: "mid" }));
-  out.push(S(lSolid(CAB, Z0, ZF - Z0), { tone: "mid" }));
-  out.push(S(slab({ x: CAB.x, y: CAB.y, w: CAB.w, d: WALL }, ZF, ZR - ZF, 0.4, 0.2), { tone: "mid" }));
-  out.push(S(slab({ x: CAB.x, y: CAB.y + WALL, w: WALL, d: CAB.d - WALL }, ZF, ZR - ZF, 0.4, 0.2), { tone: "mid" }));
-  // back mounting plate and the gear on it
-  const bp = { x: CAB.x + 4, y: CAB.y + WALL, w: 44, d: 1 };
-  out.push(S(slab(bp, 10, 64, 0.3, 0), { tone: "lo", crease: "none" }));
-  for (const z of [24, 44, 64]) out.push(S(slab({ x: bp.x + 2, y: bp.y + 1, w: bp.w - 4, d: 1.4 }, z, 2.4, 0.2, 0), { tone: "mid" }));
-  // transformer (low)
-  out.push(S(slab({ x: -24, y: bp.y + 1, w: 14, d: 12 }, 12, 12, 0.6, 0.3), { tone: "hi", inner: L([15, 18, 21].map((z) => k.segment([-24, bp.y + 13, z], [-10, bp.y + 13, z], P)).join(""), { tone: "faint" }) }));
-  // contactor (the spark)
-  const c = { x: -6, y: bp.y + 2.4, w: 12, d: 12 };
-  out.push(S(slab(c, 44 + 2.4, 12, 0.6, 0.3), { tone: "hi" }));
-  out.push(Dt([at([c.x + 3, c.y + c.d, 55]), at([c.x + 9, c.y + c.d, 55])], { size: 0.5, tone: "mid" }));
-  // breakers and I/O modules
-  for (let i = 0; i < 5; i++) out.push(S(slab({ x: bp.x + 4 + i * 6, y: bp.y + 2.4, w: 5, d: 9 }, 64 + 2.4, 10, 0.4, 0.2), { tone: i === 2 ? "hi" : "mid" }));
-  for (let i = 0; i < 3; i++) out.push(S(slab({ x: 10 + i * 5, y: bp.y + 2.4, w: 4, d: 8 }, 24 + 2.4, 10, 0.4, 0.2), { tone: "mid" }));
-  return out.join("");
-}
-
-function cabinetFront() {
-  const out = [];
-  const wx = { x: CAB.x + CAB.w - WALL, y: CAB.y + WALL, w: WALL, d: CUT[1] - CAB.y - WALL };
-  const wy = { x: CAB.x + WALL, y: CAB.y + CAB.d - WALL, w: CUT[0] - CAB.x - WALL, d: WALL };
-  out.push(S(slab(wx, ZF, ZR - ZF, 0.2, 0), { tone: "mid" }));
-  out.push(S(slab(wy, ZF, ZR - ZF, 0.2, 0), { tone: "mid" }));
-  // roof
-  out.push(S(lSolid(CAB, ZR, ZTOP - ZR), { tone: "mid" }));
-  out.push(L(k.onTop(lRing(k.insetPlan({ ...CAB, r: 0 }, 2)), ZTOP, P, true), { tone: "faint" }));
-  // vent with spark arrestor
-  out.push(S(k.cylinder(VENT[0], VENT[1], 3.4, ZTOP, 6, P, 28), { tone: "mid" }));
-  out.push(S(k.cylinder(VENT[0], VENT[1], 5.2, ZTOP + 6, 1.4, P, 32), { tone: "mid" }));
-  out.push(S(k.cylinder(VENT[0], VENT[1], 4.4, ZTOP + 7.4, 2.4, P, 32, 0.3), { tone: "mid", inner: L(k.sideArc(VENT[0], VENT[1], 4.4, ZTOP + 8.6, P, 24), { tone: "faint" }) }));
-  // inlet valve on the front face
-  out.push(S(slab({ x: INLET[0] - 4, y: INLET[1], w: 8, d: 3 }, 6, 8, 1, 0.3), { tone: "mid" }));
-  out.push(S(k.cylinder(INLET[0], INLET[1] + 1.5, 2.4, 14, 5, P, 20), { tone: "hi" }));
-  return out.join("");
-}
-
-function door() {
-  const out = [];
-  const d = { x: CAB.x + 4, y: CAB.y + CAB.d, w: CUT[0] - CAB.x - 8, d: 1 };
-  out.push(S(slab(d, 12, 60, 0.4, 0.3), { tone: "hi", inner: L(k.segment([d.x + 3, d.y + 1, 66], [d.x + d.w - 3, d.y + 1, 66], P), { tone: "faint" }) }));
-  out.push(S(slab({ x: d.x + d.w - 6, y: d.y + 1, w: 2.4, d: 2 }, 36, 10, 0.6, 0.3), { tone: "mid" }));
-  const m = k.sideMatrix([d.x + 5, d.y + 1.01], 62, P, "left");
-  out.push(`<g transform="${m}"><rect x="0" y="0" width="28" height="9" rx=".6" style="fill:var(--anatomy-paper);stroke:var(--anatomy-mid);stroke-width:.3"/><text class="iso-face-text" data-tone="mid" x="1.6" y="3.8" font-size="2.6">Ex pxb IIC T4</text><text class="iso-face-text" data-tone="lo" x="1.6" y="7.2" font-size="2">DO NOT OPEN UNLESS</text></g>`);
-  return `<g data-part="door">${out.join("")}</g>`;
-}
-
-function controller() {
-  const out = [];
-  const c = { x: CAB.x + CAB.w, y: -30, w: 5, d: 26 };
-  out.push(S(slab(c, 40, 32, 0.8, 0.4), { tone: "hi" }));
-  const face = c.x + c.w + 0.01;
-  // gauge, drawn in the plane of the controller face (local x runs along −y, local y runs down)
-  const m = k.sideMatrix([face, c.y + c.d], 72, P, "right");
-  const cx = 13, cy = 10, r = 7.5;
-  const ticks = [];
-  for (let i = 0; i <= 15; i++) {
-    const a = (-225 + (i / 15) * 270) * Math.PI / 180, r0 = i % 5 === 0 ? r - 2 : r - 1.2;
-    ticks.push(`M${(cx + Math.cos(a) * r0).toFixed(2)} ${(cy + Math.sin(a) * r0).toFixed(2)}L${(cx + Math.cos(a) * (r - 0.4)).toFixed(2)} ${(cy + Math.sin(a) * (r - 0.4)).toFixed(2)}`);
-  }
-  const a50 = (-225 + (50 / 150) * 270) * Math.PI / 180;
-  out.push(`<g transform="${m}">
-    <circle cx="${cx}" cy="${cy}" r="${r}" style="fill:var(--anatomy-paper);stroke:var(--anatomy-mid);stroke-width:.45"/>
-    <path d="${ticks.join("")}" style="stroke:var(--anatomy-mid);stroke-width:.3;fill:none"/>
-    <path d="M${(cx + Math.cos(a50) * (r - 2.4)).toFixed(2)} ${(cy + Math.sin(a50) * (r - 2.4)).toFixed(2)}L${(cx + Math.cos(a50) * (r - 0.3)).toFixed(2)} ${(cy + Math.sin(a50) * (r - 0.3)).toFixed(2)}" style="stroke:#ff6a3d;stroke-width:.7"/>
-    <text class="iso-face-text" data-tone="lo" x="${cx}" y="${cy + 4.6}" font-size="1.6" text-anchor="middle">Pa</text>
-    <path data-part="needle" d="M${cx} ${cy}L${cx} ${cy - r + 1.4}" style="stroke:var(--anatomy-lit);stroke-width:.55" transform="rotate(-135 ${cx} ${cy})"/>
-    <circle cx="${cx}" cy="${cy}" r=".7" style="fill:var(--anatomy-lit)"/>
-    <circle data-part="lamp-ok" cx="7" cy="21" r="1.6" class="lamp" data-on="false" data-col="ok"/>
-    <circle data-part="lamp-trip" cx="13" cy="21" r="1.6" class="lamp" data-on="false" data-col="trip"/>
-    <circle data-part="lamp-power" cx="19" cy="21" r="1.6" class="lamp" data-on="false" data-col="power"/>
-    <text class="iso-face-text" data-tone="lo" x="7" y="25" font-size="1.3" text-anchor="middle">PURGED</text>
-    <text class="iso-face-text" data-tone="lo" x="13" y="25" font-size="1.3" text-anchor="middle">TRIP</text>
-    <text class="iso-face-text" data-tone="lo" x="19" y="25" font-size="1.3" text-anchor="middle">POWER</text>
-    <text data-part="vols" class="iso-face-text" data-tone="mid" x="13" y="29.4" font-size="2" text-anchor="middle">VOL 0.0</text>
-  </g>`);
-  // sensing tube into the wall
-  out.push(L(k.pathOf([[c.x + 1, c.y + 4, 40], [c.x + 1, c.y + 4, 34], [c.x - 0.2, c.y + 4, 34]].map(at)), { tone: "mid" }));
-  return out.join("");
-}
-
 const START = { safeIntake: true, interlock: true };
-const backSvg = k.figureSvg({
-  width: W, height: H,
-  label: "A pressurised Ex p control cabinet on a bench in Zone 1, cut open to show a contactor and a transformer inside. Purge air comes from an intake hood in the safe area through a valve; a vent with a spark arrestor lets it out of the roof. A purge controller on the side shows the pressure and counts purge volumes.",
-  body: [plate(), pipe([[SAFE_IN[0], SAFE_IN[1], 6], [SAFE_IN[0] + 10, SAFE_IN[1], 3], [-50, SAFE_IN[1], 3], [-40, 40, 3], [INLET[0], 40, 3], [INLET[0], INLET[1] + 3, 8]], "safe"), pipe([[ZONE_IN[0], ZONE_IN[1], 6], [ZONE_IN[0] - 10, ZONE_IN[1], 3], [10, 48, 3], [INLET[0], 40, 3], [INLET[0], INLET[1] + 3, 8]], "zone"), intake(SAFE_IN, "safe"), intake(ZONE_IN, "zone"), cabinetBack()],
-});
-const layer = (body) => `<svg xmlns="http://www.w3.org/2000/svg" class="iso-svg fx-layer" viewBox="0 0 ${W} ${H}" aria-hidden="true">${body}</svg>`;
-const frontSvg = layer([cabinetFront(), door(), controller()].join(""));
-
-const DATA = {
-  W, H, camera: glCamera(P), P, MODEL, start: START,
-  pivots: { door: at([CAB.x + 4, CAB.y + CAB.d, 12]), cab: at([CAB.x + CAB.w / 2, CAB.y + CAB.d / 2, 0]), safe: at([SAFE_IN[0], SAFE_IN[1], 0]), zone: at([ZONE_IN[0], ZONE_IN[1], 0]) },
-};
-
-const SHARED = `
-uniform float uLight;
-uniform float uGas;
-uniform float uFlow;
-uniform float uSpark;
-uniform float uBoom;
-uniform float uIn;
-vec4 inkFor(vec3 seen,float cover){vec3 ab=1.-seen;float a=max(max(ab.r,max(ab.g,ab.b)),cover);return vec4(vec3(a)-ab,a);}
-vec4 over(vec4 t,vec4 u){return t+u*(1.-t.a);}
-vec4 fireInk(float e,float core){
-  vec3 hue=mix(vec3(.55,.16,.06),mix(vec3(1.,.36,.08),vec3(1.,.66,.28),smoothstep(.45,1.,core)),smoothstep(0.,.5,core));
-  vec3 c=tonemap(hue*e,1.4);float a=max(c.r,max(c.g,c.b));
-  float la=1.-exp(-1.8*e);
-  vec3 seen=mix(vec3(1.),mix(vec3(.82,.28,.06),vec3(1.,.78,.4),smoothstep(.6,1.,core)*smoothstep(.5,1.,la)),la);
-  return mix(vec4(c,a),inkFor(seen,.9*smoothstep(.75,1.,la)*core)*la,uLight);
-}
-vec4 arcInk(float e){
-  vec3 c=tonemap(vec3(.62,.78,1.)*e,1.6)+tonemap(vec3(1.)*max(0.,e-1.2),1.);
-  c=min(c,vec3(1.));float a=max(c.r,max(c.g,c.b));
-  float la=1.-exp(-1.6*e);
-  vec3 seen=mix(vec3(1.),mix(vec3(.18,.3,.85),vec3(.75,.85,1.),smoothstep(1.,2.,e)),la);
-  return mix(vec4(c,a),inkFor(seen,.85*smoothstep(1.2,2.2,e))*la,uLight);
-}
-vec4 gasInk(float h){float a=(1.-exp(-h))*mix(.3,.28,uLight);return vec4(mix(vec3(.42,.72,.66),vec3(.18,.44,.4),uLight)*a,a);}
-vec4 airInk(float h){float a=(1.-exp(-h))*mix(.22,.18,uLight);return vec4(mix(vec3(.85,.9,.95),vec3(.45,.55,.65),uLight)*a,a);}
-float edgeFade(vec2 vb){return smoothstep(0.,80.,min(min(vb.x,uView.x-vb.x),min(vb.y,uView.y-vb.y)));}
-`;
-
-const INNER = SHARED + `
-const vec3 BMIN=vec3(${(CAB.x + WALL).toFixed(1)},${(CAB.y + WALL).toFixed(1)},${ZF.toFixed(1)});
-const vec3 BMAX=vec3(${(CAB.x + CAB.w - WALL).toFixed(1)},${(CAB.y + CAB.d - WALL).toFixed(1)},${ZR.toFixed(1)});
-const vec3 SPK=vec3(${CONTACT.map((v) => v.toFixed(1)).join(",")});
-void main(){
-  vec2 vb=viewOf(gl_FragCoord.xy);
-  vec3 V=towardViewer(), p0=rayOf(vb);
-  vec3 ia=(BMIN-p0)/V, ib=(BMAX-p0)/V, lo=min(ia,ib), hi=max(ia,ib);
-  float t0=max(max(lo.x,lo.y),lo.z), t1=min(min(hi.x,hi.y),hi.z);
-  vec4 o=vec4(0.);
-  if(t1>t0){
-    float g=0., air=0., dt=(t1-t0)/16.;
-    for(int i=0;i<16;i++){
-      vec3 p=p0+(t0+(float(i)+hash12(gl_FragCoord.xy+float(i)))*dt)*V;
-      float kept=1.-smoothstep(-2.,2.,min(p.x-${CUT[0].toFixed(1)},p.y-${CUT[1].toFixed(1)}));
-      float n=fbm3(p*.05+vec3(0.,0.,-uTime*.25));
-      // purge air sweeps up from the inlet at the bottom front to the vent at the back of the roof
-      vec3 a=vec3(${INLET[0].toFixed(1)},${(INLET[1] - 4).toFixed(1)},10.), b=vec3(${VENT[0].toFixed(1)},${VENT[1].toFixed(1)},76.);
-      vec3 ab=b-a; float h=clamp(dot(p-a,ab)/dot(ab,ab),0.,1.);
-      float lane=exp(-pow(length(p-a-ab*h)/9.,2.));
-      float streak=smoothstep(.4,.9,noise3(vec3(h*14.-uTime*5.,p.x*.15,p.z*.08)));
-      g+=kept*(.6+.7*n)*dt/38.;
-      air+=kept*lane*streak*dt/16.;
-    }
-    o=over(airInk(air*uFlow*2.2),gasInk(g*uGas*2.4));
-  }
-  if(uSpark>.002){
-    float d=length(vb-project(SPK))/uK;
-    float fl=.6+.4*noise2(vec2(uTime*50.,2.));
-    o=over(arcInk((exp(-pow(d/.45,2.))*2.2+exp(-pow(d/2.4,2.))*.7)*uSpark*fl),o);
-  }
-  o.rgb=min(o.rgb,vec3(o.a));
-  float dd=(hash12(gl_FragCoord.xy+uTime)-.5)/255.*smoothstep(0.,1.5/255.,o.a);
-  gl_FragColor=max(o+dd,0.);
-}`;
-
-const OUTER = SHARED + `
-const vec2 VT=vec2(${VENT.map((v) => v.toFixed(1)).join(",")});
-const vec2 INTAKE_SAFE=vec2(${SAFE_IN.map((v) => v.toFixed(1)).join(",")});
-const vec2 INTAKE_ZONE=vec2(${ZONE_IN.map((v) => v.toFixed(1)).join(",")});
-void main(){
-  vec2 vb=viewOf(gl_FragCoord.xy);
-  vec4 o=vec4(0.);
-  // Zone 1 gas hanging over the bench, not in the safe area, not inside the cabinet
-  float h=0.;
-  for(int i=0;i<5;i++){
-    float z=(float(i)+.5)*8.;
-    vec3 p=onFloor(vb,z);
-    float zone=smoothstep(${DIVIDE.toFixed(1)}+4.,${DIVIDE.toFixed(1)}+28.,p.x)*(1.-smoothstep(106.,130.,p.x))*smoothstep(-84.,-60.,p.y)*(1.-smoothstep(60.,84.,p.y));
-    vec2 q=abs(p.xy-vec2(${(CAB.x + CAB.w / 2).toFixed(1)},${(CAB.y + CAB.d / 2).toFixed(1)}))-vec2(${(CAB.w / 2).toFixed(1)},${(CAB.d / 2).toFixed(1)});
-    float outside=smoothstep(0.,8.,max(q.x,q.y));
-    float n=fbm2(p.xy*.022+vec2(uTime*.03,-uTime*.02)+z*.05);
-    h+=zone*outside*smoothstep(.35,.85,n)*exp(-z/16.)*.42;
-  }
-  o=gasInk(h);
-  // what comes out of the vent: clean air, or gas being pushed out
-  if(uFlow>.002){
-    float pl=0., gp=0.;
-    for(int i=0;i<8;i++){
-      float z=${(ZTOP + 10).toFixed(1)}+float(i)*4.;
-      vec3 p=onFloor(vb,z);
-      vec2 c=VT+vec2(sin(z*.1+uTime)*2.,0.);
-      float w=exp(-pow(length(p.xy-c)/(2.6+(z-${(ZTOP + 10).toFixed(1)})*.22),2.))*fbm2(p.xy*.12+vec2(0.,-uTime*.9))*.5;
-      pl+=w;
-    }
-    o=over(mix(airInk(pl*uFlow*1.6),gasInk(pl*uFlow*2.),clamp(uGas,0.,1.)),o);
-    // suction at whichever intake is in use
-    vec2 ic=mix(INTAKE_ZONE,INTAKE_SAFE,uIn);
-    vec2 iv=(vb-project(vec3(ic,22.)))/uK;
-    float swirl=exp(-pow(length(iv)/7.,2.))*smoothstep(.45,.9,noise2(vec2(atan(iv.y,iv.x)*3.+uTime*4.,length(iv)*.6-uTime*3.)));
-    o=over(mix(gasInk(swirl*uFlow*1.6),airInk(swirl*uFlow*1.6),uIn),o);
-  }
-  if(uBoom>0.){
-    float c=uBoom;
-    vec3 C=vec3(${((CAB.x + CAB.w / 2)).toFixed(1)},${(CAB.y + CAB.d / 2).toFixed(1)},48.+26.*c);
-    vec2 dv=(vb-project(C))/uK;
-    float d=length(dv);
-    float R=18.+70.*(1.-exp(-c/.2));
-    float n=fbm3(vec3(dv*.045,c*1.6));
-    float shell=exp(-pow((d-R*(.84+.28*n))/(7.+R*.13),2.));
-    float core=(1.-smoothstep(R*.35,R*(.8+.25*n),d))*(.5+.7*n);
-    float life=smoothstep(0.,.05,c)*exp(-c/.6);
-    vec3 fp=onFloor(vb,0.);
-    float ring=exp(-pow((length(fp.xy-C.xy)-(30.+380.*c))/6.,2.))*exp(-c/.32)*.7*smoothstep(${DIVIDE.toFixed(1)}-10.,${DIVIDE.toFixed(1)}+10.,fp.x);
-    float ef=edgeFade(vb);
-    float e=((shell*1.4+core*1.1)*life+ring)*ef;
-    float hot=(core*life*exp(-c/.4)*1.4+ring*.6)*ef+e*.35;
-    o=over(fireInk(e,clamp(hot/max(e,1e-4),0.,1.)),o);
-  }
-  o.rgb=min(o.rgb,vec3(o.a));
-  float dd=(hash12(gl_FragCoord.xy+uTime)-.5)/255.*smoothstep(0.,1.5/255.,o.a);
-  gl_FragColor=max(o+dd,0.);
-}`;
-
+const PLATE = { x: -124, y: -84, w: 254, d: 168, r: 8 };
+const P = k.fitProjection([...k.boxCorners(PLATE, -0.8, 0), [-30, -34, 94], [40, -34, 82], [40, 26, 82], [-30, 26, 82]], W, H, { pad: 22, azimuth: 45, elevation: 30 });
+const DATA = { W, H, P, PLATE };
+Object.assign(DATA, { MODEL, DIVIDE, CAB, start: START, GEO: { WALL, Z0, ZF, ZR, ZTOP, VENT, INLET, SAFE_IN, ZONE_IN } });
 const LIVE = `
+${engineScript()}
 const D = __DATA__;
-const { P, MODEL: M } = D;
-const stage = document.querySelector(".fx-stage");
-const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const stage = document.querySelector(".mk-stage");
 const readout = document.querySelector("[data-readout]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
-const LIGHT = document.body.dataset.theme === "light" ? 1 : 0;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lightTheme = document.body.dataset.theme === "light";
+const E = mk2(stage, D.P, { W: D.W, H: D.H, pivot: [4, -4, 36], plate: { ...D.PLATE, h: 12, foot: 5 }, shadowBox: [-132, -92, -18, 138, 92, 130] });
+const { box, cyl, prism, circle, lathe, tube, sphere, loft, roundPoly, rrect, tris } = E;
+E.bindTools(stage);
+const xbtn = stage.querySelector('[data-mk="xray"]');
+const setX = (on) => { E.setXray(on); if (xbtn) xbtn.setAttribute("aria-pressed", String(on)); };
+const sceneG = stage.querySelector('[data-part="scene"]');
+const iso = (p) => E.project(p), depthOf = (p) => E.depthOf(p);
+const shakeEls = [stage.querySelector(".mk-gl"), stage.querySelector(".mk-over")];
+// a tap on the stage that isn't a drag or a press on the toolbar
+const onTap = (fn) => { let d0 = null; stage.addEventListener("pointerdown", (ev) => { d0 = ev.target.closest(".mk-tools,button,a") ? null : [ev.clientX, ev.clientY]; }); stage.addEventListener("pointerup", (ev) => { if (d0 && Math.hypot(ev.clientX - d0[0], ev.clientY - d0[1]) < 6) fn(ev); d0 = null; }); };
+// 3x4 matrix for a cached object turning about a vertical axis through (cx, cy)
+const rotZ = (cx, cy, a) => { const c = Math.cos(a), s = Math.sin(a); return [c, -s, 0, s, c, 0, 0, 0, 1, cx - c * cx + s * cy, cy - s * cx - c * cy, 0]; };
+const mixHex = (a, b, t) => { const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)), A = h(a), B = h(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * Math.min(1, Math.max(0, t))).toString(16).padStart(2, "0")).join(""); };
+const setShake = (x, y) => { const t = x || y ? "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)" : ""; for (const e of shakeEls) if (e.style.transform !== t) e.style.transform = t; };
+const M = D.MODEL, P = D.P;
 const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-const U = ["uGas", "uFlow", "uSpark", "uBoom", "uIn"];
-const inner = glLayer({ canvas: stage.querySelector(".fx-inner"), fragment: ${JSON.stringify(INNER)}, view: [D.W, D.H], camera: D.camera, uniforms: U, fixed: { uLight: LIGHT } });
-const outer = glLayer({ canvas: stage.querySelector(".fx-outer"), fragment: ${JSON.stringify(OUTER)}, view: [D.W, D.H], camera: D.camera, uniforms: U, fixed: { uLight: LIGHT } });
-const GL = !!(inner && outer);
-if (GL) stage.setAttribute("data-gl", "");
-
+const burst = (age, rise, fall) => (age > 0 ? sm(0, rise, age) * Math.exp(-Math.max(0, age - rise) / fall) : 0);
 let safeIntake = D.start.safeIntake, interlock = D.start.interlock;
 let air = false, power = false, doorOpen = false, pa = 0, vols = 0, gas = M.outside, tripAt = null, sparkAt = -10, nextSwitch = 0, boomAt = null, cause = "", doorA = 0;
 let frame = 0, last = 0, now = 0, visible = false, touring = true, slow = false, tourClock = 0, tourStep = -1, tourAt = 0, lastShot = "", actions = [];
 const BOOM_END = 4.4;
 const booming = () => boomAt !== null && now - boomAt < BOOM_END + 0.3;
 const purged = () => vols >= M.purgeVols;
-
-const needle = q("needle"), volsT = q("vols"), lampOk = q("lamp-ok"), lampTrip = q("lamp-trip"), lampPower = q("lamp-power"), doorG = q("door"), flash = stage.querySelector(".fx-flash");
-const pipeSafe = stage.querySelector('[data-pipe="safe"]'), pipeZone = stage.querySelector('[data-pipe="zone"]'), inSafe = stage.querySelector('[data-intake="safe"]'), inZone = stage.querySelector('[data-intake="zone"]');
-
 const ui = {
   intake: [...document.querySelectorAll("[data-intake-btn]")], lock: [...document.querySelectorAll("[data-lock]")],
   pFill: document.querySelector("#p-fill"), pOut: document.querySelector("#p-out"),
@@ -400,35 +130,133 @@ function chaos() {
   if (c < 0 || c > BOOM_END) return { c: -1, back: 0 };
   return { c, back: 1 - sm(3.2, 4.1, c) };
 }
-
-function draw() {
-  pipeSafe.style.display = safeIntake ? "" : "none"; inSafe.style.opacity = safeIntake ? "1" : "0.35";
-  pipeZone.style.display = safeIntake ? "none" : ""; inZone.style.display = safeIntake ? "none" : "";
-  const K = chaos();
+// ---------------- the pressurised cabinet, in real 3D ----------------
+const TAU = Math.PI * 2, rn = () => Math.random(), CB = D.CAB, G3 = D.GEO, VT = G3.VENT, INL = G3.INLET, SPKP = [0, -16.6, 52];
+const flashEl = stage.querySelector(".fx-flash"), CABC = "#aab3bc", HINGE = [CB.x + 3, CB.y + CB.d];
+const SAFE_PIPE = [[G3.SAFE_IN[0] + 6, G3.SAFE_IN[1], 7], [G3.SAFE_IN[0] + 11, G3.SAFE_IN[1], 3], [-50, G3.SAFE_IN[1], 3], [-40, 40, 3], [INL[0] - 4, 40, 3], [INL[0], 37, 3.4], [INL[0], 31, 7], [INL[0], 28.6, 9.6]];
+const ZONE_PIPE = [[G3.ZONE_IN[0] - 6, G3.ZONE_IN[1], 7], [G3.ZONE_IN[0] - 11, G3.ZONE_IN[1], 3], [10, 48, 3], [INL[0] + 6, 41, 3], [INL[0], 37, 3.4], [INL[0], 31, 7], [INL[0], 28.6, 9.6]];
+function intakeParts([x, y], dim) {
+  const c = dim ? "#6f767e" : "#8f9aa4";
+  return [prism(rrect(x - 8, x + 8, y - 8, y + 8, 1.5), "z", 0, 2, "#5a626c", { mat: "paint" }), prism(rrect(x - 6, x + 6, y - 6, y + 6, 2), "z", 2, 12, c, { mat: "paint" }), cyl(x, y, 5, 12, 18, c, 28, { mat: "paint" }), cyl(x, y, 3.9, 18, 18.06, "#15181c", 24, { bevel: 0, flat: true }),
+    ...[-2.4, 0, 2.4].flatMap((d) => [box(x + d - 0.18, x + d + 0.18, y - 3.6, y + 3.6, 18.06, 18.2, "#c9ced3", { bevel: 0, flat: true }), box(x - 3.6, x + 3.6, y + d - 0.18, y + d + 0.18, 18.06, 18.2, "#c9ced3", { bevel: 0, flat: true })])];
+}
+function benchParts() {
+  const o = [], PL = D.PLATE, dv = D.DIVIDE;
+  o.push(box(dv - 3, dv + 3, PL.y + 6, PL.y + PL.d - 6, 0, 0.6, "#e8b923", { mat: "paint", bevel: 0.2 }));
+  for (let y = PL.y + 8; y < PL.y + PL.d - 12; y += 7) o.push(prism([[dv - 3, y], [dv + 3, y + 4], [dv + 3, y + 7.4], [dv - 3, y + 3.4]], "z", 0.6, 0.66, "#23262b", { bevel: 0, flat: true }));
+  return o;
+}
+function cabParts() {
+  const o = [], W = G3.WALL, x0 = CB.x, x1 = CB.x + CB.w, y0 = CB.y, y1 = CB.y + CB.d, zf = G3.ZF, zr = G3.ZR, S = { mat: "paint", shell: true, bevel: 0.3 };
+  o.push(box(x0 - 2, x1 + 2, y0 - 2, y1 + 2, 0, G3.Z0, "#4a5058", { mat: "paint", bevel: 0.4 }), box(x0, x1, y0, y1, G3.Z0, zf, CABC, { mat: "paint", bevel: 0.2 }));
+  o.push(box(x0, x1, y0, y0 + W, zf, zr, CABC, S), box(x0, x0 + W, y0 + W, y1, zf, zr, CABC, S), box(x1 - W, x1, y0 + W, y1, zf, zr, CABC, S));
+  o.push(box(x0 + W, x1 - W, y1 - W, y1, zf, 9, CABC, S), box(x0 + W, x1 - W, y1 - W, y1, 75, zr, CABC, S), box(x0 - 1, x1 + 1, y0 - 1, y1 + 1, zr, G3.ZTOP, CABC, S));
+  // vent with its spark arrestor, inlet valve
+  o.push(cyl(VT[0], VT[1], 3.4, G3.ZTOP, G3.ZTOP + 6, "#8f9aa4", 24, { mat: "paint" }), cyl(VT[0], VT[1], 5.2, G3.ZTOP + 6, G3.ZTOP + 7.4, "#6f767e", 28, { mat: "paint" }), cyl(VT[0], VT[1], 4.4, G3.ZTOP + 7.4, G3.ZTOP + 9.8, "#c9ced3", 28, { mat: "steel" }));
+  o.push(box(INL[0] - 4, INL[0] + 4, y1, y1 + 3.4, 6, 14, "#c9a24a", { mat: "metal", bevel: 0.6 }), cyl(INL[0], y1 + 1.7, 2.4, 14, 19, "#2e6aa8", 16, { mat: "paint" }));
+  // back mounting plate and the ordinary, sparking gear on it
+  const by = y0 + W;
+  o.push(box(x0 + 4, x0 + 48, by, by + 1, 10, 74, "#d5d9dd", { mat: "satin", bevel: 0 }));
+  for (const z of [24, 44, 64]) o.push(box(x0 + 6, x0 + 46, by + 1, by + 2.4, z, z + 2.4, "#aeb4bb", { mat: "steel", bevel: 0.15 }));
+  o.push(box(-24, -10, by + 1, by + 13, 12, 24, "#4f565e", { mat: "paint", bevel: 0.5 }), box(-22.6, -11.4, by + 2.4, by + 13.6, 14.6, 21.4, "#c0703a", { mat: "satin", bevel: 0.8 }));
+  o.push(box(-6, 6, by + 2.4, by + 14.4, 46.4, 58.4, "#e6dcc3", { mat: "plastic", bevel: 0.5 }), box(-6, 6, by + 2.4, by + 14.4, 56, 58.4, "#3a3e44", { mat: "plastic", bevel: 0.5 }), box(-2.4, 2.4, by + 14.4, by + 15.2, 50, 54, "#26282c", { mat: "plastic", bevel: 0.2 }));
+  for (const x of [-3.6, 3.6]) o.push(prism(circle(x, 48.4, 0.9, 10), "y", by + 14.4, by + 14.9, "#d8dce0", { mat: "steel" }));
+  for (let i = 0; i < 5; i++) { const x = x0 + 8 + i * 6; o.push(box(x, x + 5, by + 2.4, by + 11.4, 66.4, 76.4, "#e3e7ea", { mat: "plastic", bevel: 0.4 }), box(x + 1.5, x + 3.5, by + 11.4, by + 12.6, 70, 73.5, i === 2 ? "#e2742a" : "#3f9fe6", { mat: "plastic", bevel: 0.3 })); }
+  for (let i = 0; i < 3; i++) o.push(box(10 + i * 5, 14 + i * 5, by + 2.4, by + 10.4, 26.4, 36.4, "#7fa08a", { mat: "plastic", bevel: 0.4 }));
+  for (const [a, b, c] of [[[-3.6, by + 14, 47], [-9, by + 12, 36], [-15, by + 10, 24.5]], [[3.6, by + 14, 47], [9, by + 10, 41], [12, by + 8, 36.6]], [[0, by + 8, 58.6], [-2, by + 9, 62], [-8, by + 8, 66.2]]]) o.push(tube([a, b, c], 0.55, "#3b3d42", { seg: 6, mat: "plastic" }));
+  // the purge controller on the side
+  o.push(box(x1, x1 + 5, -30, -4, 40, 72, "#3a3e44", { mat: "paint", bevel: 0.6 }), prism(circle(-17, 62, 8.3, 40), "x", x1 + 5, x1 + 5.2, "#15181c", { mat: "plastic" }), prism(circle(-17, 62, 7.5, 40), "x", x1 + 5.2, x1 + 5.35, "#f4f2ec", { mat: "matte", bevel: 0 }));
+  o.push(tube([[x1 + 1.4, -27, 40.4], [x1 + 1.4, -27, 34], [x1 - 0.4, -27, 34]], 0.6, "#c9a24a", { seg: 6, mat: "metal" }));
+  return o;
+}
+function doorParts() {
+  const o = [], y = CB.y + CB.d, S = { mat: "paint", shell: true, bevel: 0.3 }, DC = "#bcc4cc", xa = CB.x + 3, xb = CB.x + CB.w - 3;
+  o.push(box(xa, 10, y, y + 1.4, 9, 75, DC, S), box(10, 33, y, y + 1.4, 9, 46, DC, S), box(10, 33, y, y + 1.4, 70, 75, DC, S), box(33, xb, y, y + 1.4, 9, 75, DC, S));
+  o.push(box(10, 33, y + 0.4, y + 1, 46, 70, "#9fd0e8", { mat: "glass", opacity: 0.22, bevel: 0 }));
+  o.push(box(34, 36, y + 1.4, y + 3.6, 36, 46, "#2f3338", { mat: "plastic", bevel: 0.5 }), box(-22, 7, y + 1.4, y + 1.7, 52, 62, "#e9e6df", { mat: "matte", bevel: 0 }));
+  for (const z of [16, 68]) o.push(cyl(xa - 0.6, y + 0.7, 1.1, z - 4, z + 4, "#8f959d", 10, { mat: "steel" }));
+  return o;
+}
+const hash4 = (i) => { const h = (n2) => { const s = Math.sin(i * 12.9898 + n2 * 78.233) * 43758.5453; return s - Math.floor(s); }; return [h(1), h(2), h(3), h(4)]; };
+const HAZE = Array.from({ length: 30 }, (_, i) => hash4(i)), INSIDE = Array.from({ length: 26 }, (_, i) => hash4(i + 50));
+let fx = [];
+function draw(dt = 0) {
+  const K = chaos(), PL = D.PLATE, x1 = CB.x + CB.w, flow = K.c < 0 && air && !doorOpen, gf = K.c >= 0 ? 0 : clamp(gas / 150, 0, 1.2);
   doorA += ((doorOpen ? 1 : 0) - doorA) * 0.2;
-  let dT = doorA > 0.01 ? "rotate(" + (-62 * doorA).toFixed(1) + " " + D.pivots.door[0].toFixed(1) + " " + D.pivots.door[1].toFixed(1) + ")" : "";
+  let dm = doorA > 0.005 ? rotZ(HINGE[0], HINGE[1], 1.08 * doorA) : undefined, da = 1.08 * doorA;
   if (K.c >= 0) {
-    const c = K.c, land = 0.9, cl = Math.min(c, land);
-    const dx = -170 * cl, dy = c < land ? -380 * c + 520 * c * c : 60;
-    dT = "translate(" + (dx * K.back).toFixed(1) + " " + (dy * K.back).toFixed(1) + ") rotate(" + (-420 * cl * K.back).toFixed(1) + " " + D.pivots.door[0].toFixed(1) + " " + D.pivots.door[1].toFixed(1) + ")";
-    const A = 8 * Math.exp(-c / 0.4);
-    stage.style.transform = "translate(" + (A * Math.sin(c * 90)).toFixed(1) + "px," + (A * Math.cos(c * 71)).toFixed(1) + "px)";
-    flash.style.opacity = (0.85 * burst(c, 0.03, 0.25)).toFixed(3);
-  } else if (boomAt !== null && now - boomAt > BOOM_END) {
+    const c = K.c, cl = Math.min(c, 0.9);
+    da = 1.08 * doorA + 7.3 * cl * K.back; dm = rotZ(HINGE[0], HINGE[1], da); dm[9] += -20 * cl * K.back; dm[10] += 260 * cl * K.back; dm[11] += (300 * cl - 500 * cl * cl) * K.back;
+  }
+  const lampOk = purged() && pa >= M.minPa, lampTrip = tripAt !== null && now - tripAt < 4 && Math.sin(now * 10) > 0;
+  const lamp = (y, on, col, dark) => prism(circle(y, 51, 1.6, 14), "x", x1 + 5, x1 + 5.6, on ? col : dark, { flat: true, emit: on ? [col, 1] : undefined, emitK: 2.2 });
+  const objs = [{ cache: "bench", rev: 0, parts: benchParts }, { cache: "cab", rev: 0, parts: cabParts }, { cache: "door", rev: 0, m: dm, parts: doorParts },
+    { cache: "inS", rev: safeIntake ? 1 : 0, parts: () => intakeParts(G3.SAFE_IN, !safeIntake) }, { cache: "pipe", rev: safeIntake ? 1 : 0, parts: () => [tube(safeIntake ? SAFE_PIPE : ZONE_PIPE, 1.9, "#8f9aa4", { seg: 10, mat: "paint" }), ...(safeIntake ? [] : intakeParts(G3.ZONE_IN, false))] },
+    { parts: [lamp(-11, lampOk, "#5fe08a", "#2f5a3e"), lamp(-17, lampTrip, "#ff5a3a", "#6a3028"), lamp(-23, power, "#ffc24a", "#6a5424")] }];
+  let svg = E.render(objs);
+  // Zone 1 gas hanging over the bench: not in the safe area, not inside the cabinet
+  const hz = K.c >= 0 ? Math.max(0, 1 - K.c * 4) * (K.c < 3.2 ? 1 : 0) : 1, gcol = lightTheme ? "#2f8f84" : "#6fd0c0";
+  if (hz > 0.01) for (const [a, b, c, d] of HAZE) { const t = now * 0.05 + d * 9, x = D.DIVIDE + 20 + a * (PL.x + PL.w - D.DIVIDE - 34) + Math.sin(t * 1.3 + c * 6) * 10, y = PL.y + 12 + b * (PL.d - 24) + Math.cos(t + a * 6) * 8; if (x > CB.x - 14 && x < x1 + 14 && y > CB.y - 14 && y < CB.y + CB.d + 14) continue; E.sprite([x, y, 6 + c * 26], 18 + d * 12, gcol, (lightTheme ? 0.08 : 0.06) * hz); }
+  // what's inside the cabinet: the zone's gas, thinning out as the purge goes on
+  if (gf > 0.02) for (const [a, b, c, d] of INSIDE) { const t = now * 0.12 + d * 9; E.sprite([CB.x + 7 + a * (CB.w - 14) + Math.sin(t + c * 6) * 3, CB.y + 8 + b * (CB.d - 16) + Math.cos(t * 1.2 + a * 6) * 3, 12 + c * 60], 11 + d * 5, lightTheme ? "#1f8f7f" : "#35c9a8", (lightTheme ? 0.2 : 0.13) * gf, !lightTheme); }
+  // purge air: in at the bottom front, up through the gear, out of the vent
+  if (dt > 0 && flow) {
+    for (let j = 0; j < 2; j++) fx.push({ k: "air", t: 0, sp: 0.9 + rn() * 0.5, off: [(rn() - 0.5) * 16, (rn() - 0.5) * 10, (rn() - 0.5) * 8], life: 0, max: 1.4 });
+    if (rn() < 0.7) fx.push({ k: "plume", p: [VT[0] + (rn() - 0.5) * 3, VT[1] + (rn() - 0.5) * 3, G3.ZTOP + 10], v: [(rn() - 0.5) * 6, (rn() - 0.5) * 6, 26 + rn() * 14], life: 0, max: 0.9 + rn() * 0.5, g: clamp(gas / 100, 0, 1) });
+    const ic = safeIntake ? G3.SAFE_IN : G3.ZONE_IN; if (rn() < 0.5) { const a = rn() * TAU; fx.push({ k: "suck", c: ic, a, life: 0, max: 0.6, g: safeIntake ? 0 : 1 }); }
+  }
+  // the contactor: an ordinary spark, every time it switches
+  const sp = K.c >= 0 ? 0 : burst(now - sparkAt, 0.004, 0.08);
+  if (sp > 0.02) { const fl = 0.6 + 0.4 * rn(); E.sprite(SPKP, 1.8, "#ffffff", sp * fl, true, 1); E.sprite(SPKP, 6, "#8fb4ff", 0.6 * sp * fl, true, 1); for (let j = 0; j < 2; j++) E.line(SPKP, [SPKP[0] + (rn() - 0.5) * 4, SPKP[1] + rn() * 3, SPKP[2] + (rn() - 0.5) * 4], 1.4, "#dfe9ff", sp, true); }
+  if (K.c >= 0) {
+    const c = K.c, life = Math.exp(-c / 0.5), Rr = 18 + 60 * (1 - Math.exp(-c / 0.2)), C = [CB.x + CB.w / 2, CB.y + CB.d / 2 + 10, 48 + 26 * c];
+    if (life > 0.02) { E.sprite(C, Rr * 0.8, "#ffb04a", 0.5 * life, true, 1); E.sprite(C, Rr * 0.35, "#fff0c8", 0.6 * life, true, 1); }
+    if (dt > 0 && c < 1.0) for (let j = 0; j < 8; j++) fx.push({ k: "flame", p: [D.DIVIDE + 34 + rn() * (PL.x + PL.w - D.DIVIDE - 40), PL.y + 8 + rn() * (PL.d - 16), 8 + rn() * 70], v: [rn() * 110, (rn() - 0.5) * 120, 30 + rn() * 90], life: 0, max: 0.45 + rn() * 0.6, s: 1.7 + rn() });
+    if (dt > 0 && c >= 0.3 && c < 2.8 && rn() < dt * 40) fx.push({ k: "smoke", p: [D.DIVIDE + 30 + rn() * 150, (rn() - 0.5) * 120, 30 + rn() * 60], v: [(rn() - 0.5) * 20, (rn() - 0.5) * 20, 30 + rn() * 40], life: 0, max: 2 + rn() * 2, s: 1.5 });
+  }
+  const A0 = [INL[0], CB.y + CB.d - 5, 10], B0 = [VT[0], VT[1], 77], acol = lightTheme ? "#5f7f9a" : "#e6f0fa";
+  fx = fx.filter((p) => {
+    p.life += dt; if (p.life > p.max) return false;
+    const t = p.life / p.max;
+    if (p.k === "air") { if (!flow) return false; const u = Math.min(1, p.life * p.sp), w = Math.sin(u * Math.PI); E.sprite([A0[0] + (B0[0] - A0[0]) * u + p.off[0] * w, A0[1] + (B0[1] - A0[1]) * u + p.off[1] * w, A0[2] + (B0[2] - A0[2]) * u + p.off[2] * w], 2.6, acol, (lightTheme ? 0.5 : 0.4) * w, !lightTheme); return u < 1; }
+    if (p.k === "suck") { const r = 9 * (1 - t), a = p.a + t * 3; E.sprite([p.c[0] + Math.cos(a) * r, p.c[1] + Math.sin(a) * r, 19 + 8 * (1 - t)], 2.4, p.g ? gcol : acol, 0.45 * Math.sin(t * Math.PI), !lightTheme); return true; }
+    if (p.k === "flame") { p.v[0] *= 0.93; p.v[1] *= 0.93; }
+    for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * dt;
+    if (p.k === "flame") E.sprite(p.p, (5 + 15 * t) * p.s, t < 0.25 ? "#fff0b8" : t < 0.6 ? "#ff9a2e" : "#d8481a", 0.8 * (1 - t * t), true, 2);
+    else if (p.k === "plume") E.sprite(p.p, 3 + 8 * t, p.g > 0.4 ? gcol : acol, (p.g > 0.4 ? 0.3 : 0.22) * (1 - t));
+    else E.sprite(p.p, (12 + 40 * t) * p.s, lightTheme ? "#4a4744" : "#2e2c2b", 0.45 * (1 - t));
+    return true;
+  });
+  // lettering: the bench, the door's plate, the controller's face
+  let m = E.faceMatrix([PL.x + 7, PL.y + PL.d - 13, 0.05], [1, 0, 0], [0, 1, 0]);
+  if (m) svg += '<g transform="' + m + '"><text class="pt bench" x="0" y="5" font-size="4.4">SAFE AREA</text></g>';
+  m = E.faceMatrix([PL.x + PL.w - 44, PL.y + PL.d - 13, 0.05], [1, 0, 0], [0, 1, 0]);
+  if (m) svg += '<g transform="' + m + '"><text class="pt bench" x="0" y="5" font-size="5">ZONE 1</text></g>';
+  if (K.c < 0) {
+    const ca = Math.cos(da), sa = Math.sin(da), ox = -22 - HINGE[0], oy = CB.y + CB.d + 1.75 - HINGE[1];
+    m = E.faceMatrix([HINGE[0] + ox * ca - oy * sa, HINGE[1] + ox * sa + oy * ca, 62], [ca, sa, 0], [0, 0, -1]);
+    if (m) svg += '<g transform="' + m + '"><text class="pt" x="1.6" y="4.2" font-size="2.9">Ex pxb IIC T4</text><text class="pt lo" x="1.6" y="8" font-size="2.1">DO NOT OPEN UNLESS</text></g>';
+  }
+  m = E.faceMatrix([x1 + 5.4, -4, 72], [0, -1, 0], [0, 0, -1]);
+  if (m) {
+    const cx = 13, cy = 10, r = 7.5, a50 = ((-225 + (50 / 150) * 270) * Math.PI) / 180; let ticks = "";
+    for (let i = 0; i <= 15; i++) { const a = ((-225 + (i / 15) * 270) * Math.PI) / 180, r0 = i % 5 === 0 ? r - 2 : r - 1.2; ticks += "M" + (cx + Math.cos(a) * r0).toFixed(2) + " " + (cy + Math.sin(a) * r0).toFixed(2) + "L" + (cx + Math.cos(a) * (r - 0.4)).toFixed(2) + " " + (cy + Math.sin(a) * (r - 0.4)).toFixed(2); }
+    svg += '<g transform="' + m + '"><path d="' + ticks + '" style="stroke:#4a4f57;stroke-width:.3;fill:none"/><path d="M' + (cx + Math.cos(a50) * (r - 2.4)).toFixed(2) + " " + (cy + Math.sin(a50) * (r - 2.4)).toFixed(2) + "L" + (cx + Math.cos(a50) * (r - 0.3)).toFixed(2) + " " + (cy + Math.sin(a50) * (r - 0.3)).toFixed(2) + '" style="stroke:#e0452a;stroke-width:.8"/>'
+      + '<text class="pt lo" x="' + cx + '" y="' + (cy + 4.6) + '" font-size="1.7" text-anchor="middle">Pa</text><path d="M' + cx + " " + cy + "L" + cx + " " + (cy - r + 1.4) + '" style="stroke:#e2501a;stroke-width:.6" transform="rotate(' + (-135 + clamp(pa / 150, 0, 1) * 270).toFixed(1) + " " + cx + " " + cy + ')"/><circle cx="' + cx + '" cy="' + cy + '" r=".8" fill="#23262b"/>'
+      + '<text class="pt face" x="7" y="25" font-size="1.3" text-anchor="middle">PURGED</text><text class="pt face" x="13" y="25" font-size="1.3" text-anchor="middle">TRIP</text><text class="pt face" x="19" y="25" font-size="1.3" text-anchor="middle">POWER</text><text class="pt lcd" x="13" y="29.6" font-size="2.2" text-anchor="middle">VOL ' + vols.toFixed(1) + "</text></g>";
+  }
+  if (E.xray > 0.02 && K.c < 0) { const ic = safeIntake ? G3.SAFE_IN : G3.ZONE_IN; svg += E.callouts([
+    { p: [ic[0], ic[1], 18], text: "Purge air intake", sub: safeIntake ? "clean air from the safe area" : "drawing in the zone's own gas" }, { p: SPKP, text: "Contactor", sub: "sparks every time it switches" },
+    { p: [VT[0], VT[1], G3.ZTOP + 9], text: "Vent", sub: "with a spark arrestor" }, { p: [x1 + 5.4, -17, 62], text: "Purge controller", sub: "reads pressure, counts volumes" },
+  ], E.xray, E.fs < 0.62 ? {} : { topL: 70, topR: 70 }); }
+  if (sceneG.innerHTML !== svg) sceneG.innerHTML = svg;
+  if (K.c >= 0) { const A = 8 * Math.exp(-K.c / 0.4); setShake(A * Math.sin(K.c * 90), A * Math.cos(K.c * 71)); flashEl.style.opacity = (0.85 * burst(K.c, 0.03, 0.25)).toFixed(3); }
+  else if (boomAt !== null && now - boomAt > BOOM_END) {
     boomAt = null; gas = M.outside; vols = 0; pa = 0; doorOpen = false; doorA = 0; power = false; air = false;
-    stage.style.transform = ""; flash.style.opacity = "0";
+    setShake(0, 0); flashEl.style.opacity = "0";
     say("Reset. The cabinet's full of the zone's gas again, like any box that's been sitting in Zone 1 switched off. Purge it before you power it.");
   }
-  doorG.setAttribute("transform", dT);
-  needle.setAttribute("transform", "rotate(" + (-135 + clamp(pa / 150, 0, 1) * 270).toFixed(1) + " 13 10)");
-  volsT.textContent = "VOL " + vols.toFixed(1);
-  lampOk.dataset.on = String(purged() && pa >= M.minPa);
-  lampTrip.dataset.on = String(tripAt !== null && now - tripAt < 4 && Math.sin(now * 10) > 0);
-  lampPower.dataset.on = String(power);
-  if (GL) {
-    const u = { uGas: K.c >= 0 ? 0 : clamp(gas / 150, 0, 1.2), uFlow: K.c >= 0 ? 0 : air && !doorOpen ? 1 : 0, uSpark: K.c >= 0 ? 0 : burst(now - sparkAt, 0.004, 0.08), uBoom: K.c, uIn: safeIntake ? 1 : 0 };
-    inner.draw(u, now); outer.draw(u, now);
-  }
+
   const text = K.c >= 0 ? (K.c < 3.2 ? "BOOM · " + ({ nopurge: "powered unpurged", intake: "purged with gas", door: "door open, live", seep: "gas got back in" })[cause] : "resetting…")
     : Math.round(pa) + " Pa · " + vols.toFixed(1) + " vol · " + Math.round(gas) + " % LEL inside · " + (power ? "POWER ON" : "power off") + (interlock ? "" : " · BYPASSED");
   if (readout.textContent !== text) readout.textContent = text;
@@ -440,7 +268,6 @@ function draw() {
     else if (!air && !power) say("Sitting in Zone 1 switched off, the cabinet fills with the zone's gas. Hit PURGE.");
   }
 }
-
 // demo: each act is [seconds into the step, action]
 const TOUR = [
   { safe: true, lock: true, acts: [[0.5, "air"], [10.2, "power"], [13.5, "door"], [17, "end"]] },
@@ -470,9 +297,9 @@ function tick(t) {
     }
   }
   step(sdt);
-  draw(); syncUi();
+  draw(sdt); syncUi();
   const idle = !touring && !air && !power && pa < 0.5 && Math.abs(gas - M.outside) < 0.5 && boomAt === null && Math.abs(doorA - (doorOpen ? 1 : 0)) < 0.01 && !(tripAt !== null && now - tripAt < 4);
-  frame = visible && !idle ? requestAnimationFrame(tick) : 0;
+  frame = visible ? requestAnimationFrame(tick) : 0;
 }
 const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
 const takeOver = () => { touring = false; actions = []; };
@@ -492,44 +319,28 @@ ui.power.addEventListener("click", togglePower);
 ui.door.addEventListener("click", toggleDoor);
 ui.slow.addEventListener("click", () => { slow = !slow; run(); });
 ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; tourClock = 0; actions = []; } run(); });
-stage.addEventListener("click", () => toggleDoor());
+onTap(() => toggleDoor());
 stage.addEventListener("keydown", (ev) => {
-  const map = { a: toggleAir, p: togglePower, d: toggleDoor, " ": togglePower, Enter: togglePower, i: () => setIntake(!safeIntake), l: () => setLock(!interlock), s: () => { slow = !slow; run(); } };
+  const map = { x: () => { setX(!E.xrayOn); run(); }, X: () => { setX(!E.xrayOn); run(); }, a: toggleAir, p: togglePower, d: toggleDoor, " ": togglePower, Enter: togglePower, i: () => setIntake(!safeIntake), l: () => setLock(!interlock), s: () => { slow = !slow; run(); } };
   if (map[ev.key]) { ev.preventDefault(); map[ev.key](); }
 });
-window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
-syncUi(); draw();
+window.__fig = { E, freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+setX(true); syncUi(); draw();
 `;
 
-const CSS = `.fx-stage{position:relative;cursor:pointer}
-.fx-layer{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.fx-gl{display:block}
-body[data-theme="dark"] .fx-gl{mix-blend-mode:screen}
-.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(closest-side at 50% 42%,#fff8e8 0%,#ffd9a0 40%,rgba(255,170,90,0) 100%)}
-.iso-plate{overflow:hidden}
-.iso-pipe{fill:none;stroke:var(--anatomy-face,#ddd);stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round}
-.iso-pipe-out{fill:none;stroke:var(--anatomy-mid);stroke-width:3.6;stroke-linejoin:round;stroke-linecap:round}
-.lamp{stroke:var(--anatomy-mid);stroke-width:.3;fill:var(--anatomy-paper)}
-.lamp[data-col="ok"][data-on="true"]{fill:#3ddc84}.lamp[data-col="trip"][data-on="true"]{fill:#ff4a3d}.lamp[data-col="power"][data-on="true"]{fill:#ffc23d}
-.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
-.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.ctl-label{min-width:72px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
-.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
-.ctl button:hover{border-color:var(--anatomy-mid)}
-.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
-.ctl #air,.ctl #power{font-weight:600;letter-spacing:.06em;min-width:112px;text-align:center;border-color:var(--anatomy-lit);color:var(--anatomy-lit)}
-.ctl #air[aria-pressed="true"],.ctl #power[aria-pressed="true"]{background:var(--anatomy-lit);color:var(--anatomy-paper)}
-.ctl #door{border-color:#ff6a3d;color:#ff6a3d}
-.ctl output{min-width:86px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
-.meter{position:relative;flex:1;min-width:110px;height:10px;margin-top:14px;border:1px solid var(--anatomy-lo);border-radius:5px}
-.meter .fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--anatomy-mid);transition:width .1s}
-.meter .fill[data-state="ok"]{background:#3ddc84}.meter .fill[data-state="low"]{background:var(--anatomy-mid)}.meter .fill[data-state="warn"]{background:#ffb347}.meter .fill[data-state="bad"]{background:#ff5a2a}
-.mark{position:absolute;top:-14px;bottom:-3px;width:0;border-left:1px dashed var(--anatomy-lit);pointer-events:none}
-.mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:var(--anatomy-lit)}
-.mark.red{border-left-color:#ff6a3d}.mark.red::after{color:#ff6a3d}
-#shot{min-height:3.6em;font-size:12px;line-height:1.4}
-@media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:64px}}`;
+const CSS = `.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle 70% at 55% 45%,#fff8e8 0%,#ffd9a0 40%,rgba(255,170,90,0) 100%)}
+.pt{font-family:var(--anatomy-mono);fill:#23262b;font-weight:700}.pt.lo{fill:#5a6068;font-weight:600}.pt.face{fill:#c9ced3;font-weight:600}.pt.lcd{fill:#9ff0c0}.pt.bench{fill:var(--anatomy-muted);font-weight:600;letter-spacing:.08em;opacity:.8}
+.mk-hint{top:46px}
+.ctl #air,.ctl #power{padding:7px 14px;font-weight:600;letter-spacing:.06em;min-width:104px;text-align:center}
+.meter{margin-top:12px}.meter .fill[data-state="low"]{background:var(--anatomy-mid)}
+.mark:not(.red){border-left-color:var(--mk-accent)}.mark:not(.red)::after{color:var(--mk-accent)}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Pressurised cabinet: A purges, P or space powers, D opens the door, I moves the intake, L bypasses the interlock">${backSvg}<canvas class="fx-layer fx-gl fx-inner" aria-hidden="true"></canvas>${frontSvg}<canvas class="fx-layer fx-gl fx-outer" aria-hidden="true"></canvas><div class="fx-flash" aria-hidden="true"></div></div>`;
+const stage = stageHtml({
+  W, H, fig: "Fig 8", title: "Ex p, purge and pressure", xray: true,
+  label: "A pressurised Ex p control cabinet on a bench in Zone 1 with a contactor, a transformer and breakers inside. Purge air comes from an intake in the safe area through a valve; a vent with a spark arrestor lets it out of the roof. A purge controller on the side shows the pressure and counts purge volumes. An x-ray mode turns the cabinet to glass to show the gas inside and the purge air sweeping it out.",
+  keysHelp: "Pressurised cabinet: drag to rotate, X for x-ray, tap to open the door, A purges, P or space powers, D opens the door, I moves the intake, L bypasses the interlock",
+  extra: `<div class="fx-flash" aria-hidden="true"></div>`,
+});
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Intake</span><button type="button" data-intake-btn="safe" aria-pressed="true">Safe area</button><button type="button" data-intake-btn="zone" aria-pressed="false">In the zone</button></div>
@@ -537,25 +348,19 @@ const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Pressure</span><div class="meter"><span id="p-fill" class="fill"></span><span class="mark" style="left:${(50 / 150 * 100).toFixed(1)}%" data-label="50 Pa"></span></div><output id="p-out">0 Pa</output></div>
   <div class="ctl-row"><span class="ctl-label">Purged</span><div class="meter"><span id="v-fill" class="fill"></span><span class="mark" style="left:${(5 / 8 * 100).toFixed(1)}%" data-label="5 volumes"></span></div><output id="v-out">0.0 vol</output></div>
   <div class="ctl-row"><span class="ctl-label">Gas inside</span><div class="meter"><span id="g-fill" class="fill"></span><span class="mark red" style="left:50%" data-label="LEL"></span></div><output id="g-out">150 % LEL</output></div>
-  <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="air" aria-pressed="false">PURGE</button><button type="button" id="power" aria-pressed="false">POWER ON</button><button type="button" id="door" aria-pressed="false">Open door</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
-  <div id="shot" aria-live="polite">Sitting in Zone 1 switched off, the cabinet fills with the zone's gas. Hit PURGE, wait for five volumes, then POWER ON.</div>
+  <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="air" aria-pressed="false">PURGE</button><button type="button" id="power" class="danger" aria-pressed="false">POWER ON</button><button type="button" id="door" aria-pressed="false">Open door</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
 </div>`;
 
-const card = k.plateHtml({
-  fig: "Fig 8",
-  title: "Ex p, purge and pressure",
-  hint: "Tap: open the door",
-  readout: "",
-  keys: [
-    { mark: "lit", label: "Purge air, the contactor spark, the gauge needle" },
-    { mark: "raised", label: "Pressurised cabinet (cut open), purge controller, intake and vent" },
-  ],
-  caption: "Ex p lets you put ordinary sparking kit in Zone 1 by keeping the gas out with clean air. First the cabinet is purged: at least five of its own volumes of air, because it never mixes perfectly. Then it's held above the zone at 50 Pa or more, so anything that leaks, leaks out. For px, losing the pressure cuts the power, and it stays off until it's purged again. It fails when someone powers it before the purge, bypasses the interlock and opens the door live, or takes the purge air from inside the zone. That last one fools the interlock completely: it can count volumes and read pressure, but it can't smell the air.",
-  body: stageHtml,
-});
 
-const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
-const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a certified anything. Real (IEC 60079-2, px): at least 50 Pa overpressure, a pre-purge of at least five enclosure volumes, power off on loss of pressure until a fresh purge, purge air from the safe area. Made up: the gas levels, how well it mixes, flows and timings.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/ex-p-purge" style="color:inherit">Source</a></p>`;
+const foot = footHtml({
+  theme, slug: "ex-p-purge",
+  real: "IEC 60079-2, px: at least 50 Pa overpressure, a pre-purge of at least five enclosure volumes, power off on loss of pressure until a fresh purge, purge air from the safe area.",
+  made: "the gas levels, how well it mixes, flows and timings.",
+});
 const name = theme === "light" ? "light.html" : "index.html";
-writeFileSync(join(HERE, name), k.pageHtml({ title: "Ex p purge", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + glScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 700 }));
+writeFileSync(join(HERE, name), pageMk2({
+  k, title: "Ex p, purge and pressure", fig: "Fig 8", hint: "Tap: open the door", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  caption: "Ex p lets you put ordinary sparking kit in Zone 1 by keeping the gas out with clean air. First the cabinet is purged: at least five of its own volumes of air, because it never mixes perfectly. Then it's held above the zone at 50 Pa or more, so anything that leaks, leaks out. For px, losing the pressure cuts the power, and it stays off until it's purged again. It fails when someone powers it before the purge, bypasses the interlock and opens the door live, or takes the purge air from inside the zone. That last one fools the interlock completely: it can count volumes and read pressure, but it can't smell the air.",
+  script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
+}));
 console.log("wrote", name);
