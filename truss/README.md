@@ -33,4 +33,4 @@ Made up for the toy: the member sizes, the dead load, the speeds, no impact or l
 
 ## How it's built
 
-Built with [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22). To rebuild, drop `src/build.mjs` and `src/solver.js` into Anatomy as `examples/truss/` and run `node build.mjs` (`--light` for the light theme).
+Mark II: drawn in real 3D with a small WebGL2 renderer (`mk2/engine.mjs` in this repo: soft shadows, ambient occlusion, ink outlines, bloom, x-ray), on top of the camera and page conventions of [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22). Drag to rotate, pinch or ctrl-scroll to zoom, double click to reset the view. To rebuild, copy this repo's `mk2/` folder into an Anatomy checkout, drop `src/build.mjs` in as `examples/truss/build.mjs` and run `node build.mjs` (`--light` for the light theme).

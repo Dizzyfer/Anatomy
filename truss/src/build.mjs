@@ -1,15 +1,12 @@
-import { writeFileSync, readFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as k from "../../kit/iso-kit.mjs";
-import { kitScript } from "../../scripts/inline-kit.mjs";
+import { engineScript, stageHtml, pageMk2, footHtml } from "../../mk2/shell.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
-const SOLVER = readFileSync(join(HERE, "solver.js"), "utf8").replace(/if \(typeof module[^\n]*\n?/, "");
-
-const W = 640;
-const H = 440;
+const W = 960, H = 600;
 
 // Truth: a pin-jointed truss carries load as pure tension and compression in its members; long members in compression
 // buckle (Euler) long before they yield, which is why a Pratt truss (long diagonals in tension) suits steel better than a
@@ -20,73 +17,30 @@ const U = 4; // plot units per metre
 const SPAN = 48, X0 = -96, DZ = 44, YT = 22, LANE = 7;
 const APPROACH = 13.5;
 const PLATE = { x: -152, y: -72, w: 304, d: 144, r: 8 };
-const PLATE_H = 12, FOOT_H = 5;
-
-const P = k.fitProjection([...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [X0, -YT, DZ + 7 * U + 4], [X0 + SPAN * U, YT, DZ + 7 * U + 4]], W, H, { pad: 14, azimuth: 45 });
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const Dt = (points, style) => k.dotsSvg(points, style);
-const depth2 = ([x, y]) => k.depthOf([x, y, 0], P);
-const byDepth = (pts) => [...pts].sort((a, b) => depth2(a) - depth2(b));
-const slab = (plan, z, h, r = 1.2, bevel = 0.5) => k.slabOf({ r, ...plan }, z, h, P, 4, bevel);
-
-function plate() {
-  const out = [`<path class="iso-halo" d="${k.haloOf(PLATE, -PLATE_H - FOOT_H, PLATE_H, P)}"/>`];
-  for (const [x, y] of byDepth(k.corners(PLATE, 22))) {
-    out.push(S(k.cylinder(x, y, 7, -PLATE_H - FOOT_H, 1.6, P, 28), { tone: "lo" }));
-    out.push(S(k.cylinder(x, y, 5.4, -PLATE_H - FOOT_H + 1.6, FOOT_H - 1.6, P, 28), { tone: "mid" }));
-  }
-  out.push(S(k.slabOf(PLATE, -PLATE_H, PLATE_H, P, 8, 1.6), { tone: "mid", inner: L(k.sideSeam(PLATE, -PLATE_H / 2, P), { tone: "faint" }) }));
-  // the river
-  const r = [[X0 + 6, PLATE.y + 4, 0.05], [X0 + SPAN * U - 6, PLATE.y + 4, 0.05], [X0 + SPAN * U - 6, PLATE.y + PLATE.d - 4, 0.05], [X0 + 6, PLATE.y + PLATE.d - 4, 0.05]];
-  out.push(`<path class="river" d="${k.pathOf(r.map(at), true)}"/>`);
-  const ripples = [];
-  for (let i = 0; i < 9; i++) { const x = X0 + 20 + ((i * 47) % (SPAN * U - 40)), y = PLATE.y + 14 + ((i * 31) % (PLATE.d - 28)); ripples.push(k.segment([x, y, 0.1], [x + 10, y, 0.1], P)); }
-  out.push(`<path class="ripple" d="${ripples.join("")}"/>`);
-  out.push(`<g data-part="splash"></g>`);
-  return out.join("");
-}
-
-// abutments and the approach roads, in two halves so the near one draws over the falling bridge
-function abutment(side) {
-  const x0 = side < 0 ? PLATE.x + 2 : X0 + SPAN * U, x1 = side < 0 ? X0 : PLATE.x + PLATE.w - 2;
-  const out = [];
-  out.push(S(slab({ x: x0, y: PLATE.y + 2, w: x1 - x0, d: PLATE.d - 4 }, 0, DZ, 1, 0.4), { tone: "mid", inner: L([12, 24, 36].map((z) => k.segment([x1, PLATE.y + 2, z], [x1, PLATE.y + PLATE.d - 2, z], P)).join(""), { tone: "faint" }) }));
-  out.push(`<g class="road">${S(slab({ x: x0, y: -YT + 2, w: x1 - x0, d: 2 * YT - 4 }, DZ, 0.6, 0.3, 0.1), { tone: "lo", crease: "none" })}</g>`);
-  out.push(L(k.segment([x0 + 2, 0, DZ + 0.7], [x1 - 2, 0, DZ + 0.7], P), { tone: "faint" }));
-  return out.join("");
-}
-
-// the near faces (front and end) of the right abutment, used to hide the falling bridge behind it
-const YF = PLATE.y + PLATE.d - 2, XA = X0 + SPAN * U, XE = PLATE.x + PLATE.w - 2, YB = PLATE.y + 2;
-function occClip() {
-  const face = (pts) => k.pathOf(pts.map(at), true);
-  const sides = face([[XA, YF, 0], [XE, YF, 0], [XE, YF, DZ], [XA, YF, DZ]]) + face([[XE, YF, 0], [XE, YB, 0], [XE, YB, DZ], [XE, YF, DZ]]);
-  return `<defs><clipPath id="occclip"><path d="${sides}"/></clipPath><clipPath id="occclip2"><path d="${sides}${face([[XA, YB, DZ], [XE, YB, DZ], [XE, YF, DZ], [XA, YF, DZ]])}"/></clipPath></defs>`;
-}
-function bearings() {
-  const out = [];
-  for (const x of [X0, X0 + SPAN * U]) for (const y of [-YT, YT]) out.push(S(slab({ x: x - 4, y: y - 3, w: 8, d: 6 }, DZ - 0.2, 1.6, 0.4, 0.2), { tone: "lo" }));
-  return out.join("");
-}
-const svg = k.figureSvg({
-  width: W, height: H,
-  label: "A steel truss bridge across a river, 48 metres between abutments, with the deck between two trusses. Vehicles drive across on the deck. Each member is coloured by the force in it: red for tension, blue for compression.",
-  body: [occClip(), plate(), abutment(-1), abutment(1), bearings(), `<g data-part="bridge"></g>`, `<g data-part="occ" clip-path="url(#occclip)" style="display:none">${abutment(1)}</g>`, `<g data-part="top"></g>`],
-});
-
-const DATA = { W, H, P, U, SPAN, X0, DZ, YT, LANE, APPROACH, EDGE_L: (PLATE.x + 2 - X0) / U, EDGE_R: (PLATE.x + PLATE.w - 2 - X0) / U };
-
+const P = k.fitProjection([...k.boxCorners(PLATE, -0.8, 0), [-96, -22, 76], [96, 22, 76], [-150, -70, 60], [150, 70, 50]], W, H, { pad: 22, azimuth: 45, elevation: 30 });
+const DATA = { W, H, P, PLATE };
+import { readFileSync } from "node:fs";
+const SOLVER = readFileSync(join(HERE, "solver.js"), "utf8").replace(/if \(typeof module[^\n]*\n?/, "").replace("const E = 200e6", "const ESTEEL = 200e6").replace("Math.PI * E * s.A", "Math.PI * ESTEEL * s.A").replace("EA: E * SECT", "EA: ESTEEL * SECT");
+Object.assign(DATA, { U, SPAN, X0, DZ, YT, LANE, APPROACH, EDGE_L: (PLATE.x + 2 - X0) / U, EDGE_R: (PLATE.x + PLATE.w - 2 - X0) / U });
 const LIVE = `
-${SOLVER}
+${engineScript()}
 const D = __DATA__;
-const { P } = D;
-const stage = document.querySelector(".fx-stage");
-const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const stage = document.querySelector(".mk-stage");
 const readout = document.querySelector("[data-readout]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lightTheme = document.body.dataset.theme === "light";
+const E = mk2(stage, D.P, { W: D.W, H: D.H, pivot: [0, 0, 40], plate: { ...D.PLATE, h: 12, foot: 5 }, shadowBox: [-160, -80, -18, 160, 80, 90] });
+const { box, cyl, prism, circle, lathe, tube, sphere, loft, roundPoly, rrect, tris } = E;
+E.bindTools(stage);
+const xbtn = stage.querySelector('[data-mk="xray"]');
+const setX = (on) => { E.setXray(on); if (xbtn) xbtn.setAttribute("aria-pressed", String(on)); };
+const sceneG = stage.querySelector('[data-part="scene"]');
+const iso = (p) => E.project(p), depthOf = (p) => E.depthOf(p);
+const shakeEls = [stage.querySelector(".mk-gl"), stage.querySelector(".mk-over")];
+const setShake = (x, y) => { const t = x || y ? "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)" : ""; for (const e of shakeEls) if (e.style.transform !== t) e.style.transform = t; };
+${SOLVER}
+const P = D.P;
 const DEFL = 80;
 let u0 = null;
 
@@ -95,28 +49,6 @@ let cars = [], fallAt = null, breakX = 0, snapAt = -10, snapped = -1, lastShot =
 let frame = 0, last = 0, now = 0, visible = false, touring = true, slow = false, tourClock = 0, tourStep = -1, actions = [], stream = 0, streamAt = 0;
 const event = (t) => { lastEvent = t; lastEventAt = now; };
 const SPEED = 11;
-
-// the bridge drawing, rebuilt when the truss type changes
-const bridgeG = q("bridge"), splashG = q("splash"), occG = q("occ"), topG = q("top");
-let els = null;
-function buildBridge() {
-  const line = (cls, extra = "") => '<line class="' + cls + '"' + extra + '/>';
-  let back = "", front = "", braces = "", gus = "";
-  g.M.forEach((m, i) => { back += line("mem back t-" + m.type, ' data-m="' + i + '"'); front += '<g data-fm="' + i + '">' + line("hit") + line("mem-o t-" + m.type) + line("mem front t-" + m.type) + "</g>"; });
-  let bracesHi = "";
-  for (let i = 0; i < g.J.length; i++) (i <= g.N ? (braces += line("brace")) : (bracesHi += line("brace hi")));
-  for (let i = 0; i < 2 * (g.N - 2); i++) bracesHi += line("brace hi");
-  for (let i = 0; i < g.J.length; i++) gus += '<circle class="gus" r="2.1"/>';
-  bridgeG.innerHTML = '<g class="backtruss">' + back + '</g><g class="braces">' + braces + '</g><path class="deck" d=""/><path class="lanes" d=""/><path class="fascia" d=""/><g class="cars"></g><g class="braces-hi">' + bracesHi + '</g><g class="fronttruss">' + front + '</g><g class="gussets">' + gus + '</g><g class="snap"></g>';
-  els = {
-    back: [...bridgeG.querySelectorAll(".backtruss line")], front: [...bridgeG.querySelectorAll("[data-fm]")].map((gg) => ({ g: gg, hit: gg.querySelector(".hit"), mem: gg.querySelector(".mem"), o: gg.querySelector(".mem-o") })),
-    braces: [...bridgeG.querySelectorAll(".braces .brace"), ...bridgeG.querySelectorAll(".braces-hi .brace")], gus: [...bridgeG.querySelectorAll(".gus")], deck: bridgeG.querySelector(".deck"), lanes: bridgeG.querySelector(".lanes"), fascia: bridgeG.querySelector(".fascia"), cars: bridgeG.querySelector(".cars"), snap: bridgeG.querySelector(".snap"),
-  };
-  els.front.forEach((f, i) => f.g.addEventListener("pointerdown", (ev) => { ev.stopPropagation(); cut(i); }));
-  cars.forEach((c) => { c.el = null; });
-}
-buildBridge();
-
 // where a point of the bridge is now, in world units (deflection blown up, and the collapse)
 function fallState() {
   if (fallAt === null) return null;
@@ -141,18 +73,9 @@ function world(xm, zm, y, ui, piece, drop = 0) {
   return [D.X0 + x * D.U, y, D.DZ + (z - drop) * D.U];
 }
 
-// ---- vehicles: little 3D models, each part a prism (a side profile in x-z pushed out across y) ----
-// local metres: x = 0 at the front axle, +x forward; z up from the deck; y across, 0 = the vehicle's centreline
-const VIEW = (() => { const o = depthOf([0, 0, 0], P); return [depthOf([1, 0, 0], P) - o, depthOf([0, 1, 0], P) - o, depthOf([0, 0, 1], P) - o]; })();
-const LIGHT = (() => { const v = [0.3, 0.75, 1]; const n = Math.hypot(...v); return v.map((a) => a / n); })();
-const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-function shade(hex, n) {
-  const d = Math.max(0, n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2]), f = 0.5 + 0.62 * d;
-  return "rgb(" + rgb(hex).map((c) => Math.round(clamp(c * f, 0, 255))).join(",") + ")";
-}
 const PAINT = { car: "#d6443a", bus: "#e8a93a", bdouble: "#2f6fd0", roadtrain: "#2f9e64", haul: "#f2b821" };
 const C = { glass: "#86b7de", dark: "#2b2e33", tyre: "#1c1d20", hub: "#a9aeb4", silver: "#d5d9de", chrome: "#e8ebee", lamp: "#ffe08a", tail: "#e0402f", dirt: "#8a6844", bar: "#55595f" };
-const box = (x0, x1, z0, z1, y0, y1, col, layer = 1) => ({ ring: [[x0, z0], [x1, z0], [x1, z1], [x0, z1]], y0, y1, col, layer });
+const vbox = (x0, x1, z0, z1, y0, y1, col, layer = 1) => ({ ring: [[x0, z0], [x1, z0], [x1, z1], [x0, z1]], y0, y1, col, layer });
 const prof = (ring, y0, y1, col, layer = 1) => ({ ring, y0, y1, col, layer });
 function wheel(x, r, yc, wid) {
   const ring = (rr) => Array.from({ length: 16 }, (_, i) => [x + rr * Math.cos((i / 16) * Math.PI * 2), r + rr * Math.sin((i / 16) * Math.PI * 2)]);
@@ -162,25 +85,25 @@ function wheel(x, r, yc, wid) {
 const pair = (x, r, yc, wid) => [...wheel(x, r, yc, wid), ...wheel(x, r, -yc, wid)];
 function primeMover(paint, axles) {
   const p = [];
-  p.push(box(-6.2, 2.3, 0.55, 1.0, -0.5, 0.5, C.dark));
-  p.push(box(2.2, 2.45, 0.45, 1.0, -1.25, 1.25, C.chrome));
+  p.push(vbox(-6.2, 2.3, 0.55, 1.0, -0.5, 0.5, C.dark));
+  p.push(vbox(2.2, 2.45, 0.45, 1.0, -1.25, 1.25, C.chrome));
   p.push(prof([[2.35, 1.0], [0.25, 1.0], [0.25, 2.25], [2.3, 2.05]], -1.0, 1.0, paint));
-  p.push(box(2.33, 2.38, 1.05, 2.0, -0.62, 0.62, C.chrome, 3));
-  p.push(box(-2.1, 0.25, 1.0, 3.45, -1.25, 1.25, paint));
-  p.push(box(-3.1, -2.1, 1.0, 3.7, -1.25, 1.25, paint));
-  p.push(box(0.25, 0.29, 2.35, 3.2, -1.1, 1.1, C.glass, 3));
-  p.push(box(-1.6, 0.05, 2.35, 3.15, 1.25, 1.28, C.glass, 3));
-  p.push(box(-2.35, -2.15, 1.0, 4.25, 1.05, 1.25, C.chrome, 3));
-  p.push(box(-1.9, -0.3, 0.6, 1.1, 1.0, 1.32, C.chrome, 3));
-  p.push(box(2.38, 2.42, 1.2, 1.45, 0.75, 1.05, C.lamp, 3));
+  p.push(vbox(2.33, 2.38, 1.05, 2.0, -0.62, 0.62, C.chrome, 3));
+  p.push(vbox(-2.1, 0.25, 1.0, 3.45, -1.25, 1.25, paint));
+  p.push(vbox(-3.1, -2.1, 1.0, 3.7, -1.25, 1.25, paint));
+  p.push(vbox(0.25, 0.29, 2.35, 3.2, -1.1, 1.1, C.glass, 3));
+  p.push(vbox(-1.6, 0.05, 2.35, 3.15, 1.25, 1.28, C.glass, 3));
+  p.push(vbox(-2.35, -2.15, 1.0, 4.25, 1.05, 1.25, C.chrome, 3));
+  p.push(vbox(-1.9, -0.3, 0.6, 1.1, 1.0, 1.32, C.chrome, 3));
+  p.push(vbox(2.38, 2.42, 1.2, 1.45, 0.75, 1.05, C.lamp, 3));
   p.push(...pair(0, 0.52, 1.0, 0.32));
   for (const a of axles) p.push(...pair(a, 0.52, 0.92, 0.6));
   return p;
 }
 function trailer(x0, x1, axles, last) {
-  const p = [box(x1, x0, 1.12, 1.38, -1.0, 1.0, C.dark), box(x1, x0, 1.38, 4.15, -1.25, 1.25, C.silver)];
-  for (let x = x0 - 1.2; x > x1 + 0.6; x -= 1.6) p.push(box(x - 0.08, x, 1.45, 4.08, 1.25, 1.27, "#aeb3b9", 3));
-  if (last) p.push(box(x1 - 0.03, x1, 1.5, 1.75, 0.8, 1.15, C.tail, 3));
+  const p = [vbox(x1, x0, 1.12, 1.38, -1.0, 1.0, C.dark), vbox(x1, x0, 1.38, 4.15, -1.25, 1.25, C.silver)];
+  for (let x = x0 - 1.2; x > x1 + 0.6; x -= 1.6) p.push(vbox(x - 0.08, x, 1.45, 4.08, 1.25, 1.27, "#aeb3b9", 3));
+  if (last) p.push(vbox(x1 - 0.03, x1, 1.5, 1.75, 0.8, 1.15, C.tail, 3));
   for (const a of axles) p.push(...pair(a, 0.5, 0.92, 0.6));
   return p;
 }
@@ -190,12 +113,12 @@ const MODEL = {
     p.push(prof(body, -0.88, 0.88, PAINT.car));
     p.push(prof([[-0.33, 0.99], [-0.84, 1.37], [-2.37, 1.37], [-2.95, 1.02]], 0.88, 0.9, C.glass, 3));
     p.push(prof([[-0.25, 0.95], [-0.8, 1.42], [-0.86, 1.42], [-0.31, 0.95]], -0.78, 0.78, C.glass, 3));
-    p.push(box(0.94, 0.97, 0.58, 0.7, 0.5, 0.82, C.lamp, 3));
+    p.push(vbox(0.94, 0.97, 0.58, 0.7, 0.5, 0.82, C.lamp, 3));
     p.push(...pair(0, 0.32, 0.8, 0.22), ...pair(-2.7, 0.32, 0.8, 0.22));
     return { parts: p, w: 1.8, front: 0.95, rear: -3.55, lane: 1, rigid: true };
   },
   bus: () => {
-    const p = [box(-10.1, 2.4, 0.35, 3.15, -1.25, 1.25, PAINT.bus), box(-9.6, -0.3, 1.65, 2.65, 1.25, 1.28, C.glass, 3), box(2.4, 2.43, 1.35, 2.95, -1.12, 1.12, C.glass, 3), box(1.0, 2.0, 0.5, 2.9, 1.25, 1.28, C.glass, 3), box(-7, -3.5, 3.15, 3.45, -0.7, 0.7, C.silver), box(2.4, 2.44, 0.6, 0.85, 0.75, 1.1, C.lamp, 3)];
+    const p = [vbox(-10.1, 2.4, 0.35, 3.15, -1.25, 1.25, PAINT.bus), vbox(-9.6, -0.3, 1.65, 2.65, 1.25, 1.28, C.glass, 3), vbox(2.4, 2.43, 1.35, 2.95, -1.12, 1.12, C.glass, 3), vbox(1.0, 2.0, 0.5, 2.9, 1.25, 1.28, C.glass, 3), vbox(-7, -3.5, 3.15, 3.45, -0.7, 0.7, C.silver), vbox(2.4, 2.44, 0.6, 0.85, 0.75, 1.1, C.lamp, 3)];
     p.push(...pair(0, 0.5, 0.95, 0.35), ...pair(-6.5, 0.5, 0.92, 0.6));
     return { parts: p, w: 2.5, front: 2.45, rear: -10.1, lane: 1, rigid: true };
   },
@@ -203,19 +126,19 @@ const MODEL = {
   roadtrain: () => {
     const p = [...primeMover(PAINT.roadtrain, [-3.4, -4.6]), ...trailer(-2.8, -13.9, [-10.8, -12.0, -13.2])];
     for (const [d, prevRear, t0, t1, ax] of [[-19, -13.9, -17.0, -29.0, [-25.8, -27.0, -28.2]], [-34, -29.0, -32.0, -44.0, [-40.8, -42.0, -43.2]]]) {
-      p.push(box(d + 1.2, prevRear, 0.75, 0.95, -0.12, 0.12, C.bar), box(d - 1.2, d + 1.2, 0.75, 1.15, -0.9, 0.9, C.dark), ...pair(d + 0.6, 0.5, 0.92, 0.6), ...pair(d - 0.6, 0.5, 0.92, 0.6));
+      p.push(vbox(d + 1.2, prevRear, 0.75, 0.95, -0.12, 0.12, C.bar), vbox(d - 1.2, d + 1.2, 0.75, 1.15, -0.9, 0.9, C.dark), ...pair(d + 0.6, 0.5, 0.92, 0.6), ...pair(d - 0.6, 0.5, 0.92, 0.6));
       p.push(...trailer(t0, t1, ax, t1 === -44.0));
     }
     return { parts: p, w: 2.5, front: 2.45, rear: -44, lane: 1 };
   },
   haul: () => {
     const p = [];
-    p.push(box(-9.4, 2.2, 1.4, 3.3, -1.9, 1.9, C.dark));
-    p.push(box(-1.4, 2.5, 1.4, 3.7, -1.7, 1.7, PAINT.haul));
-    p.push(box(0.5, 2.7, 3.6, 4.0, -4.4, 4.4, PAINT.haul));
-    p.push(box(-0.5, 1.7, 4.0, 6.3, 1.8, 4.2, PAINT.haul));
-    p.push(box(1.7, 1.73, 4.8, 6.0, 2.0, 4.0, C.glass, 3), box(-0.3, 1.5, 4.8, 6.0, 4.2, 4.23, C.glass, 3));
-    p.push(box(2.68, 2.72, 1.6, 3.4, -1.2, 1.2, C.bar, 3));
+    p.push(vbox(-9.4, 2.2, 1.4, 3.3, -1.9, 1.9, C.dark));
+    p.push(vbox(-1.4, 2.5, 1.4, 3.7, -1.7, 1.7, PAINT.haul));
+    p.push(vbox(0.5, 2.7, 3.6, 4.0, -4.4, 4.4, PAINT.haul));
+    p.push(vbox(-0.5, 1.7, 4.0, 6.3, 1.8, 4.2, PAINT.haul));
+    p.push(vbox(1.7, 1.73, 4.8, 6.0, 2.0, 4.0, C.glass, 3), vbox(-0.3, 1.5, 4.8, 6.0, 4.2, 4.23, C.glass, 3));
+    p.push(vbox(2.68, 2.72, 1.6, 3.4, -1.2, 1.2, C.bar, 3));
     p.push(prof([[2.7, 6.75], [2.7, 7.2], [-1.0, 7.2], [-1.0, 6.6]], -4.6, 4.6, PAINT.haul));
     p.push(prof([[-0.7, 3.5], [-0.7, 6.9], [-12.2, 6.1], [-12.2, 4.6], [-10.6, 3.4]], -4.3, 4.3, PAINT.haul));
     p.push(prof([[-1.0, 6.55], [-11.9, 5.85], [-11.9, 5.7], [-1.0, 6.4]], -4.05, 4.05, C.dirt, 3));
@@ -244,141 +167,157 @@ const crs = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const DECK_TOP = 0.35;
 const deck0 = (xm) => (xm > 0 && xm < D.SPAN ? deflAt(xm) : 0);
-function renderVehicle(c, f) {
-  const M = MODELS[c.kind], lane = M.lane * D.LANE, piece = c.piece;
-  const fallen = f && c.fell;
-  const toWorld = fallen
-    ? (lx, ly, lz) => world(c.x + lx, DECK_TOP + lz, lane + ly * D.U, undefined, piece, c.drop || 0)
-    : (lx, ly, lz) => { const xm = c.x + lx, z = sagAt(xm) + DECK_TOP + lz; return [D.X0 + xm * D.U, lane + ly * D.U, D.DZ + z * D.U]; };
-  const ax = VEH[c.kind].axles, xa = c.x, xb = c.x - ax[ax.length - 1][0], za = deck0(xa), zb = deck0(xb);
-  const sagAt = M.rigid ? (xm) => za + (zb - za) * (xa - xm) / Math.max(0.1, xa - xb) : deck0;
-  const a = fallen ? -1e9 : D.EDGE_L - c.x, b = fallen ? 1e9 : D.EDGE_R - c.x;
-  const faces = [];
-  let out = "";
-  const sh = clipX([[M.rear, 0], [M.front, 0], [M.front, 1], [M.rear, 1]], a, b);
-  if (sh) { const xs = sh.map((p) => p[0]), x0 = Math.min(...xs), x1 = Math.max(...xs), hw = M.w / 2 + 0.25; out += '<path class="vshadow" d="M' + [[x0, -hw], [x1, -hw], [x1, hw], [x0, hw]].map(([x, y]) => iso(toWorld(x, y, 0.02), P).map((v) => v.toFixed(1)).join(" ")).join("L") + 'Z"/>'; }
-  for (const part of M.parts) {
-    const ring = clipX(part.ring, a, b);
-    if (!ring) continue;
-    const n = ring.length, A = ring.map(([x, z]) => toWorld(x, part.y0, z)), B = ring.map(([x, z]) => toWorld(x, part.y1, z));
-    const ctr = [0, 1, 2].map((k2) => (A.reduce((s2, p) => s2 + p[k2], 0) + B.reduce((s2, p) => s2 + p[k2], 0)) / (2 * n));
-    const add = (pts) => {
-      const cf = [0, 1, 2].map((k2) => pts.reduce((s2, p) => s2 + p[k2], 0) / pts.length);
-      let nn = [0, 0, 0];
-      for (let i = 0; i < pts.length; i++) { const p = pts[i], q2 = pts[(i + 1) % pts.length]; nn[0] += (p[1] - q2[1]) * (p[2] + q2[2]); nn[1] += (p[2] - q2[2]) * (p[0] + q2[0]); nn[2] += (p[0] - q2[0]) * (p[1] + q2[1]); }
-      const len = Math.hypot(...nn); if (len < 1e-6) return;
-      nn = nn.map((v) => v / len);
-      if (dot(nn, sub(cf, ctr)) < 0) nn = nn.map((v) => -v);
-      if (dot(nn, VIEW) <= 0.001) return;
-      faces.push({ layer: part.layer, depth: dot(cf, VIEW), d: "M" + pts.map((p) => iso(p, P).map((v) => v.toFixed(1)).join(" ")).join("L") + "Z", fill: shade(part.col, nn) });
-    };
-    add(A); add(B);
-    for (let i = 0; i < n; i++) { const j = (i + 1) % n; add([A[i], A[j], B[j], B[i]]); }
-  }
-  faces.sort((p, q2) => p.layer - q2.layer || p.depth - q2.depth);
-  for (const fc of faces) out += '<path d="' + fc.d + '" fill="' + fc.fill + '"/>';
-  return out;
-}
-const sp = (p) => { const a = iso(p, P); return [a[0].toFixed(1), a[1].toFixed(1)]; };
 function deflAt(xm) {
   // vertical deflection along the deck, between bottom joints
   if (!res || res.mech || !u0) return 0;
   const i = clamp(Math.floor(xm / g.Lp), 0, g.N - 1), f = clamp(xm / g.Lp - i, 0, 1);
   return ((res.u[2 * i + 1] - u0[2 * i + 1]) * (1 - f) + (res.u[2 * (i + 1) + 1] - u0[2 * (i + 1) + 1]) * f) * DEFL;
 }
-
-function colourOf(fr, broke) {
-  if (broke) return "transparent";
-  const u = clamp(fr.util, 0, 1.2), mix = Math.round(clamp(u / 0.9, 0, 1) * 100);
-  return "color-mix(in srgb, var(--rest) , " + (fr.N >= 0 ? "#ff4a3d" : "#3d8bff") + " " + mix + "%)";
-}
-
-function draw() {
-  const f = fallState();
-  const J = g.J.map(([x, z], i) => ({ f: world(x, z, D.YT, i), b: world(x, z, -D.YT, i), x, z }));
-  g.M.forEach((m, i) => {
-    const a = J[m.a], b = J[m.b], broke = broken.has(i);
-    const fr = res && !res.mech ? res.forces[i] : { N: 0, util: 0 };
-    const col = fallAt !== null ? "var(--rest)" : colourOf(fr, broke);
-    const set = (el, p, q2) => { const A = sp(p), B = sp(q2); el.setAttribute("x1", A[0]); el.setAttribute("y1", A[1]); el.setAttribute("x2", B[0]); el.setAttribute("y2", B[1]); };
-    // a broken member shows as two stubs
-    if (broke) {
-      const mid = (p, q2, t) => p.map((v, k2) => v + (q2[k2] - v) * t);
-      set(els.back[i], a.b, mid(a.b, b.b, 0.42)); set(els.front[i].mem, a.f, mid(a.f, b.f, 0.42)); set(els.front[i].o, a.f, mid(a.f, b.f, 0.42)); set(els.front[i].hit, a.f, a.f);
-      els.front[i].mem.style.stroke = "var(--rest)"; els.back[i].style.stroke = "var(--rest)";
-    } else {
-      set(els.back[i], a.b, b.b); set(els.front[i].mem, a.f, b.f); set(els.front[i].o, a.f, b.f); set(els.front[i].hit, a.f, b.f);
-      els.front[i].mem.style.stroke = col; els.back[i].style.stroke = col;
-    }
-    els.front[i].mem.dataset.hot = String(fallAt === null && fr.util > 0.9);
-  });
-  // cross girders at every joint, and X bracing between the top chords
-  const setL = (el, p, q2) => { const A = sp(p), B = sp(q2); el.setAttribute("x1", A[0]); el.setAttribute("y1", A[1]); el.setAttribute("x2", B[0]); el.setAttribute("y2", B[1]); };
-  let bi = 0;
-  J.forEach((j) => { setL(els.braces[bi++], j.f, j.b); });
-  for (let i = g.N + 1; i < g.J.length - 1; i++) { setL(els.braces[bi++], J[i].f, J[i + 1].b); setL(els.braces[bi++], J[i].b, J[i + 1].f); }
-  J.forEach((j, i) => { const A = sp(j.f); els.gus[i].setAttribute("cx", A[0]); els.gus[i].setAttribute("cy", A[1]); });
-  // the deck: slab top, centre line, and the front edge
-  const bot = J.slice(0, g.N + 1).map((j, i) => ({ ...j, i }));
-  const poly = (pts) => "M" + pts.map((p) => sp(p).join(" ")).join("L") + "Z";
-  const yIn = D.YT - 1.5;
-  const slabOf2 = (arr, pc) => {
-    if (arr.length < 2) return ["", "", ""];
-    const W2 = (j, z, y) => world(j.x, z, y, j.i, pc);
-    const top = poly([...arr.map((j) => W2(j, DECK_TOP, yIn)), ...arr.slice().reverse().map((j) => W2(j, DECK_TOP, -yIn))]);
-    const fas = poly([...arr.map((j) => W2(j, DECK_TOP, yIn)), ...arr.slice().reverse().map((j) => W2(j, -0.55, yIn))]);
-    let ln = "";
-    for (let k2 = 0; k2 < arr.length - 1; k2++) {
-      const A = W2(arr[k2], DECK_TOP + 0.01, 0), B = W2(arr[k2 + 1], DECK_TOP + 0.01, 0), at2 = (t) => sp(A.map((v, q3) => v + (B[q3] - v) * t)).join(" ");
-      ln += "M" + at2(0.1) + "L" + at2(0.4) + "M" + at2(0.6) + "L" + at2(0.9);
-    }
-    return [top, fas, ln];
-  };
-  if (f) {
-    const L1 = slabOf2(bot.filter((j) => j.x <= breakX), 0), R1 = slabOf2(bot.filter((j) => j.x > breakX), 1);
-    els.deck.setAttribute("d", L1[0] + R1[0]); els.fascia.setAttribute("d", L1[1] + R1[1]); els.lanes.setAttribute("d", L1[2] + R1[2]);
-  } else {
-    const A1 = slabOf2(bot);
-    els.deck.setAttribute("d", A1[0]); els.fascia.setAttribute("d", A1[1]); els.lanes.setAttribute("d", A1[2]);
+// ---------------- drawing ----------------
+function buildBridge() {}
+const TAU = Math.PI * 2;
+const REST = lightTheme ? "#8b939c" : "#9aa2ab";
+const hx = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const mixHex = (a, b, t) => { const A = hx(a), B = hx(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, "0")).join(""); };
+const XA0 = D.X0, XA1 = D.X0 + D.SPAN * D.U, PX0 = D.PLATE.x + 2, PX1 = D.PLATE.x + D.PLATE.w - 2, PY0 = D.PLATE.y + 2, PY1 = D.PLATE.y + D.PLATE.d - 2;
+function siteStatic() {
+  const o = [], RK = { mat: "matte" }, DZ = D.DZ, YT = D.YT;
+  // the river bed, and the water over it
+  o.push(box(XA0 - 1, XA1 + 1, PY0, PY1, 0, 0.8, "#5a5142", RK));
+  for (let i = 0; i < 14; i++) { const x = XA0 + 14 + ((i * 53) % (XA1 - XA0 - 28)), y = PY0 + 10 + ((i * 37) % (PY1 - PY0 - 20)), r = 2 + (i % 3); o.push(sphere([x, y, 0.8], r, i % 2 ? "#6b6457" : "#7a7366", { squash: [1.3, 1, 0.55], lat: 5, lon: 8, mat: "matte" })); }
+  o.push(box(XA0, XA1, PY0, PY1, 0.8, 5, "#2f6f9c", { mat: "water", opacity: lightTheme ? 0.7 : 0.6, bevel: 0 }));
+  // the banks: rock in strata, grass on top, the road down the middle, a concrete seat under each end of the bridge
+  for (const [x0, x1, face] of [[PX0, XA0, XA0], [XA1, PX1, XA1]]) {
+    const strata = [[0, 9, "#6b6257"], [9, 20, "#7a7064"], [20, 31, "#6f665a"], [31, DZ - 0.6, "#81776a"]];
+    strata.forEach(([z0, z1, col], i) => { const inset = (3 - i) * 1.6, a = face === x1 ? x0 : x0 - inset * 0, b = face === x1 ? x1 + inset : x1; o.push(box(face === x1 ? x0 : x0 - inset, face === x1 ? x1 + inset : x1, PY0, PY1, z0, z1, col, RK)); });
+    o.push(box(x0, x1, PY0, -YT + 2, DZ - 0.6, DZ + 0.5, "#6f8f52", { ...RK, cap: "#7fa35e" }), box(x0, x1, YT - 2, PY1, DZ - 0.6, DZ + 0.5, "#6f8f52", { ...RK, cap: "#7fa35e" }));
+    o.push(box(x0, x1, -YT + 2, YT - 2, DZ - 0.6, DZ + 0.6, "#34373c", { mat: "matte", cap: "#3b3e44" }));
+    for (let x = x0 + 3; x < x1 - 4; x += 9) o.push(box(x, x + 4.5, -0.35, 0.35, DZ + 0.6, DZ + 0.68, "#e8e4d6", { bevel: 0, mat: "matte" }));
+    for (const y of [-YT + 2.6, YT - 2.6]) o.push(box(x0 + 1, x1 - 1, y - 0.25, y + 0.25, DZ + 0.6, DZ + 0.68, "#e8e4d6", { bevel: 0, mat: "matte" }));
+    const sx0 = face === x1 ? face - 9 : face, sx1 = face === x1 ? face : face + 9;
+    o.push(box(Math.min(sx0, sx1) - (face === x1 ? 0 : 0), Math.max(sx0, sx1), -YT - 7, YT + 7, DZ - 12, DZ + 0.2, "#b3aea3", { mat: "concrete" }));
+    // guard rails along the approach
+    for (const y of [-YT + 0.6, YT - 0.6]) { for (let x = x0 + 3; x <= x1 - 2; x += 8) o.push(box(x - 0.4, x + 0.4, y - 0.4, y + 0.4, DZ + 0.5, DZ + 4, "#8f959d", { mat: "steel", bevel: 0 })); o.push(tube([[x0 + 2, y, DZ + 3.4], [x1 - 1, y, DZ + 3.4]], 0.55, "#c2c7cd", { seg: 5, mat: "steel" })); }
   }
-  // vehicles: anything on the span when it goes comes down with it; anything still on the road waits on top
-  occG.style.display = f ? "" : "none";
-  if (f) { const want = f.e > 0.02 ? "url(#occclip2)" : "url(#occclip)"; if (occG.getAttribute("clip-path") !== want) occG.setAttribute("clip-path", want); }
-  cars.forEach((c) => {
-    if (!c.el) { c.el = document.createElementNS("http://www.w3.org/2000/svg", "g"); c.el.setAttribute("class", "veh"); }
-    if (f && !c.fell && onSpanTons(c) > 0) {
-      // it goes with whichever piece most of it is sitting on
-      const x0 = c.x + VEH[c.kind].rear, x1 = c.x + VEH[c.kind].front, ov = (a, b) => Math.max(0, Math.min(x1, b) - Math.max(x0, a));
-      c.fell = true; c.piece = ov(0, breakX) >= ov(breakX, D.SPAN) ? 0 : 1;
+  // bearings
+  for (const x of [XA0, XA1]) for (const y of [-YT, YT]) o.push(box(x - 3.5, x + 3.5, y - 3, y + 3, DZ - 0.1, DZ + 1.3, "#4a4f56", { mat: "steel" }));
+  // trees and a couple of boulders, so it's a place and not a diagram
+  for (let n = 0; n < 12; n++) { const left = n % 2 === 0, x = left ? PX0 + 6 + ((n * 17) % 40) : XA1 + 8 + ((n * 23) % 40), y = (n % 4 < 2 ? 1 : -1) * (YT + 8 + ((n * 29) % 34)), s = 0.8 + (n % 3) * 0.25; o.push(lathe([[0, 0], [0.9 * s, 0], [0.9 * s, 4 * s], [4.4 * s, 4.6 * s], [2.8 * s, 9.5 * s], [0, 14.5 * s]], n % 3 ? "#4f7a45" : "#5b8a4d", { c: [x, y, DZ + 0.5], mat: "matte", seg: 9 })); }
+  return o;
+}
+// vehicles: each part's a prism, a side profile pushed out across the vehicle
+const VMAT = (col) => (col === C.glass ? { mat: "gloss" } : col === C.tyre ? { mat: "rubber" } : col === C.chrome || col === C.hub ? { mat: "steel" } : col === C.silver ? { mat: "paint" } : col === C.lamp ? { emit: ["#ffe08a", 0.9], emitK: 2 } : col === C.tail ? { emit: ["#ff3a2a", 0.7], emitK: 1.6 } : col === C.dark || col === C.bar ? { mat: "satin" } : col === C.dirt ? { mat: "matte" } : { mat: "paint" });
+const toPrism = (pt) => prism(pt.ring, "y", pt.y0, pt.y1, pt.col, VMAT(pt.col));
+const VPARTS = Object.fromEntries(Object.keys(MODELS).map((kk) => [kk, MODELS[kk].parts.map(toPrism)]));
+function vehicleObj(c, f) {
+  const M = MODELS[c.kind], lane = M.lane * D.LANE, piece = c.piece, fallen = f && c.fell;
+  const ax = VEH[c.kind].axles, xa = c.x, xb = c.x - ax[ax.length - 1][0], za = deck0(xa), zb = deck0(xb);
+  const sagAt = M.rigid ? (xm) => za + ((zb - za) * (xa - xm)) / Math.max(0.1, xa - xb) : deck0;
+  const xf = fallen ? (p) => { const xm = c.x + p[0]; return (piece === 0 && xm < 0) || (piece === 1 && xm > D.SPAN) ? [D.X0 + xm * D.U, lane + p[1] * D.U, D.DZ + (DECK_TOP + p[2]) * D.U] : world(xm, DECK_TOP + p[2], lane + p[1] * D.U, undefined, piece, c.drop || 0); } : (p) => { const xm = c.x + p[0]; return [D.X0 + xm * D.U, lane + p[1] * D.U, D.DZ + (sagAt(xm) + DECK_TOP + p[2]) * D.U]; };
+  const a = fallen ? -1e9 : D.EDGE_L - c.x, b = fallen ? 1e9 : D.EDGE_R - c.x;
+  let parts = VPARTS[c.kind];
+  if (a > M.rear || b < M.front) parts = M.parts.map((pt) => { const ring = clipX(pt.ring, a, b); return ring ? toPrism({ ...pt, ring }) : null; });
+  return { parts, xf, bevel: 0 };
+}
+function memberCol(fr) { const u = clamp(fr.util, 0, 1.2), t = clamp(u / 0.9, 0, 1); return [mixHex(REST, fr.N >= 0 ? "#ff3d2e" : "#2f7dff", t), t]; }
+const MR = { bottom: 1.25, top: 1.35, end: 1.35, vert: 0.95, diag: 1.0 };
+let hover = -1, lastJ = null;
+function draw() {
+  const f = fallState(), YT = D.YT;
+  const J = g.J.map(([x, z], i) => ({ f: world(x, z, YT, i), b: world(x, z, -YT, i), x, z }));
+  lastJ = J;
+  const steel = [], mid = (p, q2, t) => p.map((v, k2) => v + (q2[k2] - v) * t);
+  g.M.forEach((m, i) => {
+    const a = J[m.a], b = J[m.b], broke = broken.has(i), fr = res && !res.mech ? res.forces[i] : { N: 0, util: 0 };
+    const [col, t] = fallAt !== null || broke ? [REST, 0] : memberCol(fr), hot = fallAt === null && fr.util > 0.9 && !broke;
+    const o2 = { seg: 4, mat: "paint", emit: i === hover && fallAt === null && !broke ? ["#ffffff", 0.45] : hot ? [col, 0.55 + 0.35 * Math.sin(now * 14)] : t > 0.25 ? [col, (t - 0.25) * 0.3] : undefined, emitK: 1.5 };
+    for (const [p, q2] of [[a.f, b.f], [a.b, b.b]]) {
+      if (broke) steel.push(tube([p, mid(p, q2, 0.4)], MR[m.type], REST, o2), tube([mid(p, q2, 0.62), q2], MR[m.type], REST, o2));
+      else steel.push(tube([p, q2], MR[m.type], col, o2));
     }
-    const host = f && !c.fell ? topG : els.cars;
-    if (c.el.parentNode !== host) host.appendChild(c.el);
-    c.el.innerHTML = renderVehicle(c, f);
   });
+  // gusset plates, floor beams at every joint, X bracing between the top chords
+  const GZ = "#70777f";
+  J.forEach((j, i) => { for (const [p, s] of [[j.f, 1], [j.b, -1]]) steel.push(prism(circle(p[0], p[2], 2.5, 10), "y", p[1] + s * 1.0, p[1] + s * 1.9, GZ, { mat: "steel", bevel: 0 })); steel.push(tube([j.f, j.b], i <= g.N ? 1.0 : 0.8, GZ, { seg: 4, mat: "paint" })); });
+  for (let i = g.N + 1; i < g.J.length - 1; i++) steel.push(tube([J[i].f, J[i + 1].b], 0.45, GZ, { seg: 4, mat: "paint" }), tube([J[i].b, J[i + 1].f], 0.45, GZ, { seg: 4, mat: "paint" }));
+  // the deck: a slab hung between the bottom chords (glass in x-ray, so you can see the floor beams)
+  const bot = J.slice(0, g.N + 1).map((j, i) => ({ ...j, i })), yIn = YT - 1.5, deck = [], dash = [];
+  const slab = (arr, pc) => {
+    if (arr.length < 2) return;
+    const W2 = (j, z, y) => world(j.x, z, y, j.i, pc), top = [], side = [], q4 = (a, b, c, d) => [[a, b, c], [a, c, d]];
+    for (let k2 = 0; k2 < arr.length - 1; k2++) {
+      const A = arr[k2], B = arr[k2 + 1];
+      top.push(...q4(W2(A, DECK_TOP, yIn), W2(B, DECK_TOP, yIn), W2(B, DECK_TOP, -yIn), W2(A, DECK_TOP, -yIn)));
+      for (const y of [yIn, -yIn]) side.push(...q4(W2(A, DECK_TOP, y), W2(B, DECK_TOP, y), W2(B, -0.55, y), W2(A, -0.55, y)));
+      side.push(...q4(W2(A, -0.55, yIn), W2(B, -0.55, yIn), W2(B, -0.55, -yIn), W2(A, -0.55, -yIn)));
+      const a0 = W2(A, DECK_TOP + 0.03, 0), b0 = W2(B, DECK_TOP + 0.03, 0);
+      dash.push([mid(a0, b0, 0.1), mid(a0, b0, 0.4)], [mid(a0, b0, 0.6), mid(a0, b0, 0.9)]);
+      for (const y of [yIn - 1.2, -yIn + 1.2]) dash.push([W2(A, DECK_TOP + 0.03, y), W2(B, DECK_TOP + 0.03, y)]);
+    }
+    for (const e of [arr[0], arr[arr.length - 1]]) side.push(...q4(W2(e, DECK_TOP, yIn), W2(e, DECK_TOP, -yIn), W2(e, -0.55, -yIn), W2(e, -0.55, yIn)));
+    deck.push(tris(top, "#3b3e44", { mat: "matte", shell: true }), tris(side, "#aaa59b", { mat: "concrete", shell: true }));
+  };
+  if (f) { slab(bot.filter((j) => j.x <= breakX), 0); slab(bot.filter((j) => j.x > breakX), 1); } else slab(bot);
+  // vehicles: anything on the span when it goes comes down with it
+  const vobs = [];
+  cars.forEach((c) => {
+    if (f && !c.fell && onSpanTons(c) > 0) { const x0 = c.x + VEH[c.kind].rear, x1 = c.x + VEH[c.kind].front, ov = (a, b) => Math.max(0, Math.min(x1, b) - Math.max(x0, a)); c.fell = true; c.piece = ov(0, breakX) >= ov(breakX, D.SPAN) ? 0 : 1; }
+    vobs.push(vehicleObj(c, f));
+  });
+  let svg = E.render([{ cache: "site", rev: 0, parts: siteStatic }, { parts: steel }, { parts: deck }, ...vobs]);
+  for (const [p, q2] of dash) E.line(p, q2, 1.6, "#ece8da", 0.75 * (1 - E.xray * 0.7));
+  // ripples drifting down the river
+  for (let i = 0; i < 10; i++) { const y = PY0 + 6 + ((i * 31 + now * 5) % (PY1 - PY0 - 12)), x = XA0 + 16 + ((i * 47) % (XA1 - XA0 - 40)); E.line([x, y, 5.05], [x + 10, y, 5.05], 1.3, "#ffffff", 0.28); }
   // splash and snap
-  let sh = "";
   if (f) {
     const hits = [[0.6, breakX * 0.5], [0.6, breakX + (D.SPAN - breakX) * 0.5], [1.9, Math.min(4, breakX * 0.3)], [1.9, Math.max(D.SPAN - 4, D.SPAN - (D.SPAN - breakX) * 0.3)]];
     for (const [t0, xm] of hits) {
       const tt = f.t - t0; if (tt < 0 || tt > 2) continue;
-      const r = Math.min(1, tt / 1.5), c = sp([D.X0 + xm * D.U, 0, 0.2]);
-      sh += '<ellipse class="splash" cx="' + c[0] + '" cy="' + c[1] + '" rx="' + (10 + 60 * r).toFixed(1) + '" ry="' + (4 + 24 * r).toFixed(1) + '" style="opacity:' + (1 - r).toFixed(2) + '"/>';
-      if (tt < 1.65) for (let i = 0; i < 16; i++) {
-        const ang = (i / 16) * Math.PI * 2, sp2 = 2 + (i * 7) % 4, vz = 9 + (i * 5) % 6;
-        const p = [D.X0 + xm * D.U + Math.cos(ang) * sp2 * tt * D.U, Math.sin(ang) * sp2 * tt * D.U, Math.max(0, (vz * tt - 4.9 * tt * tt) * D.U)];
-        const c2 = sp(p); sh += '<circle class="drop" cx="' + c2[0] + '" cy="' + c2[1] + '" r="' + Math.max(0.4, 1.8 - tt * 0.6).toFixed(2) + '" style="opacity:' + clamp(1 - tt / 1.65, 0, 1).toFixed(2) + '"/>';
-      }
+      const r = Math.min(1, tt / 1.5), cx = D.X0 + xm * D.U, R = 8 + 50 * r;
+      for (let i = 0; i < 28; i++) { const a0 = (i / 28) * TAU, a1 = ((i + 1) / 28) * TAU; E.line([cx + Math.cos(a0) * R, Math.sin(a0) * R * 0.9, 5.1], [cx + Math.cos(a1) * R, Math.sin(a1) * R * 0.9, 5.1], 2.5, "#ffffff", 0.8 * (1 - r)); }
+      if (tt < 1.65) for (let i = 0; i < 26; i++) { const ang = (i / 26) * TAU, sp2 = 2 + ((i * 7) % 4), vz = 9 + ((i * 5) % 7); E.sprite([cx + Math.cos(ang) * sp2 * tt * D.U, Math.sin(ang) * sp2 * tt * D.U, 5 + Math.max(0, (vz * tt - 4.9 * tt * tt) * D.U)], 2.6 - tt, "#eaf4ff", clamp(1 - tt / 1.65, 0, 1) * 0.9, false, 1); }
+      if (tt < 0.8) for (let i = 0; i < 6; i++) E.sprite([cx + (i - 2.5) * 6, ((i * 13) % 20) - 10, 6 + tt * 30], 10 + tt * 26, "#dfeaf4", 0.4 * (1 - tt / 0.8));
     }
   }
-  splashG.innerHTML = sh;
   if (now - snapAt < 0.5 && snapped >= 0) {
-    const m = g.M[snapped], a = J[m.a], b = J[m.b], c = sp(a.f.map((v, k2) => v + (b.f[k2] - v) * 0.45)), r = (now - snapAt) * 40;
-    els.snap.innerHTML = '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="' + (3 + r).toFixed(1) + '" class="snapring" style="opacity:' + (1 - (now - snapAt) * 2).toFixed(2) + '"/>';
-  } else els.snap.innerHTML = "";
+    const m = g.M[snapped], a = J[m.a], b = J[m.b], tt = now - snapAt;
+    for (const [p, q2] of [[a.f, b.f], [a.b, b.b]]) { const c = mid(p, q2, 0.5); E.sprite(c, 5 + tt * 40, "#fff3c8", 0.9 * (1 - tt * 2), true, 1); for (let i = 0; i < 8; i++) { const an = (i / 8) * TAU + snapped, d = 4 + tt * 60; E.line([c[0] + Math.cos(an) * d, c[1], c[2] + Math.sin(an) * d], [c[0] + Math.cos(an) * (d + 5), c[1], c[2] + Math.sin(an) * (d + 5)], 2, "#ffd27a", 1 - tt * 2, true); } }
+  }
+  // x-ray: the numbers. Force in the hardest-working members, tension or compression
+  if (E.xray > 0.05 && fallAt === null && res && !res.mech) {
+    const top = res.forces.map((fr, i) => ({ fr, i })).filter((e) => !broken.has(e.i) && e.fr.util > 0.04).sort((p, q2) => q2.fr.util - p.fr.util).slice(0, E.fs < 0.62 ? 4 : 9);
+    let s = "";
+    for (const { fr, i } of top) { const m = g.M[i], c = E.project(mid(J[m.a].f, J[m.b].f, 0.5)); s += '<text class="frc ' + (fr.N >= 0 ? "ten" : "com") + '" x="' + c[0].toFixed(1) + '" y="' + (c[1] - 7).toFixed(1) + '" text-anchor="middle">' + (fr.N >= 0 ? "+" : "−") + Math.round(Math.abs(fr.N)).toLocaleString("en-AU") + " kN</text>"; }
+    svg += '<g opacity="' + E.xray.toFixed(2) + '">' + s + "</g>";
+  }
+  if (sceneG.innerHTML !== svg) sceneG.innerHTML = svg;
   const tons = cars.reduce((a, c) => a + onSpanTons(c), 0);
   const text = fallAt !== null ? "COLLAPSED" : (cars.length ? Math.round(tons) + " t on the span · " : "empty · ") + "worst member " + Math.round(worst.util * 100) + " %";
   if (readout.textContent !== text) readout.textContent = text;
 }
+// picking: tap (not drag) a member to cut it, hover to see which one you'd get
+const overEl = stage.querySelector(".mk-over");
+function pick(ev) {
+  if (!lastJ || fallAt !== null || ev.target.closest(".mk-tools,button,a")) return -1;
+  const m0 = overEl.getScreenCTM(); if (!m0) return -1;
+  const pt = overEl.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY; const q2 = pt.matrixTransform(m0.inverse());
+  let best = -1, bd = ev.pointerType === "touch" ? 16 : 9;
+  g.M.forEach((m, i) => {
+    if (broken.has(i)) return;
+    for (const side of ["f", "b"]) {
+      const a = E.project(lastJ[m.a][side]), b = E.project(lastJ[m.b][side]), dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1;
+      const t = clamp(((q2.x - a[0]) * dx + (q2.y - a[1]) * dy) / L2, 0.08, 0.92), d = Math.hypot(q2.x - a[0] - dx * t, q2.y - a[1] - dy * t) + (side === "b" ? 2.5 : 0);
+      if (d < bd) { bd = d; best = i; }
+    }
+  });
+  return best;
+}
+let downAt = null;
+stage.addEventListener("pointerdown", (ev) => { downAt = [ev.clientX, ev.clientY]; });
+stage.addEventListener("pointerup", (ev) => { if (!downAt) return; const moved = Math.hypot(ev.clientX - downAt[0], ev.clientY - downAt[1]); downAt = null; if (moved > 6) return; const i = pick(ev); if (i >= 0) { hover = -1; cut(i); } });
+stage.addEventListener("pointermove", (ev) => { if (ev.pointerType === "touch" || ev.buttons) return; const i = pick(ev); if (i !== hover) { hover = i; stage.style.cursor = i >= 0 ? "pointer" : ""; if (!frame) draw(); } });
+stage.addEventListener("pointerleave", () => { if (hover !== -1) { hover = -1; stage.style.cursor = ""; if (!frame) draw(); } });
+
 function onSpanTons(c) { const s = VEH[c.kind]; let t = 0; for (const [off, fr] of s.axles) { const x = c.x - off; if (x >= 0 && x <= D.SPAN) t += s.t * fr; } return t; }
 
 function solve() {
@@ -504,7 +443,7 @@ function tick(t) {
     }
   }
   step(sdt); draw(); syncUi(); story();
-  const idle = !touring && !cars.length && fallAt === null && now - snapAt > 1;
+  const idle = !touring && !cars.length && fallAt === null && now - snapAt > 1 && false;
   frame = visible && !idle ? requestAnimationFrame(tick) : 0;
 }
 const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
@@ -525,64 +464,22 @@ ui.fresh.addEventListener("click", doFresh);
 ui.slow.addEventListener("click", () => { slow = !slow; run(); });
 ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; tourClock = 0; actions = []; } run(); });
 stage.addEventListener("keydown", (ev) => {
-  const map = { "1": () => doSend("car"), "2": () => doSend("bus"), "3": () => doSend("bdouble"), "4": () => doSend("roadtrain"), "5": () => doSend("haul"), j: doJam, h: () => doKind(kind === "pratt" ? "howe" : "pratt"), r: doFresh, s: () => { slow = !slow; run(); } };
+  const map = { x: () => { setX(!E.xrayOn); run(); }, "1": () => doSend("car"), "2": () => doSend("bus"), "3": () => doSend("bdouble"), "4": () => doSend("roadtrain"), "5": () => doSend("haul"), j: doJam, h: () => doKind(kind === "pratt" ? "howe" : "pratt"), r: doFresh, s: () => { slow = !slow; run(); } };
   if (map[ev.key]) { ev.preventDefault(); map[ev.key](); }
 });
-window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+window.__fig = { E, freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
 solve(); draw(); syncUi(); story();
 `;
 
-const CSS = `.fx-stage{position:relative}
-.iso-plate{overflow:hidden}
-.fx-stage{--rest:var(--anatomy-mid)}
-.river{fill:#2c5d8a;opacity:.55}body[data-theme="light"] .river{fill:#8fb8dc;opacity:.7}
-.ripple{fill:none;stroke:#9cc4e8;stroke-width:.7;opacity:.5}
-.road .iso-fill,.road .iso-shade,.road .iso-top{fill:#3a3a3a}body[data-theme="light"] .road .iso-fill,body[data-theme="light"] .road .iso-top{fill:#8a8a8a}
-.mem{stroke-linecap:round;fill:none}
-.mem.t-bottom,.mem.t-top,.mem.t-end{stroke-width:3.2}.mem.t-vert,.mem.t-diag{stroke-width:2.2}
-.mem.back{opacity:.5}
-.mem-o{stroke:#0b0c0e;stroke-linecap:round;opacity:.75}.mem-o.t-bottom,.mem-o.t-top,.mem-o.t-end{stroke-width:5}.mem-o.t-vert,.mem-o.t-diag{stroke-width:3.8}
-body[data-theme="light"] .mem-o{stroke:#3a3d42;opacity:.55}
-.gus{fill:#5a5e64;stroke:#0b0c0e;stroke-width:.6}body[data-theme="light"] .gus{fill:#8d9298;stroke:#4a4d52}
-.lanes{fill:none;stroke:#e9e4c8;stroke-width:1;opacity:.75}
-.fascia{fill:#55595f;stroke:#222;stroke-width:.5}body[data-theme="light"] .fascia{fill:#a7abb0;stroke:#777}
-.vshadow{fill:#000;opacity:.3}
-.veh path{stroke:rgba(0,0,0,.35);stroke-width:.35;stroke-linejoin:round}
-.drop{fill:#d9ecff}
-.mem[data-hot="true"]{animation:hot .5s infinite alternate}
-@keyframes hot{to{stroke-width:4.4}}
-.hit{stroke:transparent;stroke-width:12;stroke-linecap:round;cursor:pointer;pointer-events:stroke}
-.fronttruss [data-fm]:hover .mem{stroke-dasharray:4 2}
-.brace{stroke:#6c7177;stroke-width:1.1}
-.deck{fill:#cfd2d5;stroke:var(--anatomy-mid);stroke-width:.6}
-body[data-theme="dark"] .deck{fill:#45484d}
-.deck-edge{fill:none;stroke:var(--anatomy-mid);stroke-width:1}
-.veh .iso-fill,.veh .iso-shade{fill:color-mix(in srgb,var(--paint),#000 25%)}.veh .iso-top{fill:var(--paint)}
-.veh .glass .iso-fill,.veh .glass .iso-shade,.veh .glass .iso-top{fill:#9cc4e8}
-.veh .trailer .iso-fill,.veh .trailer .iso-shade{fill:#b9bdc2}.veh .trailer .iso-top{fill:#dfe2e5}
-.veh .tyre .iso-fill,.veh .tyre .iso-shade,.veh .tyre .iso-top{fill:#222}
-.splash{fill:none;stroke:#cfe6ff;stroke-width:2}
-.snapring{fill:none;stroke:#ffd36a;stroke-width:2}
-.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
-.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.ctl-label{min-width:72px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
-.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
-.ctl button:hover{border-color:var(--anatomy-mid)}
-.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
-.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
-.ctl [data-send="haul"],.ctl #fresh{border-color:#ff6a3d;color:#ff6a3d}
-.ctl output{min-width:72px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
-.meter{position:relative;flex:1;min-width:110px;height:10px;margin-top:14px;border:1px solid var(--anatomy-lo);border-radius:5px}
-.meter .fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .1s;background:var(--anatomy-mid)}
-.meter .fill[data-state="ok"]{background:#3ddc84}.meter .fill[data-state="warn"]{background:#ffb347}.meter .fill[data-state="bad"]{background:#ff5a2a}
-.mark{position:absolute;top:-14px;bottom:-3px;width:0;border-left:1px dashed #ff6a3d;pointer-events:none}
-.mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:#ff6a3d}
-.key-t{display:inline-block;width:18px;height:3px;border-radius:2px;vertical-align:middle;margin:0 4px 0 8px}
-#stats{font-size:12px;color:var(--anatomy-mid);line-height:1.5}#stats b{color:var(--anatomy-hi,var(--anatomy-mid));font-weight:600}
-#shot{min-height:3.6em;font-size:12px;line-height:1.4}
-@media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:60px}.ctl button small{display:none}}`;
+const CSS = `.key-t{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 5px 0 10px;vertical-align:-1px}.key-t:first-child{margin-left:0}
+.frc{font:700 calc(10.5px*var(--mk-ts,1)) var(--anatomy-mono);paint-order:stroke;stroke:var(--mk-stage-b);stroke-width:3px;stroke-linejoin:round}.frc.ten{fill:#ff6a5a}.frc.com{fill:#5aa0ff}body[data-theme="light"] .frc.ten{fill:#c8281a}body[data-theme="light"] .frc.com{fill:#1a5fd0}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Truss bridge: 1 to 5 send a car, bus, B-double, road train or haul truck; J jams the traffic; H swaps Pratt and Howe; tap a member to cut it">${svg}</div>`;
+const stage = stageHtml({
+  W, H, fig: "Fig 19", title: "Truss bridge", xray: true,
+  label: "A steel truss bridge across a river, 48 metres between abutments, with the deck between two trusses. Vehicles drive across on the deck. Each member is coloured by the force in it: red for tension, blue for compression. An x-ray mode turns the deck to glass and puts the force on the hardest-working members.",
+  keysHelp: "Truss bridge: drag to rotate, X for the forces, 1 to 5 send a car, bus, B-double, road train or haul truck; J jams the traffic; H swaps Pratt and Howe; tap a member to cut it",
+  extra: ``,
+});
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Controls">
   <div class="ctl-row"><span class="ctl-label">Send</span><button type="button" data-send="car">Car<small>1.5 t</small></button><button type="button" data-send="bus">Bus<small>18 t</small></button><button type="button" data-send="bdouble">B-double<small>62.5 t</small></button><button type="button" data-send="roadtrain">Road train<small>120 t</small></button><button type="button" data-send="haul">Haul truck<small>620 t</small></button></div>
@@ -590,27 +487,21 @@ const CONTROLS = `<div class="ctl" role="group" aria-label="Controls">
   <div class="ctl-row"><span class="ctl-label">Truss</span><button type="button" data-kind="pratt" aria-pressed="true">Pratt<small>diagonals in tension</small></button><button type="button" data-kind="howe" aria-pressed="false">Howe<small>diagonals in compression</small></button></div>
   <div class="ctl-row"><span class="ctl-label">Worst</span><div class="meter"><span id="u-fill" class="fill"></span><span class="mark" style="left:${(100 / 120 * 100).toFixed(1)}%" data-label="100 % = it goes"></span></div><output id="u-out">0 %</output></div>
   <div class="ctl-row"><span class="ctl-label">On span</span><div class="meter"><span id="t-fill" class="fill"></span></div><output id="t-out">0 t</output></div>
-  <div class="ctl-row"><span class="ctl-label">Forces</span><span id="stats"></span></div>
-  <div class="ctl-row"><span class="ctl-label">Key</span><span><span class="key-t" style="background:#ff4a3d"></span>tension<span class="key-t" style="background:#3d8bff"></span>compression · tap a member to cut it</span></div>
+  <div class="ctl-row wide"><span class="ctl-label">Forces</span><span id="stats"></span></div>
+  <div class="ctl-row wide"><span class="ctl-label">Key</span><span><span class="key-t" style="background:#ff4a3d"></span>tension<span class="key-t" style="background:#3d8bff"></span>compression · tap a member to cut it · X-ray for the numbers</span></div>
   <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="fresh">New bridge</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
-  <div id="shot" aria-live="polite"></div>
 </div>`;
 
-const card = k.plateHtml({
-  fig: "Fig 19",
-  title: "Truss bridge",
-  hint: "Tap a member: cut it",
-  readout: "",
-  keys: [
-    { mark: "lit", label: "Member force: red tension, blue compression, brighter = closer to its limit; sag drawn 80× bigger" },
-    { mark: "raised", label: "48 m steel truss bridge, abutments, river, and whatever you send over it" },
-  ],
-  caption: "A truss carries load by turning it into pure push and pull along straight members. Put a load on the deck and the bottom chord stretches (tension), the top chord squashes (compression), and the diagonals near the load share it out to the supports. Steel is as strong in tension as in compression, but a long, thin member in compression buckles well before the steel itself gives up. That's the whole difference between these two: a Pratt truss puts its long diagonals in tension, a Howe puts them in compression, so the same steel carries less. And a simple truss like this has no spare members. Lose any one of them, by overload or by cutting it, and it's a mechanism.",
-  body: stageHtml,
-});
 
-const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
-const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a bridge design. Real: the stiffness method for a pin-jointed truss, tension and compression, Euler buckling for compression members, Pratt against Howe, and a determinate truss becoming a mechanism. Typical: B-double 62.5 t, triple road train about 120 t, a big loaded mining haul truck about 620 t. Made up: the member sizes, the dead load, the speeds, no impact factor, and the sag drawn 80 times bigger (dead-load sag left out, as if the bridge were cambered).<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/truss" style="color:inherit">Source</a></p>`;
+const foot = footHtml({
+  theme, slug: "truss",
+  real: "the stiffness method for a pin-jointed truss, tension and compression, Euler buckling for compression members, Pratt against Howe, and a determinate truss becoming a mechanism. Typical: B-double 62.5 t, triple road train about 120 t, a big loaded mining haul truck about 620 t.",
+  made: "the member sizes, the dead load, the speeds, no impact factor, and the sag drawn 80 times bigger (dead-load sag left out, as if the bridge were cambered).",
+});
 const name = theme === "light" ? "light.html" : "index.html";
-writeFileSync(join(HERE, name), k.pageHtml({ title: "Truss bridge", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 700 }));
+writeFileSync(join(HERE, name), pageMk2({
+  k, title: "Truss bridge", fig: "Fig 19", hint: "Tap a member: cut it", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  caption: "A truss carries load by turning it into pure push and pull along straight members. Put a load on the deck and the bottom chord stretches (tension), the top chord squashes (compression), and the diagonals near the load share it out to the supports. Steel is as strong in tension as in compression, but a long, thin member in compression buckles well before the steel itself gives up. That's the whole difference between these two: a Pratt truss puts its long diagonals in tension, a Howe puts them in compression, so the same steel carries less. And a simple truss like this has no spare members. Lose any one of them, by overload or by cutting it, and it's a mechanism.",
+  script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
+}));
 console.log("wrote", name);
