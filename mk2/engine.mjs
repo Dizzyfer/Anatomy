@@ -247,6 +247,7 @@ export function mk2(stage, P, opt = {}) {
   function emitPart(part, ob) {
     if (part.blob) return emitBlob(part);
     const xf = ob.xf || ID, shell = part.shell ?? ob.shell, xr = E.xray;
+    if (part.xhide && xr > 0.01) return; // detail that would only clutter the x-ray
     setMat(part, ob, false);
     const glassy = ca < 1;
     const b = shell && xr > 0.01 && !glassy ? bufS : glassy ? bufT : bufO, start = b.n, edges = b === bufS;
@@ -429,12 +430,17 @@ layout(location=0) out vec4 o0;layout(location=1) out vec4 o1;
 void main(){float a=abs(vCol.a)*clamp(vS.y+.5-abs(vS.x),0.,1.);bool add=vCol.a<0.&&uAddOK>.5;o0=vec4(vCol.rgb*a,add?0.:a);o1=vec4(vCol.rgb*a*(vCol.a<0.?.45:0.),0.);}`;
   const VS_SPR = `#version 300 es
 layout(location=0) in vec3 aC;layout(location=1) in vec3 aQ;layout(location=2) in vec4 aCol;layout(location=3) in vec2 aK;
-${VS_CAM}out vec4 vCol;out vec2 vQ;out vec2 vK;
-void main(){vec3 s=scr(aC);s.xy+=aQ.xy*aQ.z*uOK.z;vCol=aCol;vQ=aQ.xy;vK=aK;gl_Position=clip(s);}`;
+${VS_CAM}out vec4 vCol;out vec2 vQ;out vec2 vK;out vec2 vSeed;
+void main(){vec3 s=scr(aC);bool fl=aK.y>1.5;s.xy+=vec2(aQ.x,fl?aQ.y*1.6-.45:aQ.y)*aQ.z*uOK.z;vCol=aCol;vQ=aQ.xy;vK=aK;vSeed=fract(aC.xy*3.17+aC.z*1.91)*17.;gl_Position=clip(s);}`;
   const FS_SPR = `#version 300 es
-precision highp float;in vec4 vCol;in vec2 vQ;in vec2 vK;uniform float uAddOK;
+precision highp float;in vec4 vCol;in vec2 vQ;in vec2 vK;in vec2 vSeed;uniform float uAddOK;
 layout(location=0) out vec4 o0;layout(location=1) out vec4 o1;
-void main(){float d=length(vQ);if(d>1.)discard;float f=vK.y>.5?exp(-d*d*5.)*(1.-d):pow(1.-d,1.6);float a=vCol.a*f;bool add=vK.x>.5&&uAddOK>.5;
+float h2(vec2 p){vec3 q=fract(vec3(p.xyx)*.1031);q+=dot(q,q.yzx+33.33);return fract((q.x+q.y)*q.z);}
+float n2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h2(i),h2(i+vec2(1.,0.)),f.x),mix(h2(i+vec2(0.,1.)),h2(i+vec2(1.,1.)),f.x),f.y);}
+void main(){float d=length(vQ);if(d>1.)discard;float f;
+if(vK.y>1.5){float n=n2(vQ*vec2(2.6,1.7)+vSeed)*.65+n2(vQ*vec2(5.5,3.6)+vSeed*1.7)*.35;float taper=1.-smoothstep(-.9,.25,-vQ.y)*abs(vQ.x)*1.5;f=smoothstep(.42,.8,(1.-d)*taper*.9+n*.5);}
+else if(vK.y>.5)f=exp(-d*d*5.)*(1.-d);else f=pow(1.-d,1.6);
+float a=vCol.a*f;bool add=vK.x>.5&&uAddOK>.5;
 o0=vec4(vCol.rgb*a,add?0.:a);o1=vec4(vCol.rgb*a*(vK.x>.5?.85:0.),add?0.:a*.6);}`;
   const VS_FS = `#version 300 es
 out vec2 vUv;void main(){vec2 p=vec2(gl_VertexID==1?3.:-1.,gl_VertexID==2?3.:-1.);vUv=p*.5+.5;gl_Position=vec4(p,0.,1.);}`;
