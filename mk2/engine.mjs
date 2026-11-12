@@ -191,8 +191,8 @@ export function mk2(stage, P, opt = {}) {
       if (pr[s][0] > 1e-9) tri3(b, p00, p01, p11, n00, n01, n11);
       if (pr[s + 1][0] > 1e-9) tri3(b, p00, p11, p10, n00, n11, n10);
     }
-    if (!full) { // the cut faces
-      const poly = pr.map((q) => [q[0], q[1]]); if (pr[m - 1][0] > 1e-9) poly.push([0, pr[m - 1][1]]); if (pr[0][0] > 1e-9) poly.push([0, pr[0][1]]);
+    if (!full && part.caps !== false) { // the cut faces
+      const poly = pr.map((q) => [q[0], q[1]]); if (part.closed) poly.pop(); else { if (pr[m - 1][0] > 1e-9) poly.push([0, pr[m - 1][1]]); if (pr[0][0] > 1e-9) poly.push([0, pr[0][1]]); }
       const ix = triangulate(poly); setMat(part, ob, true);
       for (const f of [a0, a1]) { const pts = poly.map(([r, h]) => at(r, h, f)), nn = newell(pts); for (let i = 0; i < ix.length; i += 3) flatTri(b, pts[ix[i]], pts[ix[i + 1]], pts[ix[i + 2]], nn); }
     }
@@ -374,13 +374,12 @@ in vec3 vPos;in vec3 vNrm;in vec4 vCol;in vec3 vEmi;in vec3 vMat;
 uniform vec3 uR,uU,uT,uL,uLX,uLY,uLZ,uLC;uniform float uLR,uShT;uniform sampler2DShadow uSh;
 uniform vec3 uSky,uGnd,uKey,uXcol;uniform float uXray,uLightT,uXfill;uniform int uMode;
 layout(location=0) out vec4 o0;layout(location=1) out vec4 o1;layout(location=2) out vec4 o2;
-float shadow(vec3 p,vec3 n){
-  vec3 q=p+n*uLR*uShT*2.5-uLC;vec3 s=vec3(dot(q,uLX),dot(q,uLY),-dot(q,uLZ))/uLR*.5+.5;
+float ign(vec2 p){return fract(52.9829189*fract(dot(p,vec2(.06711056,.00583715))));}
+float shadow(vec3 p,vec3 n,float nl){
+  vec3 q=p+n*uLR*uShT*3.-uLC;vec3 s=vec3(dot(q,uLX),dot(q,uLY),-dot(q,uLZ))/uLR*.5+.5;
   if(s.x<0.||s.x>1.||s.y<0.||s.y>1.||s.z>1.)return 1.;
-  float t=uShT*.5*1.6,z=s.z-.0012,a=0.;
-  a+=texture(uSh,vec3(s.xy,z))*2.;
-  a+=texture(uSh,vec3(s.xy+vec2(t,t*.4),z));a+=texture(uSh,vec3(s.xy+vec2(-t*.4,t),z));a+=texture(uSh,vec3(s.xy+vec2(-t,-t*.4),z));a+=texture(uSh,vec3(s.xy+vec2(t*.4,-t),z));
-  a+=texture(uSh,vec3(s.xy+vec2(t*1.7,-t*1.1),z));a+=texture(uSh,vec3(s.xy+vec2(-t*1.1,-t*1.7),z));a+=texture(uSh,vec3(s.xy+vec2(-t*1.7,t*1.1),z));a+=texture(uSh,vec3(s.xy+vec2(t*1.1,t*1.7),z));
+  float z=s.z-(.001+.004*(1.-clamp(nl,0.,1.))),rot=ign(gl_FragCoord.xy)*6.2831,t=uShT*1.25,a=0.;
+  for(int i=0;i<10;i++){float fi=float(i)+.5;float an=fi*2.39996+rot;a+=texture(uSh,vec3(s.xy+vec2(cos(an),sin(an))*sqrt(fi/10.)*t,z));}
   return a/10.;
 }
 vec3 env(vec3 r,float rough){
@@ -396,7 +395,7 @@ void main(){
   vec3 base=vCol.rgb;float metal=vMat.x,rough=clamp(vMat.y,.05,1.),nv=max(dot(N,uT),0.);
   vec3 surf,gloss=vec3(0.);
   if(vMat.z>.5){surf=base;}else{
-    float sh=shadow(vPos,N),dif=max(dot(N,uL),0.)*sh;
+    float nl=dot(N,uL),sh=nl>0.?shadow(vPos,N,nl):0.,dif=max(nl,0.)*sh;
     vec3 amb=mix(uGnd,uSky,N.z*.5+.5);
     vec3 Hh=normalize(uL+uT);float nh=max(dot(N,Hh),0.);
     float a2=rough*rough;a2*=a2;float dd=nh*nh*(a2-1.)+1.;float D=min(a2/(3.14159*dd*dd),24.);
@@ -539,7 +538,7 @@ o=vec4(c.rgb+bl,clamp(c.a+max(bl.r,max(bl.g,bl.b))*1.1,0.,1.));}`;
     gl.disable(gl.CULL_FACE); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND);
     // 1 shadow map
     gl.bindFramebuffer(gl.FRAMEBUFFER, shFbo); gl.viewport(0, 0, SH, SH); gl.clear(gl.DEPTH_BUFFER_BIT);
-    gl.useProgram(pShadow.p); lightU(pShadow); gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(1.5, 3);
+    gl.useProgram(pShadow.p); lightU(pShadow); gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(2, 4);
     gl.bindVertexArray(gO.vao); gl.drawArrays(gl.TRIANGLES, 0, gO.count);
     if (E.xray < 0.35 && gS.count) { gl.bindVertexArray(gS.vao); gl.drawArrays(gl.TRIANGLES, 0, gS.count); }
     gl.disable(gl.POLYGON_OFFSET_FILL);

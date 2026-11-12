@@ -1,15 +1,12 @@
-import { writeFileSync, readFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as k from "../../kit/iso-kit.mjs";
-import { kitScript } from "../../scripts/inline-kit.mjs";
+import { engineScript, stageHtml, pageMk2, footHtml } from "../../mk2/shell.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
-const SOLID = readFileSync(join(HERE, "solid.mjs"), "utf8").replace(/^export /gm, "");
-
-const W = 680;
-const H = 520;
+const W = 960, H = 640;
 
 // Truth: point kinetics with delayed neutrons (prompt critical at one dollar of reactivity), fuel Doppler feedback, the
 // void coefficient (positive in an RBMK at low power with the rods out, strongly negative in a PWR), xenon building up
@@ -17,78 +14,27 @@ const H = 520;
 // starts to go in (the positive scram), decay heat after shutdown. Chernobyl 4 timeline from World Nuclear Association.
 // Toy: one delayed group, every coefficient, the xenon clock sped up, decay heat and melting sped up, the geometry.
 const PLATE = { x: -24, y: -24, w: 48, d: 48, r: 2 };
-const PLATE_H = 2, FOOT_H = 1;
-const P = k.fitProjection([...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [-22, -22, 46], [22, -22, 46], [-22, 22, 46], [0, 0, 48]], W, H, { pad: 10, azimuth: 45 });
-const Sv = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const depth2 = ([x, y]) => k.depthOf([x, y, 0], P);
-const byDepth = (pts) => [...pts].sort((a, b) => depth2(a) - depth2(b));
-function plate() {
-  const out = [`<path class="iso-halo" d="${k.haloOf(PLATE, -PLATE_H - FOOT_H, PLATE_H, P)}"/>`];
-  for (const [x, y] of byDepth(k.corners(PLATE, 3))) {
-    out.push(Sv(k.cylinder(x, y, 0.9, -PLATE_H - FOOT_H, 0.2, P, 24), { tone: "lo" }));
-    out.push(Sv(k.cylinder(x, y, 0.7, -PLATE_H - FOOT_H + 0.2, FOOT_H - 0.2, P, 24), { tone: "mid" }));
-  }
-  out.push(Sv(k.slabOf(PLATE, -PLATE_H, PLATE_H, P, 8, 0.2), { tone: "mid", inner: L(k.sideSeam(PLATE, -PLATE_H / 2, P), { tone: "faint" }) }));
-  return out.join("");
-}
-const svg = k.figureSvg({
-  width: W, height: H,
-  label: "A nuclear power plant reactor cut in half. In one mode it's an RBMK-1000 like Chernobyl 4: a graphite core with fuel and control rod channels, the upper shield, steam drums and pumps in an ordinary building. In the other it's a modern pressurised water reactor: a steel pressure vessel with steam generators inside a concrete containment.",
-  body: [plate(), `<g data-part="scene"></g>`, `<g data-part="fly"></g>`],
-});
-const DATA = { W, H, P };
+const P = k.fitProjection([...k.boxCorners(PLATE, -0.8, 0), [-22, -22, 44], [22, -22, 30], [-22, 22, 30], [0, 0, 47]], W, H, { pad: 14, azimuth: 45, elevation: 30 });
+const DATA = { W, H, P, PLATE };
 
 const LIVE = `
-${SOLID}
+${engineScript()}
 const D = __DATA__;
-const PR = D.P;
-const stage = document.querySelector(".fx-stage");
-const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const stage = document.querySelector(".mk-stage");
 const readout = document.querySelector("[data-readout]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-const R = solids((p) => iso(p, PR), (p) => depthOf(p, PR));
-const { box, cyl, prism } = R;
-const svgEl = stage.querySelector("svg"), cv = stage.querySelector(".fx-smoke"), ctx = cv.getContext("2d"), flashEl = stage.querySelector(".fx-flash");
-const sceneG = q("scene"), flyG = q("fly");
-const sp = (p) => { const a = iso(p, PR); return a[0].toFixed(1) + " " + a[1].toFixed(1); };
-const VIEW = R.VIEW, dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-const LIGHT = (() => { const v = [0.45, 0.6, 1]; const n = Math.hypot(...v); return v.map((a) => a / n); })();
-const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-const shadeHex = (hex, n, k2 = 1) => "rgb(" + rgb(hex).map((v) => Math.round(clamp(v * (0.45 + 0.65 * Math.max(0, dot(n, LIGHT))) * k2, 0, 255))).join(",") + ")";
-function normalOf(pts) { let n = [0, 0, 0]; for (let i = 0; i < pts.length; i++) { const p = pts[i], q2 = pts[(i + 1) % pts.length]; n[0] += (p[1] - q2[1]) * (p[2] + q2[2]); n[1] += (p[2] - q2[2]) * (p[0] + q2[0]); n[2] += (p[0] - q2[0]) * (p[1] + q2[1]); } const l = Math.hypot(...n) || 1; return n.map((v) => v / l); }
-const face = (pts, fill, extra = "") => '<path d="M' + pts.map(sp).join("L") + 'Z" fill="' + fill + '"' + extra + "/>";
+const lightTheme = document.body.dataset.theme === "light";
+const E = mk2(stage, D.P, { W: D.W, H: D.H, pivot: [0, 0, 12], plate: { ...D.PLATE, h: 2, foot: 1 }, shadowBox: [-26, -26, -4, 26, 26, 50] });
+const { box, cyl, prism, circle, lathe, tube, sphere, loft, roundPoly, rrect, tris } = E;
+E.bindTools(stage);
+const xbtn = stage.querySelector('[data-mk="xray"]');
+const setX = (on) => { E.setXray(on); if (xbtn) xbtn.setAttribute("aria-pressed", String(on)); };
+const sceneG = stage.querySelector('[data-part="scene"]');
+const iso = (p) => E.project(p), depthOf = (p) => E.depthOf(p);
+const shakeEls = [stage.querySelector(".mk-gl"), stage.querySelector(".mk-over")];
+const setShake = (x, y) => { const t = x || y ? "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)" : ""; for (const e of shakeEls) if (e.style.transform !== t) e.style.transform = t; };
 let seed = 3; const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
-
-// a vertical body of revolution cut in half by the plane x + y = 0 (the near half is removed)
-const F0 = Math.PI * 0.75, F1 = Math.PI * 1.75;
-const at = (cx, cy, r, f, z) => [cx + r * Math.cos(f), cy + r * Math.sin(f), z];
-function half(cx, cy, prof, side, col, n = 16, glow) {
-  const out = [];
-  for (let i = 0; i < prof.length - 1; i++) for (let j = 0; j < n; j++) {
-    const a = F0 + ((F1 - F0) * j) / n, b = F0 + ((F1 - F0) * (j + 1)) / n, fm = (a + b) / 2;
-    const [z0, r0] = prof[i], [z1, r1] = prof[i + 1];
-    const pts = [at(cx, cy, r0, a, z0), at(cx, cy, r1, a, z1), at(cx, cy, r1, b, z1), at(cx, cy, r0, b, z0)];
-    let nn = normalOf(pts);
-    if (dot(nn, [Math.cos(fm), Math.sin(fm), 0]) * side < 0) nn = nn.map((v) => -v);
-    if (Math.abs(nn[0]) + Math.abs(nn[1]) < 0.05 && dot(nn, [0, 0, side]) < 0) nn = nn.map((v) => -v);
-    if (dot(nn, VIEW) <= 0) continue;
-    const c = pts.reduce((s2, p) => [s2[0] + p[0] / 4, s2[1] + p[1] / 4, s2[2] + p[2] / 4], [0, 0, 0]);
-    out.push({ d: dot(c, VIEW), s: face(pts, glow ? glow : shadeHex(col, nn)) });
-  }
-  return out;
-}
-// the cut face of a ring between outer and inner profiles, both sides of the axis
-function sect(cx, cy, outer, inner, fill, cls = "sec") {
-  let s2 = "";
-  for (const f of [F0, F1]) s2 += face([...outer.map(([z, r]) => at(cx, cy, r, f, z)), ...inner.slice().reverse().map(([z, r]) => at(cx, cy, r, f, z))], fill, ' class="' + cls + '"');
-  return s2;
-}
-// a solid disk/slab across the whole cut (both halves of the section joined through the axis)
-function sectFull(cx, cy, z0, z1, r, fill, cls = "sec") { return face([at(cx, cy, r, F0, z0), at(cx, cy, r, F1, z0), at(cx, cy, r, F1, z1), at(cx, cy, r, F0, z1)], fill, ' class="' + cls + '"'); }
-const sectPt = (cx, cy, s, z) => [cx - 0.7071 * s, cy + 0.7071 * s, z];
-
 // ---------------- physics (toy point kinetics, one delayed group, in dollars) ----------------
 const BETA = 0.0065, LAM = 1e-3, LD = 0.08;
 const TYPES = {
@@ -179,152 +125,164 @@ function testStep(dt) {
   if (t > 4 && (n > 0.25 || t > 40) && !test.az5) { test.az5 = true; scram(false); }
 }
 
-// ---------------- particles ----------------
 let parts = [];
 function spark(p, s) { const a = rnd() * Math.PI * 2; parts.push({ k: "spark", p: [...p], v: [Math.cos(a) * 10 * s, Math.sin(a) * 10 * s, 6 + rnd() * 14 * s], life: 0, max: 0.6 + rnd() * 0.8 }); }
 function smokeP(p, s) { parts.push({ k: "smoke", p: [...p], v: [(rnd() - 0.5) * 1.5, (rnd() - 0.5) * 1.5, 5 + rnd() * 4], life: 0, max: 4 + rnd() * 3, s }); }
 function flameP(p) { parts.push({ k: "flame", p: [...p], v: [(rnd() - 0.5) * 2, (rnd() - 0.5) * 2, 4 + rnd() * 5], life: 0, max: 0.6 + rnd() * 0.6 }); }
 function fogP(p) { parts.push({ k: "fog", p: [...p], v: [(rnd() - 0.5) * 3, (rnd() - 0.5) * 3, 1 + rnd() * 2], life: 0, max: 2.5 + rnd() * 2 }); }
 let neutrons = [];
-function sizeCanvas() { const r = svgEl.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1); const w = Math.max(1, Math.round(r.width * dpr)), hh = Math.max(1, Math.round(r.height * dpr)); if (cv.width !== w || cv.height !== hh) { cv.width = w; cv.height = hh; } }
+// ---------------- particles ----------------
+const flashEl = stage.querySelector(".fx-flash");
 let shakeOff = [0, 0];
+const CORE = { rbmk: { r: 5.4, z0: 2.3, z1: 8.7 }, pwr: { r: 2.7, z0: 10.9, z1: 15.6 } };
 function drawParticles(dt) {
-  sizeCanvas();
-  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
-  ctx.setTransform(cv.width / D.W, 0, 0, cv.height / D.H, shakeOff[0] * cv.width / D.W, shakeOff[1] * cv.height / D.H);
-  // neutrons darting about in the cut face of the core
-  const want = dead && dead.kind === "boom" ? 0 : Math.round(clamp(8 + 14 * Math.log10(Math.max(n, 1e-3)) + 14, 0, 70));
-  while (neutrons.length < want) neutrons.push({ s: (rnd() - 0.5) * 2 * (type === "rbmk" ? 5.6 : 2.5), z: (type === "rbmk" ? 2.4 + rnd() * 6.2 : 10.6 + rnd() * 5), a: rnd() * 7, life: 0 });
+  // neutrons darting about in the core
+  const want = dead && dead.kind === "boom" ? 0 : Math.round(clamp(8 + 14 * Math.log10(Math.max(n, 1e-3)) + 14, 0, 70)), K = CORE[type];
+  const fresh = () => { const a = rnd() * 7, r = Math.sqrt(rnd()) * K.r; return { p: [Math.cos(a) * r, Math.sin(a) * r, K.z0 + rnd() * (K.z1 - K.z0)], a: rnd() * 7, b: rnd() * 7 }; };
+  while (neutrons.length < want) neutrons.push(fresh());
   neutrons.length = Math.min(neutrons.length, want);
-  ctx.fillStyle = type === "rbmk" ? "rgba(255,220,150,0.9)" : "rgba(150,210,255,0.95)";
-  for (const nt of neutrons) {
-    nt.a += (rnd() - 0.5) * 2; nt.s += Math.cos(nt.a) * dt * 6; nt.z += Math.sin(nt.a) * dt * 6;
-    const lim = type === "rbmk" ? 5.6 : 2.5, z0 = type === "rbmk" ? 2.2 : 10.4, z1 = type === "rbmk" ? 8.8 : 16;
-    if (Math.abs(nt.s) > lim || nt.z < z0 || nt.z > z1) { nt.s = (rnd() - 0.5) * 2 * lim; nt.z = z0 + rnd() * (z1 - z0); }
-    const P2 = iso(sectPt(0, 0, nt.s, nt.z), PR); ctx.fillRect(P2[0] - 0.8, P2[1] - 0.8, 1.6, 1.6);
+  for (let i = 0; i < neutrons.length; i++) {
+    const nt = neutrons[i]; if (!nt.p) { neutrons[i] = fresh(); continue; }
+    nt.a += (rnd() - 0.5) * 2; nt.b += (rnd() - 0.5) * 2; const o = [nt.p[0], nt.p[1], nt.p[2]];
+    nt.p[0] += Math.cos(nt.a) * Math.cos(nt.b) * dt * 7; nt.p[1] += Math.sin(nt.a) * Math.cos(nt.b) * dt * 7; nt.p[2] += Math.sin(nt.b) * dt * 7;
+    if (Math.hypot(nt.p[0], nt.p[1]) > K.r || nt.p[2] < K.z0 || nt.p[2] > K.z1) { neutrons[i] = fresh(); continue; }
+    E.line(o, nt.p, 1.8, type === "rbmk" ? "#ffe0a0" : "#a8d8ff", 0.9, !lightTheme);
   }
   parts = parts.filter((p) => {
     p.life += dt; if (p.life > p.max) return false;
     const t = p.life / p.max;
     if (p.k === "spark") p.v[2] -= 20 * dt;
+    const o = [p.p[0], p.p[1], p.p[2]];
     for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * dt;
-    const P2 = iso(p.p, PR);
-    const soft = (r, c, a) => { const g = ctx.createRadialGradient(P2[0], P2[1], 0, P2[0], P2[1], r); g.addColorStop(0, "rgba(" + c + "," + a.toFixed(3) + ")"); g.addColorStop(1, "rgba(" + c + ",0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(P2[0], P2[1], r, 0, 7); ctx.fill(); };
-    if (p.k === "smoke") soft((6 + 26 * t) * p.s, "52,50,50", 0.55 * (1 - t));
-    if (p.k === "flame") soft(4 + 10 * t, t < 0.4 ? "255,220,140" : "255,110,40", 0.8 * (1 - t));
-    if (p.k === "fog") soft(6 + 14 * t, "235,240,245", 0.3 * Math.sin(Math.PI * t));
-    if (p.k === "spark") { ctx.fillStyle = "rgba(255," + Math.round(220 - 120 * t) + ",90," + (1 - t).toFixed(2) + ")"; ctx.fillRect(P2[0] - 1, P2[1] - 1, 2, 2); }
+    if (p.k === "smoke") E.sprite(p.p, (1.6 + 7 * t) * p.s, "#343232", 0.55 * (1 - t));
+    if (p.k === "flame") E.sprite(p.p, 2.2 + 3 * t, t < 0.3 ? "#ffe9a8" : t < 0.65 ? "#ff9a2e" : "#e2501a", 0.9 * (1 - t * t), true, 2);
+    if (p.k === "fog") E.sprite(p.p, 1.6 + 3.6 * t, lightTheme ? "#aab4be" : "#ebf0f5", 0.3 * Math.sin(Math.PI * t));
+    if (p.k === "spark") E.line(o, p.p, 2, t < 0.5 ? "#ffe6a0" : "#ff8a3a", 1 - t, true);
     return true;
   });
   // the glow over the open core afterwards
-  if (dead && dead.kind === "boom" && now - dead.t > 1.5) { const A = iso([0, 0, 10], PR), B = iso([0, 0, 60], PR), g = ctx.createLinearGradient(A[0], A[1], B[0], B[1]); g.addColorStop(0, "rgba(140,170,255,0.28)"); g.addColorStop(1, "rgba(140,170,255,0)"); ctx.fillStyle = g; ctx.fillRect(A[0] - 10, B[1], 20, A[1] - B[1]); }
+  if (dead && dead.kind === "boom" && now - dead.t > 1.5) for (let z = 10; z < 60; z += 4) E.sprite([0, 0, z], 5 + z * 0.04, "#8caaff", 0.16 * (1 - (z - 10) / 50), true, 1);
 }
 
 // ---------------- drawing ----------------
 const els = { lid: null, chunks: [] };
-const powerCol = () => { const L2 = clamp((Math.log10(Math.max(n, 1e-3)) + 2) / 3.5, 0, 1); return L2; };
-function hot(base, k2) { const b = rgb(base), hcol = k2 < 0.6 ? [255, 120, 40] : [255, 240, 200], t = clamp(k2, 0, 1); return "rgb(" + b.map((v, i) => Math.round(v + (hcol[i] - v) * t)).join(",") + ")"; }
+const powerCol = () => clamp((Math.log10(Math.max(n, 1e-3)) + 2) / 3.5, 0, 1);
+// a wedge is cut out of everything round, facing the viewer, so you can see in
+const A0 = Math.PI * 0.62, A1 = Math.PI * 1.88, CUT = "#d9c9a6";
+const inWedge = (x, y) => { let f = Math.atan2(y, x); if (f < -0.12 * Math.PI) f += 2 * Math.PI; return f < 0.62 * Math.PI; };
+const wedge = (profile, col, o = {}) => lathe(profile, col, { a0: A0, a1: A1, cap: CUT, seg: 40, ...o });
+const hotOf = (k2) => (k2 < 0.6 ? "#ff7828" : "#fff0c8");
+// the channels standing in the cut-away part of the RBMK core: fuel, and control rods with their graphite followers
+const CHAN = []; for (let i = -5; i <= 5; i++) for (let j = -5; j <= 5; j++) { const x = i * 1.05 + (j % 2 ? 0.52 : 0), y = j * 0.95; if (Math.hypot(x, y) < 5.5 && inWedge(x, y)) CHAN.push({ x, y, rod: (i * 3 + j * 5 + 100) % 3 === 0 }); }
+function rbmkStatic(boomed) {
+  const out = [], Cn = { mat: "concrete" }, S = { shell: true };
+  out.push(box(-21, 21, -21, 21, -0.6, 0, "#5f646a", Cn));
+  out.push(box(-21, -19.5, -21, 21, 0, boomed ? 26 : 34, "#a9a49a", { ...Cn, cap: "#8c877d", ...S }), box(-19.5, 21, -21, -19.5, 0, boomed ? 22 : 34, "#b5b0a5", { ...Cn, cap: "#8c877d", ...S }));
+  if (!boomed) out.push(box(-21, 21, -21, -12, 34, 35.2, "#77726a", { ...Cn, ...S }), box(-21, -12, -12, 21, 34, 35.2, "#77726a", { ...Cn, ...S }));
+  out.push(box(-21, 21, 19.5, 21, 0, 2.5, "#a9a49a", { ...Cn, cap: CUT }), box(19.5, 21, -21, 19.5, 0, 2.5, "#a9a49a", { ...Cn, cap: CUT }));
+  // steam separator drums, main circulation pumps, the refuelling machine on its gantry
+  const drum = [[0, -8.6], [1.2, -8.6], [1.5, -8.1], [1.5, 8.1], [1.2, 8.6], [0, 8.6]];
+  out.push(lathe(drum, "#9ca3aa", { c: [-3.5, -15, 15], axis: "x", mat: "paint", seg: 20 }), lathe(drum, "#9ca3aa", { c: [-15, -3.5, 15], axis: "y", mat: "paint", seg: 20 }));
+  for (const [x, y] of [[-3.5, -15], [-15, -3.5]]) for (const d of [-6, 6]) out.push(box((y < -10 ? x + d : x) - 0.4, (y < -10 ? x + d : x) + 0.4, (y < -10 ? y : y + d) - 0.4, (y < -10 ? y : y + d) + 0.4, 0, 13.6, "#6f757b", { mat: "steel" }));
+  for (const [x, y] of [[-17, -5], [-17, 2], [-5, -17], [2, -17]]) out.push(lathe([[0, 0], [1.4, 0], [1.4, 3.2], [1.0, 3.5], [0.9, 4.6], [0, 4.7]], "#5e7f9a", { c: [x, y, 0], mat: "paint", seg: 16 }));
+  if (!boomed) out.push(box(-11, -8, -11, -8, 22, 29, "#d9b54a", { mat: "paint" }), box(-19, 5, -10.5, -8.5, 29, 30.3, "#9c8a4a", { mat: "paint" }), box(-10.5, -8.5, -19, 5, 29, 30.3, "#9c8a4a", { mat: "paint" }));
+  // the concrete vault round the core, and the lower shield it sits on
+  out.push(wedge([[10, 0], [10, 14], [7.6, 14], [7.6, 0], [10, 0]], "#9b968c", { ...Cn, closed: true }), wedge([[0, 0], [7.6, 0], [7.6, 2], [0, 2]], "#a39d93", Cn));
+  // pipes from the channel tops to the drums
+  if (!boomed) for (let i = 0; i < 14; i++) { const a = A0 + ((A1 - A0) * (i + 0.5)) / 14, r = 4 + (i % 3), p0 = [r * Math.cos(a), r * Math.sin(a), 12], p1 = i % 2 ? [-15, -2 + (i % 5) * 1.5, 15] : [-2 + (i % 5) * 1.5, -15, 15]; out.push(tube([p0, [p0[0], p0[1], 14], [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2, 15.5], p1], 0.13, "#8d939b", { mat: "steel", seg: 5 })); }
+  return out;
+}
 function drawRbmk(dt) {
-  const fs = [], boomed = dead && dead.kind === "boom", bt = boomed ? now - dead.t : 0;
-  // building: floor and the two back walls (cut low at the front), roof gone after the blast
-  const obj = [{ parts: [box(-21, 21, -21, 21, -0.6, 0, "#5f646a")], key: -1e9 }];
-  obj.push({ parts: [box(-21, -19.5, -21, 21, 0, boomed ? 26 : 34, "#a9a49a", { cap: "#8c877d" })], key: -9e8 });
-  obj.push({ parts: [box(-19.5, 21, -21, -19.5, 0, boomed ? 22 : 34, "#b5b0a5", { cap: "#8c877d" })], key: -8.9e8 });
-  if (!boomed) obj.push({ parts: [box(-21, 21, -21, -12, 34, 35.2, "#77726a")], key: -8.8e8 });
-  // steam separator drums, the pump room, the refuelling machine
-  obj.push({ parts: [prism(R.circle(-15, 15, 1.5, 16), "x", -12, 5, "#9ca3aa")], key: -5e5 });
-  obj.push({ parts: [prism(R.circle(-15, 15, 1.5, 16), "y", -12, 5, "#9ca3aa")], key: -5e5 + 1 });
-  for (const [x, y] of [[-17, -5], [-17, 2], [-5, -17], [2, -17]]) obj.push({ parts: [cyl(x, y, 1.4, 0, 3.4, "#5e7f9a", 14), cyl(x, y, 0.9, 3.4, 4.6, "#47525c", 12)] });
-  if (!boomed) obj.push({ parts: [box(-11, -8, -11, -8, 22, 29, "#d9b54a"), box(-19, 5, -10.5, -8.5, 29, 30.3, "#9c8a4a"), box(-10.5, -8.5, -19, 5, 29, 30.3, "#9c8a4a")], key: -4e5 });
-  sceneHtml = R.render(obj);
-  // the concrete vault, lower shield, graphite core, upper shield ("Elena")
-  const vault = [[0, 10], [14, 10]], vaultIn = [[0, 7.6], [14, 7.6]];
-  fs.push(...half(0, 0, vault, 1, "#9b968c"), ...half(0, 0, vaultIn, -1, "#7d786f"));
-  const pc = powerCol(), coreGlow = boomed ? hot("#2a2622", 0.6 + 0.3 * Math.sin(now * 3)) : hot("#2a2622", pc * 0.55);
-  fs.push(...half(0, 0, [[2, 5.9], [9, 5.9]], -1, "#2a2622", 16, coreGlow));
-  fs.push(...half(0, 0, [[0, 7.6], [2, 7.6]], 1, "#6d6a66"));
-  fs.sort((a, b) => a.d - b.d);
-  let s2 = fs.map((f) => f.s).join("");
-  // pipe forest from the channel tops to the drums
-  if (!boomed) for (let i = 0; i < 14; i++) { const a = F0 + (F1 - F0) * (i + 0.5) / 14, p0 = at(0, 0, 4 + (i % 3), a, 12), p1 = i % 2 ? [-15, -2 + (i % 5) * 1.5, 15] : [-2 + (i % 5) * 1.5, -15, 15]; s2 += '<path class="pipe" d="M' + sp(p0) + "L" + sp([p0[0], p0[1], 14]) + "L" + sp(p1) + '"/>'; }
-  // the cut face: vault ring, lower shield, core with its channels, the upper shield
-  s2 += sect(0, 0, vault, vaultIn, "#d9c9a6");
-  s2 += sectFull(0, 0, 0, 2, 7.6, "#a39d93");
-  s2 += sectFull(0, 0, 2, 9, 5.9, coreGlow, "sec core");
-  for (let i = 0; i < 19; i++) {
-    const s3 = -5.4 + i * 0.6, rodCh = i % 3 === 1;
-    if (rodCh) {
-      const ins = scramAt === null ? rods : rods, zt = 9, zb = 9 - 7 * ins;
-      s2 += '<path class="rod" d="M' + sp(sectPt(0, 0, s3, zt)) + "L" + sp(sectPt(0, 0, s3, zb)) + '"/>';
-      const dz0 = zb - 0.3, dz1 = Math.max(2, zb - 4.5);
-      if (dz0 > 2) s2 += '<path class="disp" d="M' + sp(sectPt(0, 0, s3, dz0)) + "L" + sp(sectPt(0, 0, s3, dz1)) + '"/>';
-    } else s2 += '<path class="fuel" style="stroke:' + hot("#5a3d2a", pc) + '" d="M' + sp(sectPt(0, 0, s3, 2.2)) + "L" + sp(sectPt(0, 0, s3, 8.8)) + '"/>';
+  const boomed = !!(dead && dead.kind === "boom"), bt = boomed ? now - dead.t : 0, objs = [], pc = powerCol();
+  objs.push({ cache: "rbmk", rev: boomed ? 1 : 0, parts: () => rbmkStatic(boomed) });
+  const live = [], glow = boomed ? 0.6 + 0.3 * Math.sin(now * 3) : pc * 0.55;
+  // the graphite stack, glowing with the power
+  live.push(wedge([[0, 2], [5.9, 2], [5.9, 9], [0, 9]], "#2a2622", { mat: "matte", emit: [hotOf(glow), boomed ? glow * 0.8 : glow * 0.3], cap: "#3a3430" }));
+  if (!boomed) {
+    for (const c of CHAN) {
+      if (c.rod) {
+        // absorber from the top; below it, on a thin link, the graphite displacer that did the damage
+        const zb = 9 - 7 * rods; live.push(tube([[c.x, c.y, zb], [c.x, c.y, zb + 7]], 0.15, "#17181b", { mat: "steel", seg: 6 }));
+        const dz0 = zb - 0.3, dz1 = Math.max(2, zb - 4.5); if (dz0 > 2.05) live.push(tube([[c.x, c.y, dz1], [c.x, c.y, dz0]], 0.13, "#6a655e", { mat: "matte", seg: 6 }));
+      } else live.push(tube([[c.x, c.y, 2.2], [c.x, c.y, 8.8]], 0.16, "#5a3d2a", { mat: "metal", seg: 6, emit: [hotOf(pc), pc * 0.7], emitK: 1.1 }));
+    }
+    // the upper shield, with a pattern of channel caps
+    live.push(wedge([[0, 9], [8.4, 9], [8.4, 12], [0, 12]], "#b9b3a8", { mat: "concrete" }));
   }
-  if (!els.lid || !boomed) s2 += sectFull(0, 0, 9, 12, 8.4, "#b9b3a8");
-  // a few channel tops (fuel blue-grey, rods orange) on the shield, for the look of the "pentachoron" floor
-  sceneHtml += s2;
-  // near walls, cut low
-  sceneHtml += R.render([{ parts: [box(-21, 21, 19.5, 21, 0, 2.5, "#a9a49a", { cap: "#d9c9a6" })], key: 1e9 }, { parts: [box(19.5, 21, -21, 19.5, 0, 2.5, "#a9a49a", { cap: "#d9c9a6" })], key: 1e9 + 1 }]);
+  objs.push({ parts: live });
   // flying things
-  let fl = "";
   if (els.lid) {
     const L2 = els.lid; if (bt < 6) { L2.vz -= 14 * dt; L2.z = Math.max(0, L2.z + L2.vz * dt); L2.r = Math.min(1.35, L2.r + L2.vr * dt); if (L2.z <= 0 && L2.vz < 0) { L2.vz = 0; L2.vr = 0; } }
     const c = [0, 0, 10.5], cr = Math.cos(L2.r), sr = Math.sin(L2.r);
-    fl += R.render([{ parts: [cyl(0, 0, 8.4, 9, 12, "#b9b3a8", 28, { cap: "#8a857c" })], xf: (p) => { const y = p[1] - c[1], z = p[2] - c[2]; return [p[0] + L2.z * 0.15, c[1] + y * cr - z * sr, c[2] + y * sr + z * cr + L2.z]; } }]);
+    objs.push({ parts: [lathe([[0, 9], [8.4, 9], [8.4, 12], [0, 12]], "#b9b3a8", { mat: "concrete", seg: 32 })], xf: (p) => { const y = p[1] - c[1], z = p[2] - c[2]; return [p[0] + L2.z * 0.15, c[1] + y * cr - z * sr, c[2] + y * sr + z * cr + L2.z]; } });
   }
-  if (els.chunks.length) {
-    const objs = els.chunks.map((ch) => { if (ch.p[2] > 0.3) { ch.v[2] -= 14 * dt; for (let i = 0; i < 3; i++) ch.p[i] += ch.v[i] * dt; ch.r += dt * 4; } else { ch.p[2] = 0.3; } const s4 = ch.s; return { parts: [box(-s4, s4, -s4, s4, -s4 * 1.6, s4 * 1.6, ch.gr ? "#2b2826" : "#8d887f", ch.gr && now - dead.t < 20 ? { emit: ["#ff6a2a", 0.4] } : undefined)], xf: (p) => { const c2 = Math.cos(ch.r), s5 = Math.sin(ch.r); return [ch.p[0] + p[0] * c2 - p[2] * s5, ch.p[1] + p[1], ch.p[2] + p[0] * s5 + p[2] * c2]; } }; });
-    fl += R.render(objs);
+  for (const ch of els.chunks) {
+    if (ch.p[2] > 0.3) { ch.v[2] -= 14 * dt; for (let i = 0; i < 3; i++) ch.p[i] += ch.v[i] * dt; ch.r += dt * 4; } else ch.p[2] = 0.3;
+    const s4 = ch.s, c2 = Math.cos(ch.r), s5 = Math.sin(ch.r);
+    objs.push({ parts: [box(-s4, s4, -s4, s4, -s4 * 1.6, s4 * 1.6, ch.gr ? "#2b2826" : "#8d887f", { mat: "matte", emit: ch.gr && now - dead.t < 20 ? ["#ff6a2a", 0.35] : undefined, emitK: 1 })], xf: (p) => [ch.p[0] + p[0] * c2 - p[2] * s5, ch.p[1] + p[1], ch.p[2] + p[0] * s5 + p[2] * c2] });
   }
-  flyG.innerHTML = fl;
-  if (boomed && rnd() < dt * 18) flameP([rnd() * 6 - 3, rnd() * 6 - 3, 9 + rnd() * 2]);
+  if (boomed && rnd() < dt * 26) flameP([rnd() * 8 - 4, rnd() * 8 - 4, 8 + rnd() * 3]);
   if (boomed && rnd() < dt * 8) smokeP([rnd() * 4 - 2, rnd() * 4 - 2, 12], 1.4);
+  let svg = E.render(objs);
+  if (E.xray > 0.02 && !boomed) svg += E.callouts([
+    { p: [4.2, 4.2, 6], text: "Graphite stack", sub: "the moderator: 1,700 t of it" }, { p: [CHAN[1].x, CHAN[1].y, 5], text: "Fuel channel", sub: "uranium and boiling water" }, { p: [3, 0.4, 12.6], text: "Control rod", sub: "boron on top, graphite tip below" },
+    { p: [6.5, 6.5, 10.5], text: "Upper shield", sub: "2,000 t, nothing holding it down" }, { p: [-3.5, -13.6, 15], text: "Steam drums", sub: "" }, { p: [-17, 2, 4], text: "Main pumps", sub: "" }, { p: [8, -5.5, 13], text: "Vault", sub: "concrete, but no containment" },
+  ], E.xray);
+  return svg;
+}
+// the PWR: fuel assemblies in a square grid, rods from the top in some of them
+const ASSY = []; for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) { const x = i * 0.72, y = j * 0.72; if (Math.hypot(x, y) < 3.0) ASSY.push({ x, y, rod: (i + j * 2 + 40) % 4 === 0 }); }
+const VZ = (z) => 4 + (z - 6.2) * 1.4;
+function pwrStatic() {
+  const out = [], Cn = { mat: "concrete" }, S = { shell: true }, Wp = { mat: "paint" };
+  // containment: concrete cylinder and dome with a steel liner, cut open
+  const cOut = [[21.5, 0], [21.5, 30], [19.8, 36], [15.2, 41], [8.2, 44.5], [0.1, 46]], cIn = [[0.1, 44.5], [7.6, 43.2], [14.2, 40], [18.5, 35.5], [20, 30], [20, 0]];
+  out.push(wedge([...cOut, ...cIn, cOut[0]], "#c9c4b9", { ...Cn, closed: true, ...S }), wedge(cIn.map(([r, z]) => [Math.max(0.05, r - 0.06), z - 0.05]).reverse(), "#8d949b", { mat: "steel", ...S, caps: false }));
+  out.push(lathe([[0, 0], [20, 0], [20, 1.5], [0, 1.5]], "#8a8f94", { ...Cn, seg: 40 }));
+  // steam generators, pressuriser, coolant pumps, the polar crane, hot and cold legs
+  for (const [x, y] of [[-10, 3], [3, -10]]) { out.push(lathe([[0, 1.5], [2.2, 1.5], [2.2, 17.4], [3, 18.6], [3, 25.4], [2.5, 26.5], [1.2, 27.1], [0, 27.2]], "#c8ccd1", { c: [x, y, 0], ...Wp, seg: 22 })); for (const dz of [0.7, -0.7]) out.push(tube([[0, 0, 13 + dz], [x * 0.45, y * 0.45, 9 + dz * 0.5], [x * 0.85, y * 0.85, 5.5 + dz]], 0.55, "#aab0b6", { mat: "steel", seg: 8 })); }
+  out.push(lathe([[0, 6], [1.3, 6], [1.3, 21.2], [0.9, 22], [0, 22.3]], "#c8ccd1", { c: [-8, -8, 0], ...Wp, seg: 18 }), box(-8.4, -7.6, -8.4, -7.6, 1.5, 6, "#6f757b", { mat: "steel" }));
+  for (const [x, y] of [[-12, -2], [-2, -12]]) out.push(lathe([[0, 1.5], [1, 1.5], [1, 4.4], [0.7, 4.8], [0.7, 6.4], [0, 6.5]], "#5e7f9a", { c: [x, y, 0], ...Wp, seg: 14 }));
+  out.push(box(-14, 14, -15.5, -13, 32, 33.5, "#c9a43a", Wp), box(-15.5, -13, -14, 14, 32, 33.5, "#c9a43a", Wp), box(-9.5, -6.5, -15.8, -12.7, 33.5, 35, "#8d939b", { mat: "steel" }));
+  // the pressure vessel: thick steel, cut open
+  const vOut = [[6.2, 0.1], [6.6, 1.2], [7.6, 2.1], [9, 2.3], [17, 2.3], [18.4, 2.1], [19.4, 1.3], [19.8, 0.1]], vIn = [[19.4, 0.1], [19, 1.1], [18.1, 1.85], [17, 2.05], [9, 2.05], [7.9, 1.85], [7.0, 1.0], [6.6, 0.1]];
+  const M = (a) => a.map(([z, r]) => [r * 1.6, VZ(z)]);
+  out.push(wedge([...M(vOut), ...M(vIn), M(vOut)[0]], "#8f969d", { mat: "steel", closed: true, cap: "#b9bfc6", ...S }));
+  for (let i = 0; i < 4; i++) { const a = 0.3 + i * 1.57; out.push(box(Math.cos(a) * 3.3 - 0.25, Math.cos(a) * 3.3 + 0.25, Math.sin(a) * 3.3 - 0.25, Math.sin(a) * 3.3 + 0.25, 1.5, 6.5, "#6f757b", { mat: "steel" })); }
+  return out;
 }
 function drawPwr(dt) {
-  const fs = [], pc = powerCol(), melted = melt > 0.05;
-  // containment: cylinder + dome, steel liner inside concrete, cut in half
-  const cOut = [[0, 21.5], [30, 21.5], [36, 19.8], [41, 15.2], [44.5, 8.2], [46, 0.1]], cIn = [[0, 20], [30, 20], [35.5, 18.5], [40, 14.2], [43.2, 7.6], [44.5, 0.1]];
-  fs.push(...half(0, 0, cOut, 1, "#c9c4b9"), ...half(0, 0, cIn, -1, "#8d949b"));
-  fs.sort((a, b) => a.d - b.d);
-  let s2 = fs.map((f) => f.s).join("");
-  // floor, steam generators, pressuriser, pumps, the polar crane
-  const obj = [{ parts: [box(-20, 20, -20, 20, 0, 1.5, "#8a8f94")], key: -1e9 }];
-  for (const [x, y] of [[-10, 3], [3, -10]]) obj.push({ parts: [cyl(x, y, 2.2, 3, 18, "#c8ccd1", 18), cyl(x, y, 3, 18, 26, "#c8ccd1", 18), cyl(x, y, 3.05, 25.5, 27, "#b2b7bd", 18, { cap: "#d7dbe0" })] });
-  obj.push({ parts: [cyl(-8, -8, 1.3, 6, 22, "#c8ccd1", 14, { cap: "#e0e3e7" })] });
-  for (const [x, y] of [[-12, -2], [-2, -12]]) obj.push({ parts: [cyl(x, y, 1, 1.5, 5, "#5e7f9a", 12)] });
-  obj.push({ parts: [box(-14, 14, -15.5, -13, 32, 33.5, "#c9a43a"), box(-15.5, -13, -14, 14, 32, 33.5, "#c9a43a")], key: -3e5 });
-  s2 += R.render(obj);
-  // hot and cold legs
-  for (const [x, y] of [[-10, 3], [3, -10]]) s2 += '<path class="leg" d="M' + sp([0, 0, 12]) + "L" + sp([x, y, 6]) + '"/>';
-  // the pressure vessel, cut: steel shell, the core, water
-  const VZ = (z) => 4 + (z - 6.2) * 1.4, VP = (r, z) => sectPt(0, 0, r * 1.6, VZ(z)), VM = (a) => a.map(([z, r]) => [VZ(z), r * 1.6]);
-  const vOut = [[6.2, 0.1], [6.6, 1.2], [7.6, 2.1], [9, 2.3], [17, 2.3], [18.4, 2.1], [19.4, 1.3], [19.8, 0.1]], vIn = [[6.6, 0.1], [7.0, 1.0], [7.9, 1.85], [9, 2.05], [17, 2.05], [18.1, 1.85], [19, 1.1], [19.4, 0.1]];
-  const vv = [...half(0, 0, VM(vOut), 1, "#8f969d"), ...half(0, 0, VM(vIn), -1, "#5c646c")]; vv.sort((a, b) => a.d - b.d);
-  s2 += vv.map((f) => f.s).join("");
-  const boil = clamp(voidF * 1.6, 0, 1), wcol = melted ? "rgba(120,110,100,0.4)" : "rgba(" + Math.round(40 + 90 * pc) + "," + Math.round(110 + 110 * pc) + "," + Math.round(200 + 55 * pc) + "," + (0.55 - 0.4 * boil).toFixed(2) + ")";
-  s2 += face([VP(-2.05, 9), VP(2.05, 9), VP(2.05, 17), VP(-2.05, 17)], wcol, ' class="water"');
-  // fuel assemblies, control rods from the top, corium if it melts
-  if (melt < 0.9) for (let i = 0; i < 9; i++) { const s3 = -1.6 + i * 0.4, rodCh = i % 2 === 1, mz = 14.6 - melt * 4; if (rodCh) { const zb = 14.8 - 3.8 * rods; s2 += '<path class="rod" d="M' + sp(VP(s3, 18.5)) + "L" + sp(VP(s3, zb)) + '"/>'; } s2 += '<path class="fuel thin" style="stroke:' + (melted ? hot("#5a3d2a", 0.5 + melt * 0.5) : hot("#5a5048", pc * 0.4)) + '" d="M' + sp(VP(s3, 11)) + "L" + sp(VP(s3, mz)) + '"/>'; }
-  if (melted) { const r = 0.6 + melt * 1.3; s2 += face([VP(-r, 7.2), VP(r, 7.2), VP(r * 0.8, 7.2 + melt * 1.5), VP(-r * 0.8, 7.2 + melt * 1.5)], hot("#7a3a1a", 0.7 + 0.2 * Math.sin(now * 4)), ' class="corium"'); }
-  s2 += sect(0, 0, VM(vOut), VM(vIn), "#b9bfc6");
-  for (let i = 0; i < 5; i++) s2 += '<path class="crdm" d="M' + sp(VP(-0.8 + i * 0.4, 19.6)) + "L" + sp(VP(-0.8 + i * 0.4, 22.5)) + '"/>';
-  // the containment's cut face last
-  s2 += sect(0, 0, cOut, cIn, "#d9c9a6");
-  sceneHtml = s2;
-  flyG.innerHTML = "";
+  const pc = powerCol(), melted = melt > 0.05, objs = [{ cache: "pwr", rev: 0, parts: pwrStatic }], live = [];
+  // fuel assemblies (sinking into a pool of corium if it melts), control rods from the top
+  const top = 15.8 - melt * 5.4;
+  if (melt < 0.9) for (const a of ASSY) {
+    live.push(box(a.x - 0.3, a.x + 0.3, a.y - 0.3, a.y + 0.3, 10.7 - melt * 1.5, top, melted ? "#5a3d2a" : "#6a6259", { mat: "metal", bevel: 0.04, emit: melted ? ["#ff7828", 0.5 + melt * 0.5] : [hotOf(pc * 0.5), pc * 0.45] }));
+    if (a.rod) { const zb = VZ(14.8 - 3.8 * rods); live.push(tube([[a.x, a.y, zb], [a.x, a.y, zb + 6.2]], 0.1, "#17181b", { mat: "steel", seg: 5 })); }
+  }
+  if (melted) { const r = (0.6 + melt * 1.3) * 1.6; live.push(lathe([[0, 4.5], [r, 4.7], [r * 0.9, 4.7 + melt * 2.2], [0, 4.9 + melt * 2.4]], "#7a3a1a", { mat: "matte", emit: ["#ff7a2a", 0.75 + 0.2 * Math.sin(now * 4)], emitK: 2, seg: 20 })); }
+  for (let i = 0; i < 9; i++) { const a = i * 0.7, r = i ? 1.5 : 0; live.push(tube([[Math.cos(a) * r, Math.sin(a) * r, 22.6], [Math.cos(a) * r, Math.sin(a) * r, 26.5]], 0.16, "#aeb4bb", { mat: "steel", seg: 5 })); }
+  // the water, bluer the harder the core is working, thinner as it boils
+  const boil = clamp(voidF * 1.6, 0, 1), wc = melted ? "#786e64" : "rgb(" + Math.round(40 + 90 * pc) + "," + Math.round(110 + 110 * pc) + "," + Math.round(200 + 55 * pc) + ")";
+  live.push(lathe([[0, 7.9], [3.2, 7.9], [3.2, 19.1 - boil * 3], [0, 19.1 - boil * 3]], melted ? "#786e64" : "#" + [40 + 90 * pc, 110 + 110 * pc, 200 + 55 * pc].map((v) => Math.round(v).toString(16).padStart(2, "0")).join(""), { mat: "glass", opacity: melted ? 0.3 : 0.42 - 0.28 * boil, rough: 0.3, seg: 28, emit: melted ? undefined : ["#3d8bff", pc * 0.25] }));
+  objs.push({ parts: live });
   if (h2 > 0.05 && rnd() < dt * 10 * h2) fogP([rnd() * 20 - 14, rnd() * 20 - 14, 6 + rnd() * 26]);
-  if (voidF > 0.05 && rnd() < dt * 10) fogP([rnd() * 2 - 1, rnd() * 2 - 1, 16]);
+  if (voidF > 0.05 && rnd() < dt * 10) fogP([rnd() * 2 - 1, rnd() * 2 - 1, 19]);
+  let svg = E.render(objs);
+  if (E.xray > 0.02) svg += E.callouts([
+    { p: [2.2, 2.2, 13], text: "Core", sub: "fuel assemblies under water" }, { p: [0, 0, 24.5], text: "Control rods", sub: "held up by magnets: lose power, they drop" }, { p: [3.6, -1, 18], text: "Pressure vessel", sub: "20 cm of steel" },
+    { p: [3, -10, 22], text: "Steam generator", sub: "the reactor water never leaves the building" }, { p: [-8, -8, 20], text: "Pressuriser", sub: "" }, { p: [15, -15, 30], text: "Containment", sub: "steel-lined concrete, built to hold a meltdown" }, { p: [-14, 0, 33.5], text: "Polar crane", sub: "" },
+  ], E.xray);
+  return svg;
 }
-let sceneHtml = "";
 function draw(dt) {
-  if (type === "rbmk") drawRbmk(dt); else drawPwr(dt);
-  sceneG.innerHTML = sceneHtml;
+  const svg = type === "rbmk" ? drawRbmk(dt) : drawPwr(dt);
   shake = Math.max(0, shake - dt * 0.7);
   const amp = shake * 6 + (n > 2 && !dead ? Math.min(3, n * 0.15) : 0);
   shakeOff = amp > 0.05 ? [(rnd() - 0.5) * amp, (rnd() - 0.5) * amp] : [0, 0];
-  svgEl.style.transform = amp > 0.05 ? "translate(" + shakeOff[0].toFixed(1) + "px," + shakeOff[1].toFixed(1) + "px)" : "";
+  setShake(shakeOff[0], shakeOff[1]);
   const ft = now - flashT; flashEl.style.opacity = ft < 0.6 ? String((1 - ft / 0.6) * 0.85) : "0";
   drawParticles(dt);
+  sceneG.innerHTML = svg;
   const text = dead ? (dead.kind === "boom" ? "UNIT 4 DESTROYED" : dead.kind === "melt" ? "MELTDOWN · CONTAINED" : "FUEL DAMAGED") : (n * 100 < 10 ? (n * 100).toFixed(1) : Math.round(n * 100)) + " % · " + Math.round(n * T.mwt) + " MWt · ρ " + (rho >= 0 ? "+" : "") + rho.toFixed(2) + " $";
   if (readout.textContent !== text) readout.textContent = text;
 }
@@ -404,81 +362,49 @@ ui.fresh.addEventListener("click", act(() => setType(type)));
 ui.slow.addEventListener("click", () => { slow = !slow; run(); });
 ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; actions = []; } syncUi(); run(); });
 stage.addEventListener("keydown", (ev) => {
-  const map = { ArrowUp: () => { rodT = clamp(rodT - 0.05, 0, 1); scramAt = null; }, ArrowDown: () => { rodT = clamp(rodT + 0.05, 0, 1); }, s: () => scram(false), p: () => { flow = 0.15; }, t: () => setType(type === "rbmk" ? "pwr" : "rbmk") };
+  const map = { x: () => setX(!E.xrayOn), ArrowUp: () => { rodT = clamp(rodT - 0.05, 0, 1); scramAt = null; }, ArrowDown: () => { rodT = clamp(rodT + 0.05, 0, 1); }, s: () => scram(false), p: () => { flow = 0.15; }, t: () => setType(type === "rbmk" ? "pwr" : "rbmk") };
   if (map[ev.key] && live()) { ev.preventDefault(); act(map[ev.key])(); }
 });
 new IntersectionObserver((es) => { visible = es[es.length - 1].isIntersecting; if (visible) run(); }, { rootMargin: "120px 0px" }).observe(stage);
 if (still.matches) touring = false;
-window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+window.__fig = { E, freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
 setType("rbmk"); draw(0); syncUi(); story();
 `;
 
-const CSS = `.fx-stage{position:relative;overflow:hidden}
-.fx-stage svg{display:block;position:relative}
-.fx-smoke{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle 55% at 50% 45%,#ffffff 0%,#dfe8ff 35%,rgba(200,215,255,0) 100%)}
-.sec{stroke:rgba(0,0,0,.35);stroke-width:.4}.sec.core{stroke:#000}
-.rod{stroke:#1b1d20;stroke-width:2;stroke-linecap:butt}.disp{stroke:#8e8a84;stroke-width:2;stroke-linecap:butt}
-.fuel{stroke-width:1.6;stroke-linecap:butt}.fuel.thin{stroke-width:2.2}
-.crdm{stroke:#7f878f;stroke-width:1.6}
-.pipe{fill:none;stroke:#8a9097;stroke-width:.7;opacity:.85}
-.leg{fill:none;stroke:#7c858d;stroke-width:4;stroke-linecap:round}
-.water{stroke:none}.corium{stroke:#ffcf7a;stroke-width:.6}
-.fx-stage path{stroke-linejoin:round}
-.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
-.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.ctl-label{min-width:72px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
-.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
-.ctl button[hidden]{display:none}
-.ctl button:hover{border-color:var(--anatomy-mid)}
-.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
-.ctl #safe[aria-pressed="true"],.ctl #test,.ctl #scram{color:#ff6a3d;border-color:#ff6a3d}
-.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
-.ctl output{min-width:96px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
-.slide{position:relative;flex:1;min-width:120px}.slide input{width:100%;accent-color:var(--anatomy-lit);margin:0}
-.meter{position:relative;flex:1;min-width:110px;height:10px;margin-top:14px;border:1px solid var(--anatomy-lo);border-radius:5px}
-.meter .fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .1s;background:#3ddc84}
-.meter .fill[data-state="warn"]{background:#ffb347}.meter .fill[data-state="bad"]{background:#ff5a2a}
-.mark{position:absolute;top:-14px;bottom:-3px;width:0;border-left:1px dashed #ff6a3d;pointer-events:none}
-.mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:#ff6a3d}
-.mark.l::after{left:auto;right:4px}
-#stats{font-size:12px;color:var(--anatomy-mid);line-height:1.5}#stats b{color:var(--anatomy-hi,var(--anatomy-mid));font-weight:600}
-#shot{min-height:3.6em;font-size:12px;line-height:1.4}
-@media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:80px}.ctl button small{display:none}}`;
+const CSS = `.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle 60% at 50% 50%,#ffffff 0%,#dfe8ff 30%,rgba(150,180,255,0) 100%)}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Nuclear reactor: up and down move the rods, S scrams, P trips the pumps, T swaps RBMK and PWR">${svg}<canvas class="fx-smoke" aria-hidden="true"></canvas><div class="fx-flash" aria-hidden="true"></div></div>`;
+const stage = stageHtml({
+  W, H, fig: "Fig 23", title: "Nuclear reactor", xray: true,
+  label: "A nuclear reactor cut open: either an RBMK-1000 in its plain building, with the graphite core, fuel channels and control rods, or a pressurised water reactor inside its containment dome, with the pressure vessel, steam generators and pressuriser.",
+  keysHelp: "Nuclear reactor: drag to rotate, X for x-ray, up and down move the rods, S scrams, P trips the pumps, T swaps RBMK and PWR",
+  extra: `<div class="fx-flash" aria-hidden="true"></div>`,
+});
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Controls">
   <div class="ctl-row"><span class="ctl-label">Reactor</span><button type="button" data-type="rbmk" aria-pressed="true">RBMK-1000<small>Chernobyl</small></button><button type="button" data-type="pwr" aria-pressed="false">PWR<small>modern, AP1000-style</small></button></div>
   <div class="ctl-row"><span class="ctl-label">Rods</span><div class="slide"><input id="rods" type="range" min="0" max="100" step="1" value="50" aria-label="Control rods, percent inserted"></div><output id="rods-out">50 % in</output></div>
   <div class="ctl-row"><span class="ctl-label">Pumps</span><div class="slide"><input id="pump" type="range" min="0" max="120" step="1" value="100" aria-label="Coolant flow, percent"></div><output id="pump-out">100 %</output></div>
-  <div class="ctl-row"><span class="ctl-label">Do</span><button type="button" id="scram">AZ-5</button><button type="button" id="trippumps">Trip pumps</button><button type="button" id="wait">Wait an hour<small>xenon</small></button><button type="button" id="safe" aria-pressed="false">Safety systems on</button><button type="button" id="test">Run the 1986 test<small>01:23:04</small></button></div>
+  <div class="ctl-row"><span class="ctl-label">Do</span><button type="button" id="scram" class="danger">AZ-5</button><button type="button" id="trippumps">Trip pumps</button><button type="button" id="wait">Wait an hour<small>xenon</small></button><button type="button" id="safe" aria-pressed="false">Safety systems on</button><button type="button" id="test">Run the 1986 test<small>01:23:04</small></button></div>
   <div class="ctl-row"><span class="ctl-label">Power</span><div class="meter"><span id="pw-fill" class="fill"></span><span class="mark" style="left:60%" data-label="100 %"></span></div><output id="pw-out">100 %</output></div>
   <div class="ctl-row"><span class="ctl-label">React.</span><div class="meter"><span id="rho-fill" class="fill"></span><span class="mark" style="left:75%" data-label="prompt critical"></span></div><output id="rho-out">0 $</output></div>
   <div class="ctl-row"><span class="ctl-label">Fuel</span><div class="meter"><span id="tf-fill" class="fill"></span><span class="mark" style="left:${(2800 / 3000 * 100).toFixed(1)}%" data-label="melts"></span></div><output id="tf-out">900 °C</output></div>
   <div class="ctl-row"><span class="ctl-label">Steam</span><div class="meter"><span id="v-fill" class="fill"></span></div><output id="v-out">30 %</output></div>
   <div class="ctl-row"><span class="ctl-label">Xenon</span><div class="meter"><span id="x-fill" class="fill"></span></div><output id="x-out">2.5 $</output></div>
   <div class="ctl-row"><span class="ctl-label" id="o-label">ORM</span><div class="meter"><span id="o-fill" class="fill"></span></div><output id="o-out">30 rods</output></div>
-  <div class="ctl-row"><span class="ctl-label">Plant</span><span id="stats"></span></div>
+  <div class="ctl-row wide"><span class="ctl-label">Plant</span><span id="stats"></span></div>
   <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="fresh">Reset</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
-  <div id="shot" aria-live="polite"></div>
 </div>`;
 
-const card = k.plateHtml({
-  fig: "Fig 23",
-  title: "Nuclear reactor",
-  hint: "Same abuse, two reactors",
-  readout: "",
-  keys: [
-    { mark: "lit", label: "Live: neutrons in the cut core, rod positions, glow with power, steam, the aftermath" },
-    { mark: "raised", label: "Chernobyl-style RBMK in a plain building, or a modern PWR in its containment, cut in half" },
-  ],
-  caption: "A reactor runs on a chain reaction: each uranium fission frees neutrons, a moderator slows them down, and slow ones split the next atoms. Control rods soak up neutrons to hold it steady. A fraction of a percent of the neutrons come out seconds late, and that's what makes it controllable; add more than that fraction's worth of reactivity (one dollar) and it's prompt critical, running away in milliseconds. What keeps it safe is feedback: in a PWR, water is both coolant and moderator, so heat or steam slows the reaction down. In Chernobyl's RBMK graphite did the moderating and water only absorbed, so at low power with the rods out, steam sped it up. And the emergency rods made it worse for the first few seconds.",
-  body: stageHtml,
-});
 
-const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
-const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a reactor simulator. Real: point kinetics with delayed neutrons and the one-dollar prompt-critical line, Doppler feedback, the RBMK's positive void coefficient at low power and low margin against a PWR's negative one, xenon-135 piling up after a power cut, the RBMK's graphite displacers adding reactivity at the bottom of the core when AZ-5 drives in rods that were fully out (the positive scram), decay heat, and containment. The 1986 sequence follows World Nuclear Association's timeline (30 MWt, back to 200 MWt, margin at 8 rods against a minimum of 15, emergency cooling isolated, test at 01:23:04, AZ-5 at 01:23:40). Three Mile Island (1979) was a meltdown that the containment held. Made up: one delayed group and every coefficient, the sped-up xenon, decay heat and melting, the geometry and the explosion.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/reactor" style="color:inherit">Source</a></p>`;
+const foot = footHtml({
+  theme, slug: "reactor",
+  real: "point kinetics with delayed neutrons and the one-dollar prompt-critical line, Doppler feedback, the RBMK's positive void coefficient at low power and low margin against a PWR's negative one, xenon-135 piling up after a power cut, the RBMK's graphite displacers adding reactivity at the bottom of the core when AZ-5 drives in rods that were fully out (the positive scram), decay heat, and containment. The 1986 sequence follows World Nuclear Association's timeline (30 MWt, back to 200 MWt, margin at 8 rods against a minimum of 15, emergency cooling isolated, test at 01:23:04, AZ-5 at 01:23:40). Three Mile Island (1979) was a meltdown that the containment held.",
+  made: "one delayed group and every coefficient, the sped-up xenon, decay heat and melting, the geometry and the explosion.",
+});
 const name = theme === "light" ? "light.html" : "index.html";
-writeFileSync(join(HERE, name), k.pageHtml({ title: "Nuclear reactor", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 720 }));
+writeFileSync(join(HERE, name), pageMk2({
+  k, title: "Nuclear reactor", fig: "Fig 23", hint: "Same abuse, two reactors", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  caption: "A reactor runs on a chain reaction: each uranium fission frees neutrons, a moderator slows them down, and slow ones split the next atoms. Control rods soak up neutrons to hold it steady. A fraction of a percent of the neutrons come out seconds late, and that's what makes it controllable; add more than that fraction's worth of reactivity (one dollar) and it's prompt critical, running away in milliseconds. What keeps it safe is feedback: in a PWR, water is both coolant and moderator, so heat or steam slows the reaction down. In Chernobyl's RBMK graphite did the moderating and water only absorbed, so at low power with the rods out, steam sped it up. And the emergency rods made it worse for the first few seconds.",
+  script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
+}));
 console.log("wrote", name);
