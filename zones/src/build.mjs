@@ -2,13 +2,11 @@ import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as k from "../../kit/iso-kit.mjs";
-import { kitScript } from "../../scripts/inline-kit.mjs";
+import { engineScript, stageHtml, pageMk2, footHtml } from "../../mk2/shell.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
-
-const W = 640;
-const H = 440;
+const W = 960, H = 600;
 
 // Truth (IEC 60079-10-1:2020, as best I can reproduce it): grade of release, degree of dilution and availability of
 // ventilation give the zone through Table D.1. EPLs per zone (IEC 60079-14): Zone 0 Ga, Zone 1 Ga/Gb, Zone 2 Ga/Gb/Gc.
@@ -19,121 +17,50 @@ const TABLE = {
   primary: { high: ["NH (Zone 1 NE)", "Zone 2 (Zone 1 NE)", "Zone 2 (Zone 1 NE)"], medium: ["Zone 1", "Zone 1 + Zone 2", "Zone 1 + Zone 2"], low: "Zone 1 or Zone 0" },
   secondary: { high: ["NH (Zone 2 NE)", "NH (Zone 2 NE)", "Zone 2"], medium: ["Zone 2", "Zone 2", "Zone 2"], low: "Zone 1 and even Zone 0" },
 };
-
-const PLATE = { x: -112, y: -76, w: 220, d: 150, r: 8 };
-const PLATE_H = 12, FOOT_H = 5;
 const PIPE_Y = -22, PIPE_Z = 30;
 const SRC = { flange: [-16, PIPE_Y, PIPE_Z], sample: [-62, PIPE_Y, PIPE_Z - 7], vent: [58, -36, 62] };
 const TANK = { x: 58, y: -36, r: 17, h: 50 };
 const PIT = { x: -58, y: 18, w: 46, d: 14 };
 const LIGHT = [62, 42, 52];
 const ROOM = { x: -92, y: -64, w: 180, d: 124, h: 88 };
-
-const P = k.fitProjection([...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [ROOM.x, ROOM.y, ROOM.h + 4]], W, H, { pad: 16, azimuth: 45 });
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const Dt = (points, style) => k.dotsSvg(points, style);
-const depth2 = ([x, y]) => k.depthOf([x, y, 0], P);
-const byDepth = (pts) => [...pts].sort((a, b) => depth2(a) - depth2(b));
-const slab = (plan, z, h, r = 1.2, bevel = 0.5) => k.slabOf({ r, ...plan }, z, h, P, 4, bevel);
-
-function plate() {
-  const out = [`<path class="iso-halo" d="${k.haloOf(PLATE, -PLATE_H - FOOT_H, PLATE_H, P)}"/>`];
-  for (const [x, y] of byDepth(k.corners(PLATE, 22))) {
-    out.push(S(k.cylinder(x, y, 7, -PLATE_H - FOOT_H, 1.6, P, 28), { tone: "lo" }));
-    out.push(S(k.cylinder(x, y, 5.4, -PLATE_H - FOOT_H + 1.6, FOOT_H - 1.6, P, 28), { tone: "mid" }));
-  }
-  out.push(S(k.slabOf(PLATE, -PLATE_H, PLATE_H, P, 8, 1.6), { tone: "mid", inner: L(k.sideSeam(PLATE, -PLATE_H / 2, P), { tone: "faint" }) }));
-  out.push(L(k.planOutline(k.insetPlan(PLATE, 5), 0, P), { tone: "lo" }));
-  const screws = k.corners(PLATE, 10);
-  out.push(L(screws.map(([x, y]) => k.ring(x, y, 2.2, 0, P, 16)).join(""), { tone: "lo" }));
-  out.push(Dt(screws.map(([x, y]) => at([x, y, 0])), { size: 0.5 }));
-  // the pit: a dark recess with its far walls showing
-  const p = PIT, c = (x, y, z) => at([x, y, z]);
-  const pts = (arr) => arr.map((q) => c(...q).map((n) => n.toFixed(1)).join(" ")).join("L");
-  out.push(`<path class="pit" d="M${pts([[p.x, p.y, 0], [p.x + p.w, p.y, 0], [p.x + p.w, p.y + p.d, 0], [p.x, p.y + p.d, 0]])}Z"/>`);
-  out.push(`<path class="pit-wall" d="M${pts([[p.x, p.y, 0], [p.x + p.w, p.y, 0], [p.x + p.w, p.y, -8], [p.x, p.y, -8]])}Z"/>`);
-  out.push(`<path class="pit-wall2" d="M${pts([[p.x, p.y, 0], [p.x, p.y + p.d, 0], [p.x, p.y + p.d, -8], [p.x, p.y, -8]])}Z"/>`);
-  out.push(k.faceTextSvg(k.topMatrix([p.x + 2, p.y + p.d + 2.5], 0.1, P, "x"), "PIT", { size: 4, tone: "lo" }));
-  return out.join("");
-}
-
-// the room: back and left walls, a fan, and a roof that comes and goes; shown for shelter and indoors
-function roomBack() {
-  const out = [];
-  out.push(`<g data-part="walls">`);
-  out.push(S(slab({ x: ROOM.x, y: ROOM.y, w: ROOM.w, d: 2 }, 0, ROOM.h, 0.3, 0.1), { tone: "lo" }));
-  out.push(S(slab({ x: ROOM.x, y: ROOM.y + 2, w: 2, d: ROOM.d - 2 }, 0, ROOM.h, 0.3, 0.1), { tone: "lo" }));
-  // the extraction fan in the back wall
-  const fx = 20, fz = 66, m = k.sideMatrix([fx - 8, ROOM.y + 2.02], fz + 8, P, "left");
-  out.push(`<g data-part="fan" transform="${m}"><rect x="0" y="0" width="16" height="16" rx="1" class="fan-box"/><g class="fan-blades" style="transform-origin:8px 8px"><path d="M8 8L8 1.5Q11 3 8 8L14.5 8Q13 11 8 8L8 14.5Q5 13 8 8L1.5 8Q3 5 8 8Z" class="fan-b"/></g></g>`);
-  out.push(`</g>`);
-  return out.join("");
-}
-function roomFront() {
-  const out = [`<g data-part="roof">`];
-  for (const [x, y] of [[ROOM.x + ROOM.w - 2, ROOM.y + ROOM.d - 2], [ROOM.x + ROOM.w - 2, ROOM.y], [ROOM.x, ROOM.y + ROOM.d - 2]]) out.push(S(slab({ x, y, w: 2, d: 2 }, 0, ROOM.h, 0.2, 0), { tone: "mid" }));
-  out.push(`<g class="roofslab">${S(slab({ x: ROOM.x, y: ROOM.y, w: ROOM.w, d: ROOM.d }, ROOM.h, 2, 0.4, 0.2), { tone: "lo" })}</g>`);
-  out.push(`</g>`);
-  // the front walls, cut away to a dashed outline
-  const c = (x, y, z) => at([x, y, z]).map((n) => n.toFixed(1)).join(" ");
-  const x1 = ROOM.x + ROOM.w, y1 = ROOM.y + ROOM.d;
-  out.push(`<path data-part="front-walls" class="cutwall" d="M${c(x1, ROOM.y, ROOM.h)}L${c(x1, y1, ROOM.h)}L${c(ROOM.x, y1, ROOM.h)}M${c(x1, y1, 0)}L${c(x1, y1, ROOM.h)}"/>`);
-  return out.join("");
-}
-
-function plant() {
-  const out = [];
-  // pipe supports and the pipe
-  for (const x of [-84, -40, 12]) out.push(S(slab({ x: x - 2, y: PIPE_Y - 6, w: 4, d: 12 }, 0, PIPE_Z - 3, 0.4, 0.2), { tone: "mid" }));
-  const pipe = (x0, x1) => { const a = at([x0, PIPE_Y, PIPE_Z]), b = at([x1, PIPE_Y, PIPE_Z]); return `<path class="pipe-o" d="M${a.join(" ")}L${b.join(" ")}"/><path class="pipe" d="M${a.join(" ")}L${b.join(" ")}"/>`; };
-  out.push(pipe(-92, 30));
-  // the riser into the tank
-  out.push(`<path class="pipe-o" d="${k.pathOf([[30, PIPE_Y, PIPE_Z], [41, PIPE_Y, PIPE_Z], [41, -36, PIPE_Z]].map(at))}"/><path class="pipe" d="${k.pathOf([[30, PIPE_Y, PIPE_Z], [41, PIPE_Y, PIPE_Z], [41, -36, PIPE_Z]].map(at))}"/>`);
-  // the flange
-  out.push(`<g class="flange">${S(slab({ x: SRC.flange[0] - 1.6, y: PIPE_Y - 5.5, w: 3.2, d: 11 }, PIPE_Z - 5.5, 11, 4, 0.4), { tone: "hi" })}</g>`);
-  // the sample point: a little valve and a drain stub hanging under the pipe
-  const s = SRC.sample;
-  out.push(S(k.cylinder(s[0], PIPE_Y, 1.2, s[2] + 1, PIPE_Z - s[2] - 3, P, 12), { tone: "mid" }));
-  out.push(`<g class="valve">${S(slab({ x: s[0] - 3, y: PIPE_Y - 3, w: 6, d: 6 }, s[2] + 1, 3.5, 0.8, 0.3), { tone: "hi" })}</g>`);
-  out.push(S(k.cylinder(s[0], PIPE_Y, 0.9, s[2] - 4, 5, P, 10), { tone: "mid" }));
-  // the tank and its vent
-  out.push(`<path class="iso-halo" d="${k.haloOf({ x: TANK.x - TANK.r - 2, y: TANK.y - TANK.r - 2, w: TANK.r * 2 + 4, d: TANK.r * 2 + 4, r: TANK.r }, 0, 0.1, P)}"/>`);
-  out.push(`<g data-part="tank" class="tank">${S(k.cylinder(TANK.x, TANK.y, TANK.r, 0, TANK.h, P, 40, 1), { tone: "hi", inner: L(k.sideArc(TANK.x, TANK.y, TANK.r, TANK.h * 0.55, P, 30), { tone: "faint" }) })}</g>`);
-  out.push(S(k.cylinder(SRC.vent[0], SRC.vent[1], 1.6, TANK.h, SRC.vent[2] - TANK.h - 2, P, 12), { tone: "mid" }));
-  out.push(S(k.cylinder(SRC.vent[0], SRC.vent[1], 3.2, SRC.vent[2] - 2, 2, P, 16, 0.4), { tone: "hi" }));
-  // the light on a pole
-  out.push(S(k.cylinder(LIGHT[0], LIGHT[1], 3.5, 0, 1.5, P, 16), { tone: "mid" }));
-  out.push(S(k.cylinder(LIGHT[0], LIGHT[1], 0.9, 1.5, LIGHT[2] - 1.5, P, 10), { tone: "mid" }));
-  out.push(`<g class="lum">${S(slab({ x: LIGHT[0] - 6, y: LIGHT[1] - 3, w: 12, d: 6 }, LIGHT[2], 3, 1, 0.4), { tone: "hi" })}</g>`);
-  return out.join("");
-}
-
-const roomHull = (() => {
-  const pts = k.boxCorners({ x: ROOM.x, y: ROOM.y, w: ROOM.w, d: ROOM.d }, 0, ROOM.h).map(at);
-  const hull = []; let start = pts.reduce((a, p) => (p[0] < a[0] ? p : a)), cur = start;
-  do { hull.push(cur); let next = pts[0] === cur ? pts[1] : pts[0]; for (const p of pts) { if (p === cur) continue; const cr = (next[0] - cur[0]) * (p[1] - cur[1]) - (next[1] - cur[1]) * (p[0] - cur[0]); if (cr < 0) next = p; } cur = next; } while (cur !== start && hull.length < 9);
-  return "M" + hull.map((p) => p[0].toFixed(1) + " " + p[1].toFixed(1)).join("L") + "Z";
-})();
-const svg = k.figureSvg({
-  width: W, height: H,
-  label: "A small process area: a pipe on supports with a flange and a sample point, a fixed-roof tank with a vent, a pit in the floor, and a light on a pole. The hazardous zones around whichever release you pick are drawn as coloured envelopes.",
-  body: [plate(), roomBack(), plant(), `<clipPath id="room-clip"><path d="${roomHull}"/></clipPath><g data-part="zones"></g>`, roomFront(), `<g data-part="labels"></g>`],
-});
-
-const DATA = { W, H, P, TABLE, SRC, TANK, PIT, LIGHT, ROOM, roomHull };
-
+const PLATE = { x: -112, y: -76, w: 220, d: 150, r: 8 };
+const P = k.fitProjection([...k.boxCorners(PLATE, -0.8, 0), [-92, -64, 92], [88, -64, 92], [-92, 60, 92], [88, 60, 92]], W, H, { pad: 20, azimuth: 45, elevation: 30 });
+const DATA = { W, H, P, PLATE };
+Object.assign(DATA, { TABLE, SRC, TANK, PIT, LIGHT, ROOM, PIPE_Y, PIPE_Z });
+const td = (g, d, a, txt) => `<td data-cell="${g}-${d}-${a}" data-on="false">${txt}</td>`;
+const rowHtml = (g, label) => {
+  const r = TABLE[g];
+  return `<tr><th>${label}</th>${r.high.map((t, i) => td(g, "high", ["good", "fair", "poor"][i], t)).join("")}${r.medium.map((t, i) => td(g, "medium", ["good", "fair", "poor"][i], t)).join("")}${td(g, "low", "any", r.low)}</tr>`;
+};
+const TABLE_HTML = `<div class="tbl-wrap"><table class="tbl">
+  <thead><tr><th rowspan="2">Grade</th><th colspan="3">High dilution</th><th colspan="3">Medium dilution</th><th>Low</th></tr>
+  <tr><th>good</th><th>fair</th><th>poor</th><th>good</th><th>fair</th><th>poor</th><th>any</th></tr></thead>
+  <tbody>${rowHtml("continuous", "Continuous")}${rowHtml("primary", "Primary")}${rowHtml("secondary", "Secondary")}</tbody>
+</table><div class="tbl-note">After IEC 60079-10-1 Table D.1. NE = negligible extent; NH = non-hazardous. "+" = surrounded by.</div></div>`;
 const LIVE = `
+${engineScript()}
 const D = __DATA__;
-const { P, TABLE } = D;
-const stage = document.querySelector(".fx-stage");
-const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const stage = document.querySelector(".mk-stage");
 const readout = document.querySelector("[data-readout]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lightTheme = document.body.dataset.theme === "light";
+const E = mk2(stage, D.P, { W: D.W, H: D.H, pivot: [0, -6, 34], plate: { ...D.PLATE, h: 12, foot: 5 }, shadowBox: [-120, -84, -18, 116, 82, 100] });
+const { box, cyl, prism, circle, lathe, tube, sphere, loft, roundPoly, rrect, tris } = E;
+E.bindTools(stage);
+const xbtn = stage.querySelector('[data-mk="xray"]');
+const setX = (on) => { E.setXray(on); if (xbtn) xbtn.setAttribute("aria-pressed", String(on)); };
+const sceneG = stage.querySelector('[data-part="scene"]');
+const iso = (p) => E.project(p), depthOf = (p) => E.depthOf(p);
+const shakeEls = [stage.querySelector(".mk-gl"), stage.querySelector(".mk-over")];
+// a tap on the stage that isn't a drag or a press on the toolbar
+const onTap = (fn) => { let d0 = null; stage.addEventListener("pointerdown", (ev) => { d0 = ev.target.closest(".mk-tools,button,a") ? null : [ev.clientX, ev.clientY]; }); stage.addEventListener("pointerup", (ev) => { if (d0 && Math.hypot(ev.clientX - d0[0], ev.clientY - d0[1]) < 6) fn(ev); d0 = null; }); };
+// 3x4 matrix for a cached object turning about a vertical axis through (cx, cy)
+const rotZ = (cx, cy, a) => { const c = Math.cos(a), s = Math.sin(a); return [c, -s, 0, s, c, 0, 0, 0, 1, cx - c * cx + s * cy, cy - s * cx - c * cy, 0]; };
+const mixHex = (a, b, t) => { const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)), A = h(a), B = h(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * Math.min(1, Math.max(0, t))).toString(16).padStart(2, "0")).join(""); };
+const setShake = (x, y) => { const t = x || y ? "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)" : ""; for (const e of shakeEls) if (e.style.transform !== t) e.style.transform = t; };
+const P = D.P, TABLE = D.TABLE;
 const lg = Math.log10;
-
 let source = "flange", heavy = false, size = 0.35, where = "open", avail = "good";
 let frame = 0, last = 0, now = 0, visible = false, touring = true, tourClock = 0, tourStep = -1, nextAt = 0, lastShot = "";
 const GRADE = { flange: "secondary", sample: "primary", vent: "primary" };
@@ -167,31 +94,6 @@ function envelope() {
   return { list: z, ne: zt.includes("NE") && !zt.startsWith("NH"), txt: zt };
 }
 
-const COL = ["z0", "z1", "z2"];
-const pt = (p) => { const a = iso(p, P); return a[0].toFixed(1) + " " + a[1].toFixed(1); };
-const K = (() => { const a = iso([0, 0, 0], P), b = iso([1, 0, 0], P); return Math.hypot(b[0] - a[0], b[1] - a[1]) * Math.SQRT2 / Math.sqrt(1 + 0) ; })();
-const rPx = (r) => { const a = iso([0, 0, 0], P), b = iso([0, 0, r], P); return Math.abs(b[1] - a[1]) / Math.cos(Math.PI / 6); };
-function ellipse(cx, cy, r, z) { let d = ""; for (let i = 0; i <= 48; i++) { const a = (i / 48) * Math.PI * 2; d += (i ? "L" : "M") + pt([cx + r * Math.cos(a), cy + r * Math.sin(a), z]); } return d + "Z"; }
-// the outline of a vertical cylinder (two ellipses joined at their sides)
-function cylinderPath(cx, cy, r, z0, z1) {
-  const top = iso([cx, cy, z1], P), bot = iso([cx, cy, z0], P);
-  const ex = iso([cx + r, cy, z0], P), ey = iso([cx, cy + r, z0], P);
- const w = Math.hypot(ex[0] - bot[0], ey[0] - bot[0]);
-  return [ellipse(cx, cy, r, z1), ellipse(cx, cy, r, z0), "M" + (bot[0] - w).toFixed(1) + " " + bot[1].toFixed(1) + "L" + (top[0] - w).toFixed(1) + " " + top[1].toFixed(1) + "L" + (top[0] + w).toFixed(1) + " " + top[1].toFixed(1) + "L" + (bot[0] + w).toFixed(1) + " " + bot[1].toFixed(1) + "Z"];
-}
-function shape(src, r) {
-  const c = iso(src, P), R = rPx(r);
-  const d = ["M" + (c[0] - R).toFixed(1) + " " + c[1].toFixed(1) + "a" + R.toFixed(1) + " " + R.toFixed(1) + " 0 1 0 " + (2 * R).toFixed(1) + " 0a" + R.toFixed(1) + " " + R.toFixed(1) + " 0 1 0 " + (-2 * R).toFixed(1) + " 0Z"];
-  if (heavy) {
-    // heavier than air: it slumps down to the ground and spreads
-    d.push(...cylinderPath(src[0], src[1], r, 0, src[2]));
-    d.push(...cylinderPath(src[0], src[1], r * 1.5, 0, Math.min(6, r * 0.3)));
-  } else {
-    // lighter than air: it rises
-    d.push(...cylinderPath(src[0], src[1], r * 0.8, src[2], src[2] + r * 1.2));
-  }
-  return d;
-}
 // which zone is this point in (for the light)
 function zoneAt(p, env, src) {
   let best = 9;
@@ -206,7 +108,6 @@ function zoneAt(p, env, src) {
   }
   return best;
 }
-const zonesG = q("zones"), labelsG = q("labels"), tankG = q("tank"), walls = q("walls"), roof = q("roof"), frontW = q("front-walls"), fan = q("fan");
 const ui = {
   src: [...document.querySelectorAll("[data-src]")], gas: [...document.querySelectorAll("[data-gas]")], where: [...document.querySelectorAll("[data-where]")], av: [...document.querySelectorAll("[data-av]")],
   size: document.querySelector("#size"), sizeOut: document.querySelector("#size-out"), cells: [...document.querySelectorAll("[data-cell]")],
@@ -214,42 +115,93 @@ const ui = {
 };
 const say = (t) => { if (t !== lastShot) { ui.shot.textContent = t; lastShot = t; } };
 const EPL = ["Ga", "Ga or Gb", "Ga, Gb or Gc"];
-
-function draw() {
-  const env = envelope(), src = D.SRC[source], dil = dilution(), grade = GRADE[source];
-  // rooms and roofs
-  walls.style.display = where === "open" ? "none" : "";
-  roof.style.display = where === "open" ? "none" : "";
-  frontW.style.display = where === "room" ? "" : "none";
-  fan.style.display = where === "room" ? "" : "none";
-  fan.querySelector(".fan-blades").style.transform = "rotate(" + ((now * (avail === "poor" ? 0 : 240)) % 360).toFixed(0) + "deg)";
+// ---------------- the plant and its zones, in real 3D ----------------
+const TAU = Math.PI * 2, RM = D.ROOM, TK = D.TANK, PIT = D.PIT, LT = D.LIGHT, PY = D.PIPE_Y, PZ = D.PIPE_Z;
+const ZC = ["#e53935", "#fb8c00", "#fdd835"], COL = ["z0", "z1", "z2"];
+function plantStatic() {
+  const o = [], ST = { mat: "paint" }, PIPE = "#7d8a94";
+  // a concrete slab with the pit let into it (a grating over the top)
+  o.push(box(D.PLATE.x + 4, D.PLATE.x + D.PLATE.w - 4, D.PLATE.y + 4, D.PLATE.y + D.PLATE.d - 4, 0, 0.6, "#8d8980", { mat: "concrete" }));
+  o.push(box(PIT.x - 1, PIT.x + PIT.w + 1, PIT.y - 1, PIT.y + PIT.d + 1, 0.6, 0.9, "#5d6670", { mat: "steel" }), box(PIT.x, PIT.x + PIT.w, PIT.y, PIT.y + PIT.d, 0.6, 1, "#17181b", { mat: "matte", bevel: 0 }));
+  for (let x = PIT.x + 2; x < PIT.x + PIT.w; x += 3) o.push(box(x, x + 0.8, PIT.y, PIT.y + PIT.d, 1, 1.5, "#6f7780", { mat: "steel", bevel: 0 }));
+  // pipe supports, the pipe, the riser into the tank
+  for (const x of [-84, -40, 12]) o.push(box(x - 2, x + 2, PY - 6, PY + 6, 0.6, PZ - 3, "#59616b", ST), box(x - 3, x + 3, PY - 4, PY + 4, PZ - 3.6, PZ - 2.6, "#59616b", ST));
+  o.push(tube([[-92, PY, PZ], [30, PY, PZ]], 3, PIPE, { seg: 14, mat: "paint" }), tube([[30, PY, PZ], [41, PY, PZ], [41, -36, PZ]], 3, PIPE, { seg: 14, mat: "paint" }));
+  // the flange: two discs and a ring of bolts
+  const fx = D.SRC.flange[0];
+  for (const dx of [-1.4, 0.2]) o.push(prism(circle(PY, PZ, 5.6, 20), "x", fx + dx, fx + dx + 1.2, "#aab2ba", { mat: "steel" }));
+  for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU; o.push(tube([[fx - 2.2, PY + 4.4 * Math.cos(a), PZ + 4.4 * Math.sin(a)], [fx + 2.2, PY + 4.4 * Math.cos(a), PZ + 4.4 * Math.sin(a)]], 0.5, "#3a3d42", { seg: 6, mat: "steel" })); }
+  // the sample point: a little valve and a drain stub hanging under the pipe
+  const s = D.SRC.sample;
+  o.push(cyl(s[0], PY, 1.2, s[2] + 1, PZ - 2, PIPE, 10, ST), box(s[0] - 3, s[0] + 3, PY - 3, PY + 3, s[2] + 1, s[2] + 4.5, "#c9a24a", { mat: "metal" }), cyl(s[0], PY, 0.9, s[2] - 4, s[2] + 1, PIPE, 8, ST), tube([[s[0], PY, s[2] + 2.8], [s[0], PY + 6, s[2] + 2.8]], 0.6, "#d0342c", { seg: 6, mat: "paint" }));
+  // the tank (glass in x-ray), what's in it, and its vent
+  o.push(lathe([[0, 0.6], [TK.r, 0.6], [TK.r, TK.h - 3], [TK.r - 2, TK.h], [0, TK.h + 1.2]], "#cfd4d9", { c: [TK.x, TK.y, 0], seg: 40, mat: "paint", shell: true }));
+  for (const z of [TK.h * 0.3, TK.h * 0.62]) o.push(lathe([[TK.r + 0.2, z], [TK.r + 0.2, z + 1]], "#aab0b8", { c: [TK.x, TK.y, 0], seg: 40, mat: "paint", shell: true }));
+  o.push(cyl(TK.x, TK.y, TK.r - 1, 0.8, TK.h * 0.55, "#b8862a", 32, { mat: "gloss", bevel: 0 }));
+  o.push(cyl(D.SRC.vent[0], D.SRC.vent[1], 1.6, TK.h, D.SRC.vent[2] - 2, PIPE, 10, ST), lathe([[1.6, D.SRC.vent[2] - 2], [3.4, D.SRC.vent[2] - 2], [3.4, D.SRC.vent[2]], [0, D.SRC.vent[2] + 0.8]], "#aab2ba", { c: [D.SRC.vent[0], D.SRC.vent[1], 0], seg: 14, mat: "steel" }));
+  // the light on a pole
+  o.push(cyl(LT[0], LT[1], 3.5, 0.6, 2, "#59616b", 14, ST), cyl(LT[0], LT[1], 0.9, 2, LT[2], "#8f959d", 8, { mat: "steel" }), box(LT[0] - 6, LT[0] + 6, LT[1] - 3, LT[1] + 3, LT[2], LT[2] + 2.2, "#3a3e44", ST));
+  return o;
+}
+// walls, the roof and the fan: shown for a shelter and for a room
+function buildingParts(kind) {
+  const o = [], x1 = RM.x + RM.w, y1 = RM.y + RM.d, W2 = "#aeb6be", PT = { mat: "paint" };
+  o.push(box(RM.x, x1, RM.y, RM.y + 2, 0.6, RM.h, W2, PT), box(RM.x, RM.x + 2, RM.y + 2, y1, 0.6, RM.h, W2, PT));
+  for (const [x, y] of [[x1 - 2, y1 - 2], [x1 - 2, RM.y], [RM.x, y1 - 2]]) o.push(box(x, x + 2, y, y + 2, 0.6, RM.h, "#6a727b", PT));
+  o.push(box(RM.x - 1, x1 + 1, RM.y - 1, y1 + 1, RM.h, RM.h + 2, "#dfe6ec", { mat: "glass", opacity: lightTheme ? 0.26 : 0.16, bevel: 0 }));
+  for (const [a, b] of [[[RM.x, RM.y, RM.h + 1], [x1, RM.y, RM.h + 1]], [[x1, RM.y, RM.h + 1], [x1, y1, RM.h + 1]], [[x1, y1, RM.h + 1], [RM.x, y1, RM.h + 1]], [[RM.x, y1, RM.h + 1], [RM.x, RM.y, RM.h + 1]]]) o.push(tube([a, b], 0.9, "#6a727b", { seg: 4, mat: "paint" }));
+  if (kind === "room") {
+    // the two near walls, in glass so you can still see in, and the extraction fan's housing in the back wall
+    o.push(box(x1 - 1, x1, RM.y + 2, y1 - 2, 0.6, RM.h, "#dfe6ec", { mat: "glass", opacity: lightTheme ? 0.2 : 0.12, bevel: 0 }), box(RM.x + 2, x1 - 2, y1 - 1, y1, 0.6, RM.h, "#dfe6ec", { mat: "glass", opacity: lightTheme ? 0.2 : 0.12, bevel: 0 }));
+    o.push(box(12, 28, RM.y + 2, RM.y + 3.4, 58, 74, "#3a3e44", PT), lathe([[7.4, 0], [7.4, 1.6], [6.6, 1.6], [6.6, 0], [7.4, 0]], "#8f959d", { c: [20, RM.y + 3.4, 66], axis: "y", seg: 24, closed: true, mat: "steel" }));
+  }
+  return o;
+}
+// a zone envelope: a ball round the source, then where it goes: up for a light gas, down and out along the ground for a heavy one
+function envelopeParts(src, r, z, k2) {
+  const col = ZC[z], o = [], op = (lightTheme ? 0.34 : 0.3) * k2, G = { flat: true, opacity: op };
+  o.push(sphere(src, r, col, { ...G, lat: 14, lon: 24 }));
+  if (heavy) { o.push(cyl(src[0], src[1], r, 0.7, src[2], col, 32, { ...G, bevel: 0 }), cyl(src[0], src[1], r * 1.5, 0.7, 0.7 + Math.min(6, r * 0.3), col, 40, { ...G, bevel: 0 })); }
+  else o.push(cyl(src[0], src[1], r * 0.8, src[2], src[2] + r * 1.2, col, 28, { ...G, bevel: 0 }));
+  return o;
+}
+function draw(dt = 0) {
+  const env = envelope(), src = D.SRC[source], dil = dilution(), grade = GRADE[source], live = [], objs = [{ cache: "plant", rev: 0, parts: plantStatic }];
+  if (where !== "open") objs.push({ cache: "bldg", rev: where + lightTheme, parts: () => buildingParts(where) });
+  // the fan turns unless the ventilation's poor
+  if (where === "room") { const a = now * (avail === "poor" ? 0 : 4.2); for (let i = 0; i < 4; i++) { const b = a + (i / 4) * TAU, c = Math.cos(b), s = Math.sin(b), q2 = (r, w) => [20 + r * c - w * s, 66 + r * s + w * c]; live.push(prism([q2(1, -1.2), q2(6.2, -2), q2(6.2, 1.4), q2(1, 1.2)], "y", RM.y + 2.4, RM.y + 3, "#c9ced3", { mat: "steel", bevel: 0 })); } live.push(prism(circle(20, 66, 1.6, 10), "y", RM.y + 2.2, RM.y + 3.6, "#2a2d31", { mat: "plastic" })); }
   // the zones, outermost first
-  let html = "";
-  const sorted = [...env.list].sort((a, b) => b[1] - a[1] || b[0] - a[0]);
-  if (where === "room" && dil === "low" && sorted.length) html += '<g class="zone ' + COL[sorted[0][0]] + '"><path d="' + D.roomHull + '"/></g>';
-  for (const [z, r] of sorted) html += '<g class="zone ' + COL[z] + '">' + shape(src, r).map((d) => '<path d="' + d + '"/>').join("") + "</g>";
+  const sorted = [...env.list].sort((a, b) => b[1] - a[1] || b[0] - a[0]), labels = [];
+  const roomFill = where === "room" && dil === "low" && sorted.length;
+  if (roomFill) live.push(box(RM.x + 2.5, RM.x + RM.w - 1.5, RM.y + 2.5, RM.y + RM.d - 1.5, 0.8, RM.h - 0.5, ZC[sorted[0][0]], { flat: true, opacity: lightTheme ? 0.2 : 0.16, bevel: 0 }));
+  sorted.forEach(([z, r], i) => { live.push(...envelopeParts(src, r, z, i === sorted.length - 1 ? 1.25 : 0.75)); labels.push({ p: [src[0] + r * 0.6, src[1] + r * 0.6, src[2] + r * 0.55], cls: COL[z], t: "Zone " + z }); });
   // the pit: heavier-than-air gas pools in it, so it's usually taken one zone worse
   let pitZone = 9;
   if (heavy && env.list.length) {
     const outer = env.list.reduce((a, b) => (b[1] > a[1] ? b : a));
-    const px = clamp(src[0], D.PIT.x, D.PIT.x + D.PIT.w), py = clamp(src[1], D.PIT.y, D.PIT.y + D.PIT.d);
+    const px = clamp(src[0], PIT.x, PIT.x + PIT.w), py = clamp(src[1], PIT.y, PIT.y + PIT.d);
     // gas pooling in a pit inside the envelope: usually taken as Zone 1 (common practice, not the table)
     if (Math.hypot(px - src[0], py - src[1]) < outer[1] * 1.5) pitZone = Math.min(1, outer[0]);
-    if (pitZone < 9) { const p = D.PIT; html += '<g class="zone ' + COL[pitZone] + ' pitz"><path d="M' + [[p.x, p.y, 0], [p.x + p.w, p.y, 0], [p.x + p.w, p.y + p.d, 0], [p.x, p.y + p.d, 0]].map(pt).join("L") + 'Z"/></g>'; }
+    if (pitZone < 9) { live.push(box(PIT.x, PIT.x + PIT.w, PIT.y, PIT.y + PIT.d, 1.5, 3.4, ZC[pitZone], { flat: true, opacity: 0.55, bevel: 0 })); labels.push({ p: [PIT.x + PIT.w / 2, PIT.y + PIT.d + 3, 3], cls: COL[pitZone], t: "pit: Zone " + pitZone, mid: true }); }
   }
-  if (env.ne) { const c = iso(src, P); html += '<circle cx="' + c[0].toFixed(1) + '" cy="' + c[1].toFixed(1) + '" r="5" class="ne"/>'; }
-  if (source === "vent") { tankG.dataset.z0 = "true"; } else tankG.dataset.z0 = "false";
-  zonesG.innerHTML = html;
-  if (where === "room") zonesG.setAttribute("clip-path", "url(#room-clip)"); else zonesG.removeAttribute("clip-path");
-  // labels
-  let lab = "";
-  for (const [z, r] of sorted) { const c = iso([src[0], src[1], src[2]], P), R = rPx(r); lab += '<text class="zl ' + COL[z] + '" x="' + (c[0] + R * 0.72).toFixed(1) + '" y="' + (c[1] - R * 0.72).toFixed(1) + '">Zone ' + z + "</text>"; }
-  if (env.ne) { const c = iso(src, P); lab += '<text class="zl ne-t" x="' + (c[0] + 8).toFixed(1) + '" y="' + (c[1] - 6).toFixed(1) + '">NE</text>'; }
-  if (source === "vent") { const c = iso([D.TANK.x, D.TANK.y, D.TANK.h * 0.5], P); lab += '<text class="zl z0" x="' + c[0].toFixed(1) + '" y="' + c[1].toFixed(1) + '" text-anchor="middle">Zone 0 inside</text>'; }
-  if (pitZone < 9) { const c = iso([D.PIT.x + D.PIT.w / 2, D.PIT.y + D.PIT.d / 2, 0], P); lab += '<text class="zl ' + COL[pitZone] + '" x="' + c[0].toFixed(1) + '" y="' + (c[1] + 3).toFixed(1) + '" text-anchor="middle">pit: Zone ' + pitZone + "</text>"; }
-  const lz = zoneAt(D.LIGHT, env, src), lc = iso([D.LIGHT[0], D.LIGHT[1], D.LIGHT[2] + 6], P);
-  lab += '<text class="zl light-t' + (lz < 9 ? " need" : "") + '" x="' + lc[0].toFixed(1) + '" y="' + lc[1].toFixed(1) + '" text-anchor="middle">' + (lz < 9 ? "light: needs " + EPL[lz] : "light: ordinary is fine") + "</text>";
-  labelsG.innerHTML = lab;
+  // negligible extent: just a ring round the source
+  if (env.ne) { for (let i = 0; i < 24; i += 2) { const a0 = (i / 24) * TAU, a1 = ((i + 1) / 24) * TAU; E.line([src[0] + 5 * Math.cos(a0), src[1] + 5 * Math.sin(a0), src[2]], [src[0] + 5 * Math.cos(a1), src[1] + 5 * Math.sin(a1), src[2]], 2, "#8bc34a", 0.95); } labels.push({ p: [src[0] + 6, src[1], src[2] + 5], cls: "ne-t", t: "NE" }); }
+  // inside a vented tank the vapour space is Zone 0: you see it when the x-ray's on
+  if (source === "vent") { if (E.xray > 0.01) live.push(cyl(TK.x, TK.y, TK.r - 1.2, TK.h * 0.55 + 0.3, TK.h - 3.4, ZC[0], 28, { flat: true, opacity: 0.4 * E.xray, bevel: 0 })); labels.push({ p: [TK.x, TK.y + TK.r, TK.h * 0.5], cls: "z0", t: "Zone 0 inside", mid: true }); }
+  // the light: does it sit in a zone, and what does that make it need
+  const lz = zoneAt(LT, env, src), need = lz < 9;
+  live.push(box(LT[0] - 5.4, LT[0] + 5.4, LT[1] - 2.4, LT[1] + 2.4, LT[2] - 0.9, LT[2], need ? "#ffb347" : "#fff1c8", { mat: "plastic", bevel: 0, emit: [need ? "#ff8a2a" : "#ffe9b0", 0.9], emitK: 2 }));
+  labels.push({ p: [LT[0], LT[1], LT[2] + 8], cls: "light-t" + (need ? " need" : ""), t: need ? "light: needs " + EPL[lz] : "light: ordinary is fine", mid: true });
+  // which release is being looked at
+  live.push(sphere(src, 1.5, "#ffffff", { lat: 6, lon: 10, flat: true, emit: ["#ffffff", 0.8 + 0.2 * Math.sin(now * 5)], emitK: 2 }));
+  objs.push({ parts: live });
+  let svg = E.render(objs);
+  for (const l of labels) { const p = E.project(l.p); svg += '<text class="mk-lab zl ' + l.cls + '" x="' + p[0].toFixed(1) + '" y="' + p[1].toFixed(1) + '"' + (l.mid ? ' text-anchor="middle"' : "") + ">" + l.t + "</text>"; }
+  if (E.xray > 0.02) svg += E.callouts([
+    { p: D.SRC.flange, text: "Flange", sub: "secondary grade: only leaks if it fails" }, { p: D.SRC.sample, text: "Sample point", sub: "primary grade: releases in normal use" },
+    { p: D.SRC.vent, text: "Tank vent", sub: "primary grade: breathes as it fills" }, { p: [TK.x, TK.y - TK.r, TK.h * 0.3], text: "Tank", sub: "liquid below, vapour space above" }, { p: [PIT.x + 4, PIT.y + PIT.d, 1], text: "Pit", sub: "heavy gas pools here" },
+  ], E.xray, E.fs < 0.62 ? {} : { topL: 70, topR: 70 });
+  if (sceneG.innerHTML !== svg) sceneG.innerHTML = svg;
   // the table
   ui.cells.forEach((c) => { const [g, d2, a] = c.dataset.cell.split("-"); c.dataset.on = String(g === grade && d2 === dil && (dil === "low" || a === avail)); });
   const text = grade + " · " + dil + " dilution · " + avail + " → " + env.txt;
@@ -292,7 +244,7 @@ function tick(t) {
   last = t; now += dt;
   if (touring) { tourClock += dt; if (tourClock >= nextAt) { tourStep = (tourStep + 1) % TOUR.length; Object.assign(globalThis, {}); const s = TOUR[tourStep]; source = s.source; heavy = s.heavy; size = s.size; where = s.where; avail = s.avail; nextAt = tourClock + 5; } }
   draw(); syncUi(); story();
-  frame = visible && (touring || where === "room") ? requestAnimationFrame(tick) : 0;
+  frame = visible ? requestAnimationFrame(tick) : 0;
 }
 const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
 const guard = (fn) => (...a) => { touring = false; fn(...a); draw(); syncUi(); story(); run(); };
@@ -309,71 +261,28 @@ ui.where.forEach((b) => b.addEventListener("click", () => setWhere(b.dataset.whe
 ui.av.forEach((b) => b.addEventListener("click", () => setAv(b.dataset.av)));
 ui.size.addEventListener("input", () => setSize(+ui.size.value / 100));
 ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; tourClock = 0; nextAt = 0; } syncUi(); run(); });
-stage.addEventListener("click", () => setSrc(source === "flange" ? "sample" : source === "sample" ? "vent" : "flange"));
+onTap(() => setSrc(source === "flange" ? "sample" : source === "sample" ? "vent" : "flange"));
 stage.addEventListener("keydown", (ev) => {
-  const map = { " ": () => setSrc(source === "flange" ? "sample" : source === "sample" ? "vent" : "flange"), g: () => setGas(!heavy), w: () => setWhere(where === "open" ? "shelter" : where === "shelter" ? "room" : "open"), a: () => setAv(AV[(AV.indexOf(avail) + 1) % 3]), ArrowUp: () => setSize(clamp(size + 0.05, 0, 1)), ArrowDown: () => setSize(clamp(size - 0.05, 0, 1)) };
+  const map = { x: () => { setX(!E.xrayOn); run(); }, " ": () => setSrc(source === "flange" ? "sample" : source === "sample" ? "vent" : "flange"), g: () => setGas(!heavy), w: () => setWhere(where === "open" ? "shelter" : where === "shelter" ? "room" : "open"), a: () => setAv(AV[(AV.indexOf(avail) + 1) % 3]), ArrowUp: () => setSize(clamp(size + 0.05, 0, 1)), ArrowDown: () => setSize(clamp(size - 0.05, 0, 1)) };
   if (map[ev.key]) { ev.preventDefault(); map[ev.key](); }
 });
-window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+window.__fig = { E, freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
 draw(); syncUi(); story();
 `;
 
-const td = (g, d, a, txt) => `<td data-cell="${g}-${d}-${a}" data-on="false">${txt}</td>`;
-const rowHtml = (g, label) => {
-  const r = TABLE[g];
-  return `<tr><th>${label}</th>${r.high.map((t, i) => td(g, "high", ["good", "fair", "poor"][i], t)).join("")}${r.medium.map((t, i) => td(g, "medium", ["good", "fair", "poor"][i], t)).join("")}${td(g, "low", "any", r.low)}</tr>`;
-};
-const TABLE_HTML = `<div class="tbl-wrap"><table class="tbl">
-  <thead><tr><th rowspan="2">Grade</th><th colspan="3">High dilution</th><th colspan="3">Medium dilution</th><th>Low</th></tr>
-  <tr><th>good</th><th>fair</th><th>poor</th><th>good</th><th>fair</th><th>poor</th><th>any</th></tr></thead>
-  <tbody>${rowHtml("continuous", "Continuous")}${rowHtml("primary", "Primary")}${rowHtml("secondary", "Secondary")}</tbody>
-</table><div class="tbl-note">After IEC 60079-10-1 Table D.1. NE = negligible extent; NH = non-hazardous. "+" = surrounded by.</div></div>`;
-
-const CSS = `.fx-stage{position:relative;cursor:pointer}
-.iso-plate{overflow:hidden}
-.pit{fill:#111;opacity:.75}.pit-wall,.pit-wall2{fill:#2a2a2a}
-body[data-theme="light"] .pit{fill:#6a6a6a;opacity:.5}body[data-theme="light"] .pit-wall,body[data-theme="light"] .pit-wall2{fill:#8a8a8a}
-.pipe{fill:none;stroke:#9aa4ad;stroke-width:4.2;stroke-linecap:round;stroke-linejoin:round}
-.pipe-o{fill:none;stroke:var(--anatomy-mid);stroke-width:5.4;stroke-linecap:round;stroke-linejoin:round}
-.flange .iso-fill,.flange .iso-shade,.flange .iso-top{fill:#9aa4ad}
-.valve .iso-fill,.valve .iso-shade,.valve .iso-top{fill:#c0392b}
-.tank[data-z0="true"] .iso-fill,.tank[data-z0="true"] .iso-shade,.tank[data-z0="true"] .iso-top{fill:color-mix(in srgb,var(--anatomy-face,#ddd),#e53935 45%)}
-.lum .iso-fill,.lum .iso-shade,.lum .iso-top{fill:#e8e2c8}
-.roofslab{opacity:.5}
-.cutwall{fill:none;stroke:var(--anatomy-lo);stroke-width:.8;stroke-dasharray:4 3}
-.fan-box{fill:var(--anatomy-paper);stroke:var(--anatomy-mid);stroke-width:.4}.fan-b{fill:var(--anatomy-mid)}
-.zone path{fill-rule:nonzero}
-.zone{opacity:.32}
-.zone.z0 path{fill:#e53935;stroke:#e53935}.zone.z1 path{fill:#fb8c00;stroke:#fb8c00}.zone.z2 path{fill:#fdd835;stroke:#c9a800}
-.zone path{stroke-width:0}
-.pitz{opacity:.6}
-.ne{fill:none;stroke:#8bc34a;stroke-width:1;stroke-dasharray:2 2}
-.zl{font-family:var(--anatomy-mono);font-size:8px;font-weight:600;paint-order:stroke;stroke:var(--anatomy-paper);stroke-width:2.5px}
-.zl.z0{fill:#e53935}.zl.z1{fill:#fb8c00}.zl.z2{fill:#c9a800}.zl.ne-t{fill:#8bc34a}
-body[data-theme="dark"] .zl.z2{fill:#fdd835}
-.zl.light-t{fill:var(--anatomy-mid);font-weight:400}.zl.light-t.need{fill:#ff6a3d;font-weight:600}
-.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
-.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.ctl-label{min-width:72px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
-.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
-.ctl button:hover{border-color:var(--anatomy-mid)}
-.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
-.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
-.slide{position:relative;flex:1;min-width:110px}
-.slide input{width:100%;accent-color:var(--anatomy-lit);margin:0}
-.ctl output{min-width:72px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
-.tbl-wrap{overflow-x:auto}
-.tbl{border-collapse:collapse;font-size:10.5px;width:100%;min-width:560px}
+const CSS = `.zl{font-weight:600}.zl.z0{fill:#ff5a52}.zl.z1{fill:#fb8c00}.zl.z2{fill:#fdd835}.zl.ne-t{fill:#8bc34a}.zl.light-t{fill:var(--anatomy-text);font-weight:500}.zl.light-t.need{fill:#ff6a3d;font-weight:700}
+body[data-theme="light"] .zl.z0{fill:#c62828}body[data-theme="light"] .zl.z1{fill:#d86f00}body[data-theme="light"] .zl.z2{fill:#9a8200}body[data-theme="light"] .zl.ne-t{fill:#4f8a1f}
+.tbl-wrap{overflow-x:auto;grid-column:1/-1}.tbl{border-collapse:collapse;font-size:10.5px;width:100%;min-width:560px}
 .tbl th,.tbl td{border:1px solid var(--anatomy-lo);padding:4px 5px;text-align:center;font-weight:400;color:var(--anatomy-mid)}
-.tbl thead th{color:var(--anatomy-lo);text-transform:uppercase;letter-spacing:.05em;font-size:9.5px}
-.tbl tbody th{text-align:left;color:var(--anatomy-lo)}
-.tbl td[data-on="true"]{background:var(--anatomy-lit);color:var(--anatomy-paper);font-weight:600}
-.tbl-note{font-size:10px;color:var(--anatomy-lo);margin-top:4px}
-#stats{font-size:12px;color:var(--anatomy-mid);line-height:1.5}#stats b{color:var(--anatomy-hi,var(--anatomy-mid));font-weight:600}
-#shot{min-height:3.6em;font-size:12px;line-height:1.4}
-@media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:60px}.ctl button small{display:none}}`;
+.tbl thead th{color:var(--anatomy-lo);text-transform:uppercase;letter-spacing:.05em;font-size:9.5px}.tbl tbody th{text-align:left;color:var(--anatomy-lo)}
+.tbl td[data-on="true"]{background:var(--anatomy-lit);color:var(--anatomy-paper);font-weight:600}.tbl-note{font-size:10px;color:var(--anatomy-lo);margin-top:4px}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Zone extents: space cycles the release source, G the gas, W where it is, A the ventilation availability, up and down the leak size">${svg}</div>`;
+const stage = stageHtml({
+  W, H, fig: "Fig 15", title: "Hazardous area zones", xray: true,
+  label: "A small process plant: a pipe run with a flange and a sample point, a storage tank with a vent, a pit in the floor and a light on a pole, optionally under a shelter or inside a room with an extraction fan. The hazardous zones show as coloured volumes round whichever release is selected. An x-ray mode turns the tank to glass.",
+  keysHelp: "Zone extents: drag to rotate, X for x-ray, space cycles the release source, G the gas, W where it is, A the ventilation availability, up and down the leak size",
+  extra: ``,
+});
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Controls">
   <div class="ctl-row"><span class="ctl-label">Release</span><button type="button" data-src="flange" aria-pressed="true">Flange<small>secondary</small></button><button type="button" data-src="sample" aria-pressed="false">Sample point<small>primary</small></button><button type="button" data-src="vent" aria-pressed="false">Tank vent<small>Zone 0 inside, primary vent</small></button></div>
@@ -384,24 +293,18 @@ const CONTROLS = `<div class="ctl" role="group" aria-label="Controls">
   ${TABLE_HTML}
   <div class="ctl-row"><span class="ctl-label">Result</span><span id="stats"></span></div>
   <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
-  <div id="shot" aria-live="polite"></div>
 </div>`;
 
-const card = k.plateHtml({
-  fig: "Fig 15",
-  title: "Hazardous area zones",
-  hint: "Tap: next release",
-  readout: "",
-  keys: [
-    { mark: "lit", label: "Zone 0 red, Zone 1 orange, Zone 2 yellow; NE = negligible extent" },
-    { mark: "raised", label: "Pipe with a flange and a sample point, a tank with a vent, a pit, a light on a pole" },
-  ],
-  caption: "A zone is a guess at how often there'll be a flammable cloud somewhere, and it comes from three things. The grade of release: continuous (all the time), primary (in normal operation) or secondary (only when something goes wrong). The degree of dilution: how fast the air carries the gas off compared with how fast it comes out. And the availability of that ventilation: good, fair or poor. Put them through the table and you get the zone; the size of the cloud gives the extent. Heavier-than-air gas slumps and collects in pits. And the equipment you can put there follows the zone: Ga in Zone 0, Gb or better in Zone 1, Gc or better in Zone 2.",
-  body: stageHtml,
-});
 
-const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
-const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a classification. Real: the grade, dilution and availability method and the zone table after IEC 60079-10-1:2020 Table D.1 (check it against your copy), and the zone-to-EPL rule from IEC 60079-14. Made up: how dilution is worked out (a stand-in for Figure C.1), the envelope sizes and shapes (a stand-in for Figure D.1, no distances claimed), and the pit rule (common practice, not the table). Do a real calc.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/zones" style="color:inherit">Source</a></p>`;
+const foot = footHtml({
+  theme, slug: "zones",
+  real: "the grade, dilution and availability method and the zone table after IEC 60079-10-1:2020 Table D.1 (check it against your copy), and the zone-to-EPL rule from IEC 60079-14.",
+  made: "how dilution is worked out (a stand-in for Figure C.1), the envelope sizes and shapes (a stand-in for Figure D.1, no distances claimed), and the pit rule (common practice, not the table). Do a real calc.",
+});
 const name = theme === "light" ? "light.html" : "index.html";
-writeFileSync(join(HERE, name), k.pageHtml({ title: "Hazardous area zones", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 700 }));
+writeFileSync(join(HERE, name), pageMk2({
+  k, title: "Hazardous area zones", fig: "Fig 15", hint: "Tap: next release", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  caption: "A zone is a guess at how often there'll be a flammable cloud somewhere, and it comes from three things. The grade of release: continuous (all the time), primary (in normal operation) or secondary (only when something goes wrong). The degree of dilution: how fast the air carries the gas off compared with how fast it comes out. And the availability of that ventilation: good, fair or poor. Put them through the table and you get the zone; the size of the cloud gives the extent. Heavier-than-air gas slumps and collects in pits. And the equipment you can put there follows the zone: Ga in Zone 0, Gb or better in Zone 1, Gc or better in Zone 2.",
+  script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
+}));
 console.log("wrote", name);
