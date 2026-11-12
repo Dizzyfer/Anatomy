@@ -2,14 +2,11 @@ import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as k from "../../kit/iso-kit.mjs";
-import { glCamera } from "../../kit/gl.mjs";
-import { kitScript, glScript } from "../../scripts/inline-kit.mjs";
+import { engineScript, stageHtml, pageMk2, footHtml } from "../../mk2/shell.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
-
-const W = 640;
-const H = 460;
+const W = 960, H = 640;
 
 // Truth: methane burns between 5 and 15 % in air and is lighter than air; propane between about 2.1 and 9.5 % and is
 // heavier. Gas is odourised so you can smell it well before it can burn (at about a fifth of the LEL). Natural gas
@@ -22,162 +19,38 @@ const GAS = {
 const MODEL = { cells: 10, roomM3: 41.6, leak: { small: 0.6, big: 4 }, ach: { closed: 0.3, window: 4, hood: 8 }, lapse: 150, mix: 0.015, alarm: 0.1, end: 6 };
 
 const ROOM = { x: -100, y: -100, w: 200, d: 200, h: 130 };
-const PLATE = { x: -112, y: -112, w: 224, d: 224, r: 8 };
-const PLATE_H = 12, FOOT_H = 5;
 const cellZ = (i) => (ROOM.h / MODEL.cells) * i;
 const SOURCES = { stove: [5, -86, 47], switch: [-99, 20, 62], fridge: [-86, -44, 8] };
 const zCell = (z) => Math.min(MODEL.cells - 1, Math.floor(z / (ROOM.h / MODEL.cells)));
-
-const P = k.fitProjection([...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [ROOM.x, ROOM.y, ROOM.h + 4]], W, H, { pad: 16, azimuth: 45 });
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const Dt = (points, style) => k.dotsSvg(points, style);
-const depth2 = ([x, y]) => k.depthOf([x, y, 0], P);
-const byDepth = (pts) => [...pts].sort((a, b) => depth2(a) - depth2(b));
-const slab = (plan, z, h, r = 1.2, bevel = 0.5) => k.slabOf({ r, ...plan }, z, h, P, 4, bevel);
-
-function plate() {
-  const out = [`<path class="iso-halo" d="${k.haloOf(PLATE, -PLATE_H - FOOT_H, PLATE_H, P)}"/>`];
-  for (const [x, y] of byDepth(k.corners(PLATE, 22))) {
-    out.push(S(k.cylinder(x, y, 7, -PLATE_H - FOOT_H, 1.6, P, 28), { tone: "lo" }));
-    out.push(S(k.cylinder(x, y, 5.4, -PLATE_H - FOOT_H + 1.6, FOOT_H - 1.6, P, 28), { tone: "mid" }));
-  }
-  out.push(S(k.slabOf(PLATE, -PLATE_H, PLATE_H, P, 8, 1.6), { tone: "mid", inner: L(k.sideSeam(PLATE, -PLATE_H / 2, P), { tone: "faint" }) }));
-  out.push(L(k.planOutline(k.insetPlan(PLATE, 5), 0, P), { tone: "lo" }));
-  // floor tiles
-  const t = [];
-  for (let x = ROOM.x + 25; x < ROOM.x + ROOM.w; x += 25) t.push(k.segment([x, ROOM.y, 0.05], [x, ROOM.y + ROOM.d, 0.05], P));
-  for (let y = ROOM.y + 25; y < ROOM.y + ROOM.d; y += 25) t.push(k.segment([ROOM.x, y, 0.05], [ROOM.x + ROOM.w, y, 0.05], P));
-  out.push(L(t.join(""), { tone: "faint" }));
-  return out.join("");
-}
-
-function walls() {
-  const out = [];
-  // back wall with a window, left wall with a door, the switch and the detector
-  out.push(`<g class="wallb">${S(slab({ x: ROOM.x, y: ROOM.y - 3, w: ROOM.w, d: 3 }, 0, ROOM.h, 0.3, 0.1), { tone: "lo" })}</g>`);
-  out.push(`<g class="wallb">${S(slab({ x: ROOM.x - 3, y: ROOM.y - 3, w: 3, d: ROOM.d + 3 }, 0, ROOM.h, 0.3, 0.1), { tone: "lo" })}</g>`);
-  const wm = k.sideMatrix([46, ROOM.y + 0.05], 104, P, "left");
-  out.push(`<g transform="${wm}"><rect x="0" y="0" width="46" height="44" class="window-frame"/><g data-part="window" class="window-g"><rect x="2" y="2" width="42" height="40" class="glass"/><path d="M23 2V42M2 22H44" class="mullion"/></g></g>`);
-  const dm = k.sideMatrix([ROOM.x + 0.05, 86], 104, P, "right");
-  out.push(`<g transform="${dm}"><rect x="0" y="0" width="44" height="104" class="door-frame"/><g data-part="door"><rect x="2" y="2" width="40" height="102" class="door"/><circle cx="34" cy="56" r="2" class="knob"/></g></g>`);
-  const sm2 = k.sideMatrix([ROOM.x + 0.05, 26], SOURCES.switch[2] + 4, P, "right");
-  out.push(`<g transform="${sm2}"><rect x="0" y="0" width="8" height="10" rx="1" class="plate"/><rect data-part="switch" x="3" y="2.5" width="2" height="5" rx=".5" class="toggle"/></g>`);
-  const det = (z, part) => { const m = k.sideMatrix([ROOM.x + 0.05, -10], z + 4, P, "right"); return `<g transform="${m}" data-part="${part}"><circle cx="5" cy="4" r="4.4" class="detector"/><circle cx="5" cy="4" r="1.4" class="det-led" data-on="false"/></g>`; };
-  out.push(det(118, "det-high"), det(16, "det-low"));
-  return out.join("");
-}
-
-function kitchen() {
-  const out = [];
-  // bench along the back wall with the cooktop, and the range hood
-  out.push(S(slab({ x: -70, y: ROOM.y, w: 140, d: 30 }, 0, 44, 1, 0.4), { tone: "hi", inner: L([-30, 10, 40].map((x) => k.segment([x, ROOM.y + 30, 4], [x, ROOM.y + 30, 40], P)).join(""), { tone: "faint" }) }));
-  out.push(S(slab({ x: -72, y: ROOM.y, w: 144, d: 32 }, 44, 3, 1, 0.4), { tone: "mid" }));
-  out.push(S(slab({ x: -12, y: ROOM.y + 4, w: 34, d: 24 }, 47, 1.2, 1, 0.2), { tone: "lo" }));
-  for (const [x, y] of [[-3, ROOM.y + 10], [13, ROOM.y + 10], [-3, ROOM.y + 22], [13, ROOM.y + 22]]) out.push(L(k.ring(x, y, 4, 48.3, P, 20), { tone: "mid" }));
-  out.push(S(slab({ x: 30, y: ROOM.y + 28.5, w: 6, d: 2 }, 32, 6, 0.6, 0.2), { tone: "lo" }));
-  out.push(`<g data-part="knob" class="gasknob">${S(k.cylinder(-6, ROOM.y + 31, 2, 36, 2, P, 14, 0.4), { tone: "hi" })}</g>`);
-  out.push(S(slab({ x: -14, y: ROOM.y, w: 38, d: 22 }, 92, 10, 1, 0.4), { tone: "hi" }));
-  out.push(S(slab({ x: -2, y: ROOM.y, w: 14, d: 10 }, 102, ROOM.h - 102, 0.4, 0.2), { tone: "hi" }));
-  // the fridge in the corner
-  out.push(`<g class="fridge">${S(slab({ x: ROOM.x, y: -70, w: 30, d: 34 }, 0, 92, 1.6, 0.5), { tone: "hi", inner: L(k.segment([ROOM.x + 30, -70, 60], [ROOM.x + 30, -36, 60], P), { tone: "faint" }) })}</g>`);
-  return out.join("");
-}
-
-// the gas, as horizontal layers filling the room
-function layers() {
-  const out = [];
-  for (let i = 0; i < MODEL.cells; i++) {
-    const z = cellZ(i), h = ROOM.h / MODEL.cells;
-    const pts = (zz) => [[ROOM.x + 1, ROOM.y + 1, zz], [ROOM.x + ROOM.w - 1, ROOM.y + 1, zz], [ROOM.x + ROOM.w - 1, ROOM.y + ROOM.d - 1, zz], [ROOM.x + 1, ROOM.y + ROOM.d - 1, zz]];
-    const top = k.pathOf(pts(z + h).map(at), true);
-    const fx = k.pathOf([[ROOM.x + ROOM.w - 1, ROOM.y + 1, z], [ROOM.x + ROOM.w - 1, ROOM.y + ROOM.d - 1, z], [ROOM.x + ROOM.w - 1, ROOM.y + ROOM.d - 1, z + h], [ROOM.x + ROOM.w - 1, ROOM.y + 1, z + h]].map(at), true);
-    const fy = k.pathOf([[ROOM.x + 1, ROOM.y + ROOM.d - 1, z], [ROOM.x + ROOM.w - 1, ROOM.y + ROOM.d - 1, z], [ROOM.x + ROOM.w - 1, ROOM.y + ROOM.d - 1, z + h], [ROOM.x + 1, ROOM.y + ROOM.d - 1, z + h]].map(at), true);
-    out.push(`<g data-cell="${i}" class="gas" data-band="none"><path d="${fx}"/><path d="${fy}"/><path d="${top}" class="gas-top"/></g>`);
-  }
-  return out.join("");
-}
-
-function front() {
-  const c = (x, y, z) => at([x, y, z]).map((n) => n.toFixed(1)).join(" ");
-  const x1 = ROOM.x + ROOM.w, y1 = ROOM.y + ROOM.d;
-  return `<path class="cutwall" d="M${c(x1, ROOM.y, ROOM.h)}L${c(x1, y1, ROOM.h)}L${c(ROOM.x, y1, ROOM.h)}M${c(x1, y1, 0)}L${c(x1, y1, ROOM.h)}"/>
-    <g data-part="ceiling" class="ceiling">${S(slab({ x: ROOM.x - 3, y: ROOM.y - 3, w: ROOM.w + 3, d: ROOM.d + 3 }, ROOM.h, 3, 0.3, 0.1), { tone: "lo" })}</g>
-    <g data-part="labels"></g>`;
-}
-
-const svg = k.figureSvg({
-  width: W, height: H,
-  label: "A kitchen cut open: a bench and gas cooktop along the back wall with a range hood and a window, a fridge in the corner, a door and a light switch on the side wall, and gas detectors mounted high and low. Leaked gas shows as coloured layers filling the room.",
-  body: [plate(), walls(), kitchen(), layers(), front()],
-});
-
-const DATA = {
-  W, H, camera: glCamera(P), P, GAS, MODEL, SRC: SOURCES, zc: Object.fromEntries(Object.entries(SOURCES).map(([n, p]) => [n, zCell(p[2])])),
-  piv: { window: at([68, ROOM.y, 82]), door: at([ROOM.x, 64, 52]), ceil: at([0, 0, ROOM.h]) },
-  src: Object.fromEntries(Object.entries(SOURCES).map(([n, p]) => [n, at(p)])),
-};
-
-const FRAG = `
-uniform float uLight;
-uniform float uB[${MODEL.cells}];
-uniform float uC;
-uniform float uSpark;
-uniform vec3 uSp;
-vec4 inkFor(vec3 seen,float cover){vec3 ab=1.-seen;float a=max(max(ab.r,max(ab.g,ab.b)),cover);return vec4(vec3(a)-ab,a);}
-vec4 over(vec4 t,vec4 u){return t+u*(1.-t.a);}
-vec4 fireInk(float e,float core){
-  vec3 hue=mix(vec3(.55,.16,.06),mix(vec3(1.,.36,.08),vec3(1.,.66,.28),smoothstep(.45,1.,core)),smoothstep(0.,.5,core));
-  vec3 c=tonemap(hue*e,1.4);float a=max(c.r,max(c.g,c.b));
-  float la=1.-exp(-1.8*e);
-  vec3 seen=mix(vec3(1.),mix(vec3(.82,.28,.06),vec3(1.,.78,.4),smoothstep(.6,1.,core)*smoothstep(.5,1.,la)),la);
-  return mix(vec4(c,a),inkFor(seen,.9*smoothstep(.75,1.,la)*core)*la,uLight);
-}
-vec4 arcInk(float e){vec3 c=tonemap(vec3(.62,.78,1.)*e,1.6);float a=max(c.r,max(c.g,c.b));float la=1.-exp(-1.6*e);return mix(vec4(c,a),inkFor(mix(vec3(1.),vec3(.3,.45,.9),la),0.)*la,uLight);}
-float edgeFade(vec2 vb){return smoothstep(0.,40.,min(min(vb.x,uView.x-vb.x),min(vb.y,uView.y-vb.y)));}
-void main(){
-  vec2 vb=viewOf(gl_FragCoord.xy);
-  vec4 o=vec4(0.);
-  if(uSpark>.002){vec2 d=(vb-project(uSp))/uK;o=arcInk((exp(-pow(length(d)/.8,2.))*2.4+exp(-pow(length(d)/4.,2.))*.6)*uSpark);}
-  if(uC>=0.){
-    float c=uC,e=0.,hot=0.;
-    // march the room's front corner column of layers: the flame fills whichever layers were in the flammable range
-    for(int i=0;i<${MODEL.cells};i++){
-      float b=uB[i];
-      if(b<.01) continue;
-      float z=(float(i)+.5)*${(ROOM.h / MODEL.cells).toFixed(2)};
-      vec3 p=onFloor(vb,z);
-      float inside=step(${ROOM.x.toFixed(1)},p.x)*step(p.x,${(ROOM.x + ROOM.w).toFixed(1)})*step(${ROOM.y.toFixed(1)},p.y)*step(p.y,${(ROOM.y + ROOM.d).toFixed(1)});
-      float front=1.-exp(-c/.15);
-      float dist=length(p.xy-uSp.xy);
-      float reach=smoothstep(0.,30.,front*320.-dist);
-      float n=fbm2(p.xy*.03+vec2(c*2.,float(i)));
-      e+=b*inside*reach*(.35+.6*n)*exp(-c/.8)*.55;
-      hot+=b*inside*reach*exp(-c/.35)*.4;
-    }
-    // what blows out of the window and the door
-    float ef=edgeFade(vb);
-    o=over(fireInk(e*ef,clamp(hot/max(e,1e-3),0.,1.)),o);
-  }
-  o.rgb=min(o.rgb,vec3(o.a));
-  float dd=(hash12(gl_FragCoord.xy+uTime)-.5)/255.*smoothstep(0.,1.5/255.,o.a);
-  gl_FragColor=max(o+dd,0.);
-}`;
-
+const PLATE = { x: -112, y: -112, w: 224, d: 224, r: 8 };
+const P = k.fitProjection([...k.boxCorners(PLATE, -0.8, 0), [-103, -103, 136], [100, -103, 136], [-103, 100, 136], [100, 100, 136]], W, H, { pad: 18, azimuth: 45, elevation: 30 });
+const DATA = { W, H, P, PLATE };
+Object.assign(DATA, { GAS, MODEL, ROOM, SRC: SOURCES, zc: Object.fromEntries(Object.entries(SOURCES).map(([n, p]) => [n, zCell(p[2])])) });
+const meter = (id, label) => `<div class="ctl-row"><span class="ctl-label">${label}</span><div class="meter"><span id="${id}-fill" class="fill"></span><span id="${id}-lel" class="mark" style="left:25%" data-label=""></span><span id="${id}-uel" class="mark" style="left:75%" data-label=""></span></div><output id="${id}-out">0.0 %</output></div>`;
 const LIVE = `
+${engineScript()}
 const D = __DATA__;
-const { P, MODEL: M } = D;
-const stage = document.querySelector(".fx-stage");
-const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const stage = document.querySelector(".mk-stage");
 const readout = document.querySelector("[data-readout]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
-const LIGHT = document.body.dataset.theme === "light" ? 1 : 0;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lightTheme = document.body.dataset.theme === "light";
+const E = mk2(stage, D.P, { W: D.W, H: D.H, pivot: [0, 0, 50], plate: { ...D.PLATE, h: 12, foot: 5 }, shadowBox: [-120, -120, -18, 120, 120, 140] });
+const { box, cyl, prism, circle, lathe, tube, sphere, loft, roundPoly, rrect, tris } = E;
+E.bindTools(stage);
+const xbtn = stage.querySelector('[data-mk="xray"]');
+const setX = (on) => { E.setXray(on); if (xbtn) xbtn.setAttribute("aria-pressed", String(on)); };
+const sceneG = stage.querySelector('[data-part="scene"]');
+const iso = (p) => E.project(p), depthOf = (p) => E.depthOf(p);
+const shakeEls = [stage.querySelector(".mk-gl"), stage.querySelector(".mk-over")];
+// a tap on the stage that isn't a drag or a press on the toolbar
+const onTap = (fn) => { let d0 = null; stage.addEventListener("pointerdown", (ev) => { d0 = ev.target.closest(".mk-tools,button,a") ? null : [ev.clientX, ev.clientY]; }); stage.addEventListener("pointerup", (ev) => { if (d0 && Math.hypot(ev.clientX - d0[0], ev.clientY - d0[1]) < 6) fn(ev); d0 = null; }); };
+// 3x4 matrix for a cached object turning about a vertical axis through (cx, cy)
+const rotZ = (cx, cy, a) => { const c = Math.cos(a), s = Math.sin(a); return [c, -s, 0, s, c, 0, 0, 0, 1, cx - c * cx + s * cy, cy - s * cx - c * cy, 0]; };
+const mixHex = (a, b, t) => { const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)), A = h(a), B = h(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * Math.min(1, Math.max(0, t))).toString(16).padStart(2, "0")).join(""); };
+const setShake = (x, y) => { const t = x || y ? "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)" : ""; for (const e of shakeEls) if (e.style.transform !== t) e.style.transform = t; };
+const M = D.MODEL, P = D.P;
 const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-const gl = glLayer({ canvas: stage.querySelector(".fx-gl"), fragment: ${JSON.stringify(FRAG)}, view: [D.W, D.H], camera: D.camera, uniforms: ["uB", "uC", "uSpark", "uSp"], fixed: { uLight: LIGHT } });
-if (gl) stage.setAttribute("data-gl", "");
-
 let gas = "ng", leak = "small", vent = "closed", detHigh = true, leaking = false;
 let c = new Array(M.cells).fill(0), boomAt = null, burned = new Array(M.cells).fill(0), sparkAt = -10, sparkSrc = "switch", alarm = false, smelt = false, minutes = 0;
 let frame = 0, last = 0, now = 0, visible = false, touring = true, slow = false, tourClock = 0, tourStep = -1, actions = [], lastShot = "", lastEvent = "", lastEventAt = -10;
@@ -224,44 +97,108 @@ function spark(src) {
   } else if (v > g.uel) event(where[0].toUpperCase() + where.slice(1) + " sparked in " + v.toFixed(1) + " %: too rich to burn, above the " + g.uel + " % UEL. Lucky. Now open a window and it'll dilute straight back through the flammable range.");
   else event(where[0].toUpperCase() + where.slice(1) + " sparked in " + v.toFixed(2) + " %: under the " + g.lel + " % LEL at that height, so nothing." + (Math.max(...c) >= g.lel ? " But there's a flammable layer " + (g.up > 0 ? "up near the ceiling" : "down on the floor") + "." : ""));
 }
-
-const cells = [...stage.querySelectorAll("[data-cell]")];
-const parts = { win: q("window"), door: q("door"), ceil: q("ceiling"), sw: q("switch"), knob: q("knob"), dh: q("det-high"), dl: q("det-low") };
 const ui = {
   gas: [...document.querySelectorAll("[data-gas]")], leak: [...document.querySelectorAll("[data-leak]")], vent: [...document.querySelectorAll("[data-vent]")], det: [...document.querySelectorAll("[data-det]")],
   meters: ["top", "mid", "low"].map((n) => ({ fill: document.querySelector("#" + n + "-fill"), out: document.querySelector("#" + n + "-out"), lel: document.querySelector("#" + n + "-lel"), uel: document.querySelector("#" + n + "-uel") })),
   stats: document.querySelector("#stats"), gasb: document.querySelector("#gasb"), sparks: [...document.querySelectorAll("[data-spark]")], reset: document.querySelector("#reset"), slow: document.querySelector("#slow"), tour: document.querySelector("#tour"), shot: document.querySelector("#shot"),
 };
 const say = (t) => { if (t !== lastShot) { ui.shot.textContent = t; lastShot = t; } };
-
-function draw() {
-  const g = G(), b = boomAt === null ? -1 : now - boomAt;
-  cells.forEach((el, i) => {
-    const v = c[i];
-    const band = b >= 0 && burned[i] ? "burnt" : v < g.lel * 0.05 ? "none" : v < g.lel ? "lean" : v <= g.uel ? "flam" : "rich";
-    if (el.dataset.band !== band) el.dataset.band = band;
-    el.style.opacity = band === "none" ? "0" : band === "burnt" ? String(Math.max(0, 1 - b * 2)) : String(clamp(0.1 + (v / g.uel) * 0.35, 0.1, 0.45));
-  });
-  parts.sw.dataset.on = String(now - sparkAt < 0.3 && sparkSrc === "switch");
-  parts.knob.dataset.on = String(leaking);
-  parts.dh.style.display = detHigh ? "" : "none"; parts.dl.style.display = detHigh ? "none" : "";
-  (detHigh ? parts.dh : parts.dl).querySelector(".det-led").dataset.on = String(alarm && Math.sin(now * 12) > 0);
-  // the blast
-  const fly = (c2, piv, vx, vy, w) => c2 > 0 ? "translate(" + (vx * c2).toFixed(1) + " " + (-vy * c2 + 400 * c2 * c2).toFixed(1) + ") rotate(" + (w * c2).toFixed(0) + " " + piv[0].toFixed(1) + " " + piv[1].toFixed(1) + ")" : "";
-  const frac = burned.reduce((a, x) => a + x, 0) / M.cells;
-  parts.win.setAttribute("transform", b > 0 ? "translate(" + (-60 * b * 60 / 100).toFixed(1) + " " + (-40 * b + 120 * b * b).toFixed(1) + ")" : "");
-  parts.win.style.opacity = b > 0 ? String(Math.max(0, 1 - b)) : "1";
-  parts.door.setAttribute("transform", b > 0 ? "translate(" + (-80 * b).toFixed(1) + " " + (-30 * b + 150 * b * b).toFixed(1) + ")" : "");
-  parts.door.style.opacity = b > 0 ? String(Math.max(0, 1 - b * 0.8)) : "1";
-  parts.ceil.setAttribute("transform", b > 0 ? fly(b, D.piv.ceil, 0, 120 * frac + 40, 0) : "");
-  if (b >= 0) {
-    const A = 4 + 14 * frac;
-    stage.style.transform = "translate(" + (A * Math.exp(-b / 0.5) * Math.sin(b * 80)).toFixed(1) + "px," + (A * Math.exp(-b / 0.5) * Math.cos(b * 67)).toFixed(1) + "px)";
-    if (b > M.end) { stage.style.transform = ""; reset(); event("Reset. Gas off, windows back in."); return draw(); }
+// ---------------- the kitchen, in real 3D ----------------
+const TAU = Math.PI * 2, RM = D.ROOM, RX = RM.x, RY = RM.y, RH = RM.h, X1 = RM.x + RM.w, Y1 = RM.y + RM.d;
+const BAND = { lean: "#5fbf86", flam: "#ff8a3a", rich: "#9b59b6", burnt: "#ff5a2a" };
+const rn = () => Math.random();
+function roomStatic() {
+  const o = [], WALLC = "#d9d4c8", PT = { mat: "paint" };
+  // floor: boards
+  o.push(box(RX - 3, X1, RY - 3, Y1, -0.2, 0.6, "#a98d68", { mat: "matte" }));
+  for (let y = RY + 16; y < Y1; y += 16) o.push(box(RX, X1, y - 0.25, y + 0.25, 0.6, 0.66, "#8c7353", { bevel: 0, mat: "matte" }));
+  // back wall (with the window opening) and the left wall (with the doorway)
+  const wall = (pieces) => pieces.forEach((p) => o.push(box(...p, WALLC, PT)));
+  wall([[RX - 3, 46, RY - 3, RY, 0, RH], [92, X1, RY - 3, RY, 0, RH], [46, 92, RY - 3, RY, 0, 60], [46, 92, RY - 3, RY, 104, RH]]);
+  wall([[RX - 3, RX, RY, 42, 0, RH], [RX - 3, RX, 86, Y1, 0, RH], [RX - 3, RX, 42, 86, 104, RH]]);
+  o.push(box(RX, X1, RY, RY + 0.6, 0.6, 7, "#efece4", PT), box(RX, RX + 0.6, RY, 42, 0.6, 7, "#efece4", PT), box(RX, RX + 0.6, 86, Y1, 0.6, 7, "#efece4", PT));
+  // window frame, door frame
+  for (const [a, b, c2, d] of [[44.5, 46.5, 58, 106], [91.5, 93.5, 58, 106], [46, 92, 58, 60.5], [46, 92, 103.5, 106]]) o.push(box(a, b, RY - 3.4, RY + 0.6, c2, d, "#f4f2ec", PT));
+  for (const [a, b, c2, d] of [[40.5, 42.5, 0.6, 106], [85.5, 87.5, 0.6, 106], [42, 86, 103.5, 106]]) o.push(box(RX - 3.4, RX + 0.6, a, b, c2, d, "#f4f2ec", PT));
+  // bench along the back wall: carcass with doors, benchtop, cooktop, range hood and its duct
+  o.push(box(-70, 70, RY, RY + 29, 0.6, 44, "#e7e3da", PT), box(-72, 72, RY, RY + 32, 44, 47, "#4a4f56", { mat: "gloss" }));
+  for (const x of [-69, -49, -29, 11, 31, 51]) o.push(box(x, x + 18, RY + 29, RY + 30, 5, 41, "#f4f2ec", PT), box(x + 14.5, x + 15.5, RY + 30, RY + 31, 20, 30, "#aeb4bb", { mat: "steel", bevel: 0 }));
+  o.push(box(-9, 9, RY + 29, RY + 30, 5, 30, "#2a2d31", { mat: "gloss" }), box(-9, 9, RY + 29, RY + 30.6, 32, 41, "#c9ced3", { mat: "steel" })); // the oven under the cooktop
+  o.push(box(-12, 22, RY + 4, RY + 28, 47, 48.2, "#1b1c1f", { mat: "gloss" }));
+  for (const [x, y] of [[-3, RY + 10], [13, RY + 10], [-3, RY + 22], [13, RY + 22]]) o.push(lathe([[2.2, 48.2], [4.4, 48.2], [4.4, 49.4], [2.2, 49.4], [2.2, 48.2]], "#3a3d42", { c: [x, y, 0], seg: 16, closed: true, mat: "iron" }));
+  o.push(box(-14, 24, RY, RY + 22, 92, 102, "#c9ced3", { mat: "steel" }), box(-2, 12, RY, RY + 10, 102, RH, "#c9ced3", { mat: "steel" }));
+  o.push(box(36, 62, RY + 5, RY + 25, 44.5, 47.3, "#aeb4bb", { mat: "steel" }), tube([[49, RY + 3, 47], [49, RY + 3, 58], [49, RY + 10, 60], [49, RY + 14, 57]], 1, "#c9ced3", { seg: 6, mat: "chrome" })); // sink and tap
+  // fridge in the corner
+  o.push(prism(rrect(RX, RX + 30, -70, -36, 1.6), "z", 0.6, 92, "#eceae4", { mat: "paint", shell: true }), box(RX + 30, RX + 30.5, -69, -37, 60, 60.6, "#b9bec4", { bevel: 0 }), box(RX + 30, RX + 31.4, -41, -39.5, 30, 52, "#aeb4bb", { mat: "steel", bevel: 0 }), box(RX + 30, RX + 31.4, -41, -39.5, 66, 82, "#aeb4bb", { mat: "steel", bevel: 0 }));
+  o.push(box(RX + 6, RX + 24, -64, -42, 2, 14, "#2a2d31", { mat: "matte" })); // the compressor and its thermostat relay, down the bottom
+  // light switch plate, a small table and two stools so it's somebody's kitchen
+  o.push(box(RX, RX + 0.8, 18, 26, 56, 66, "#f4f2ec", { mat: "plastic" }));
+  o.push(prism(rrect(10, 70, 20, 60, 4), "z", 38, 41, "#b98a5a", { mat: "satin" }));
+  for (const [x, y] of [[15, 25], [65, 25], [15, 55], [65, 55]]) o.push(box(x - 1.5, x + 1.5, y - 1.5, y + 1.5, 0.6, 38, "#8c6a44", { mat: "satin" }));
+  for (const [x, y] of [[40, 74], [84, 40]]) o.push(cyl(x, y, 8, 24, 26.5, "#3a6ea5", 18, { mat: "paint" }), cyl(x, y, 1.6, 0.6, 24, "#aeb4bb", 8, { mat: "steel" }));
+  return o;
+}
+let fx = [], plume = 0;
+function draw(dt = 0) {
+  const g = G(), b = boomAt === null ? -1 : now - boomAt, live = [], n = M.cells, hC = RH / n;
+  const frac = burned.reduce((a, x) => a + x, 0) / n;
+  // the gas, as layers through the room: green too lean to burn, orange in the flammable range, purple too rich
+  for (let i = 0; i < n; i++) {
+    const v = c[i], band = b >= 0 && burned[i] ? "burnt" : v < g.lel * 0.05 ? "none" : v < g.lel ? "lean" : v <= g.uel ? "flam" : "rich";
+    if (band === "none") continue;
+    const op = band === "burnt" ? Math.max(0, 1 - b * 2) * 0.4 : clamp(0.05 + (v / g.uel) * 0.2, 0.05, 0.26);
+    if (op > 0.02) live.push(box(RX + 1, X1 - 1, RY + 1, Y1 - 1, i * hC + 0.8, (i + 1) * hC - 0.3, BAND[band], { flat: true, bevel: 0, opacity: op * (lightTheme ? 1 : 0.85), emit: band === "burnt" ? [BAND[band], 0.5] : undefined, emitK: 1 }));
   }
-  const sp = D.SRC[sparkSrc];
-  if (gl && !window.__noGL) gl.draw({ uB: burned.map((x) => x * (0.6 + frac)), uC: b, uSpark: Math.exp(-(now - sparkAt) / 0.08) * (now - sparkAt < 0.6 ? 1 : 0), uSp: sp }, now);
-  const text = b >= 0 ? "BOOM · " + Math.round(frac * 100) + " % of the room" : (leaking ? "leaking · " : "") + Math.round(minutes) + " min · ceiling " + c[M.cells - 1].toFixed(1) + " % · floor " + c[0].toFixed(1) + " %";
+  // window sashes, door and ceiling: these are what leave
+  const win = b > 0 ? [0, -150 * b, 30 * b - 70 * b * b] : [0, 0, 0], dr = b > 0 ? [-170 * b, 0, 34 * b - 70 * b * b] : [0, 0, 0], up = b > 0 ? Math.max(0, (120 * frac + 40) * b - 260 * b * b) * 0.6 : 0;
+  if (!(b > 0.9)) {
+    const open = vent === "window" && b < 0 ? 16 : 0, a = b > 0 ? Math.max(0, 1 - b) : 1;
+    live.push(box(47 + win[0], 68.5 + win[0], RY - 2 + win[1], RY - 1.2 + win[1], 61 + win[2], 103 + win[2], "#bfe0f2", { mat: "glass", opacity: 0.3 * a, bevel: 0 }), box(69.5 + win[0], 91 + win[0], RY - 2 + win[1], RY - 1.2 + win[1], 61 + open + win[2], 103 + open * 0 + win[2], "#bfe0f2", { mat: "glass", opacity: 0.3 * a, bevel: 0 }), box(68.5 + win[0], 69.5 + win[0], RY - 2.4 + win[1], RY - 0.8 + win[1], 60.5 + win[2], 103.5 + win[2], "#f4f2ec", { mat: "paint", bevel: 0 }));
+    live.push(box(RX - 2.2 + dr[0], RX - 0.6 + dr[0], 43, 85, 0.8 + dr[2], 103 + dr[2], "#c8b08a", { mat: "paint" }), sphere([RX + 0.6 + dr[0], 50, 52 + dr[2]], 1.8, "#c9a24a", { lat: 6, lon: 8, mat: "metal" }));
+  }
+  live.push(box(RX - 3, X1, RY - 3, Y1, RH + up, RH + 3 + up, "#e9eef3", { mat: "glass", opacity: lightTheme ? 0.2 : 0.12, bevel: 0 }));
+  // the gas knob, the switch, the detector
+  live.push(cyl(-6, RY + 31.5, 2, 36, 38.5, leaking ? "#ff6a3d" : "#c9ced3", 12, { mat: "plastic", emit: leaking ? ["#ff6a3d", 0.8] : undefined }));
+  const swOn = now - sparkAt < 0.3 && sparkSrc === "switch";
+  live.push(box(RX + 0.8, RX + 1.6, 21, 23, swOn ? 62 : 59, swOn ? 65 : 62, "#d9d6cf", { mat: "plastic", bevel: 0 }));
+  const dz = detHigh ? 118 : 16, led = alarm && Math.sin(now * 12) > 0;
+  live.push(prism(circle(-15, dz, 4.4, 18), "x", RX, RX + 2, "#f4f2ec", { mat: "plastic" }), prism(circle(-15, dz, 1.3, 10), "x", RX + 2, RX + 2.5, led ? "#ff3a2a" : "#4a6a52", { mat: "plastic", bevel: 0, emit: led ? ["#ff3a2a", 1] : undefined, emitK: 2.6 }));
+  let svg = E.render([{ cache: "room", rev: 0, parts: roomStatic }, { parts: live }]);
+  // the leak: a plume off the cooktop that rises or sinks with the gas
+  if (leaking && b < 0 && dt > 0) { plume += dt * (leak === "big" ? 26 : 9); while (plume > 1) { plume -= 1; fx.push({ k: "gas", p: [5 + (rn() - 0.5) * 6, RY + 14 + (rn() - 0.5) * 6, 50], v: [(rn() - 0.5) * 8, 6 + rn() * 8, g.up * (16 + rn() * 14)], life: 0, max: 1.6 + rn() * 1.2 }); } }
+  // the spark, and the alarm shouting
+  const sa = now - sparkAt; if (sa < 0.6) { const p = D.SRC[sparkSrc]; E.sprite(p, 5 + sa * 20, "#dfe9ff", Math.exp(-sa / 0.08), true, 1); for (let j = 0; j < 3; j++) E.line(p, [p[0] + (rn() - 0.5) * 8, p[1] + (rn() - 0.5) * 8, p[2] + (rn() - 0.5) * 8], 1.6, "#ffffff", Math.exp(-sa / 0.1), true); }
+  if (alarm && b < 0) { const ph = (now * 1.6) % 1; for (let i = 0; i < 20; i++) { const a0 = (i / 20) * TAU, a1 = ((i + 1) / 20) * TAU, r = 6 + ph * 16; E.line([RX + 2.6, -15 + Math.cos(a0) * r, dz + Math.sin(a0) * r], [RX + 2.6, -15 + Math.cos(a1) * r, dz + Math.sin(a1) * r], 1.6, "#ff5a4a", 0.8 * (1 - ph), !lightTheme); } }
+  // the blast: every layer that was in range goes at once
+  if (b >= 0 && b < 0.5 && dt > 0) for (let i = 0; i < n; i++) if (burned[i] && rn() < 0.7) { const p = [RX + rn() * RM.w, RY + rn() * RM.d, (i + rn()) * hC]; fx.push({ k: "flame", p, v: [(p[0]) * 0.9 + (rn() - 0.5) * 60, (p[1]) * 0.9 + (rn() - 0.5) * 60, 30 + rn() * 80], life: 0, max: 0.5 + rn() * 0.6, s: (1 + rn()) * (0.8 + burned[i]) }); }
+  if (b >= 0.2 && b < 2 && dt > 0 && rn() < dt * 50 * frac) fx.push({ k: "smoke", p: [RX + rn() * RM.w, RY + rn() * RM.d, rn() * RH], v: [(rn() - 0.5) * 20, (rn() - 0.5) * 20, 30 + rn() * 40], life: 0, max: 2 + rn() * 2, s: 1.6 });
+  if (b >= 0 && b < 0.16) E.sprite([0, 0, RH / 2], 110 * (0.4 + frac), "#fff1c4", 0.45 * (1 - b / 0.16), true, 1);
+  fx = fx.filter((p) => {
+    p.life += dt; if (p.life > p.max) return false;
+    const t = p.life / p.max;
+    if (p.k === "gas") { p.v[0] *= 0.98; p.v[1] *= 0.98; p.p[2] = clamp(p.p[2], 2, RH - 2); }
+    for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * dt;
+    if (p.k === "flame") E.sprite(p.p, (9 + 24 * t) * p.s, t < 0.25 ? "#fff0b8" : t < 0.6 ? "#ff9a2e" : "#d8481a", 0.5 * (1 - t * t), true, 2);
+    else if (p.k === "smoke") E.sprite(p.p, (14 + 46 * t) * p.s, lightTheme ? "#4a4744" : "#2e2c2b", 0.45 * (1 - t));
+    else E.sprite(p.p, 3 + 9 * t, gas === "ng" ? (lightTheme ? "#3f9f66" : "#8fe0ae") : (lightTheme ? "#7a4a9a" : "#c9a0e8"), 0.2 * Math.sin(Math.PI * t));
+    return true;
+  });
+  // x-ray: what the gas is doing at each height, and the three things that can spark
+  if (E.xray > 0.02 && b < 0) {
+    let s = "";
+    for (let i = 0; i < n; i += 1) { const v = c[i]; if (v < g.lel * 0.05) continue; const p = E.project([X1 + 4, Y1 - 6, (i + 0.5) * hC]); s += '<text class="mk-lab lay-t" data-band="' + (v < g.lel ? "lean" : v <= g.uel ? "flam" : "rich") + '" x="' + (p[0] + 4).toFixed(1) + '" y="' + (p[1] + 3).toFixed(1) + '">' + v.toFixed(1) + " %</text>"; }
+    svg += '<g opacity="' + E.xray.toFixed(2) + '">' + s + "</g>" + E.callouts([
+      { p: D.SRC.stove, text: "Cooktop igniter", sub: c[D.zc.stove].toFixed(1) + " % at this height" }, { p: D.SRC.switch, text: "Light switch", sub: c[D.zc.switch].toFixed(1) + " % at this height" }, { p: D.SRC.fridge, text: "Fridge thermostat", sub: c[D.zc.fridge].toFixed(1) + " % down here" },
+      { p: [RX + 2, -15, dz], text: "Gas detector", sub: detHigh ? "up high: right for natural gas" : "down low: right for LPG" },
+    ], E.xray, E.fs < 0.62 ? {} : { topL: 70 });
+  }
+  if (sceneG.innerHTML !== svg) sceneG.innerHTML = svg;
+  if (b >= 0) {
+    const A = (4 + 14 * frac) * Math.exp(-b / 0.5);
+    setShake(A * Math.sin(b * 80), A * Math.cos(b * 67));
+    if (b > M.end) { setShake(0, 0); reset(); fx = []; event("Reset. Gas off, windows back in."); return draw(); }
+  }
+  const text = b >= 0 ? "BOOM · " + Math.round(frac * 100) + " % of the room" : (leaking ? "leaking · " : "") + Math.round(minutes) + " min · ceiling " + c[n - 1].toFixed(1) + " % · floor " + c[0].toFixed(1) + " %";
   if (readout.textContent !== text) readout.textContent = text;
 }
 
@@ -318,7 +255,7 @@ function tick(t) {
     }
   }
   for (let i = 0; i < 6; i++) step(sdt / 6);
-  draw(); syncUi(); story();
+  draw(sdt); syncUi(); story();
   frame = visible ? requestAnimationFrame(tick) : 0;
 }
 const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
@@ -341,53 +278,25 @@ ui.sparks.forEach((x) => x.addEventListener("click", () => doSpark(x.dataset.spa
 ui.reset.addEventListener("click", doReset);
 ui.slow.addEventListener("click", () => { slow = !slow; run(); });
 ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; tourClock = 0; actions = []; } run(); });
-stage.addEventListener("click", () => doSpark("switch"));
+onTap(() => doSpark("switch"));
 stage.addEventListener("keydown", (ev) => {
-  const map = { " ": () => doSpark("switch"), g: toggleGas, f: () => doSpark("fridge"), c: () => doSpark("stove"), l: () => setGas(gas === "ng" ? "lpg" : "ng"), w: () => setVent(vent === "closed" ? "window" : vent === "window" ? "hood" : "closed"), d: () => setDet(!detHigh), r: doReset, s: () => { slow = !slow; run(); } };
+  const map = { x: () => { setX(!E.xrayOn); run(); }, " ": () => doSpark("switch"), g: toggleGas, f: () => doSpark("fridge"), c: () => doSpark("stove"), l: () => setGas(gas === "ng" ? "lpg" : "ng"), w: () => setVent(vent === "closed" ? "window" : vent === "window" ? "hood" : "closed"), d: () => setDet(!detHigh), r: doReset, s: () => { slow = !slow; run(); } };
   if (map[ev.key]) { ev.preventDefault(); map[ev.key](); }
 });
-window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+window.__fig = { E, freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
 draw(); syncUi(); story();
 `;
 
-const CSS = `.fx-stage{position:relative;cursor:pointer}
-.fx-layer{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.fx-gl{display:block}
-body[data-theme="dark"] .fx-gl{mix-blend-mode:screen}
-.iso-plate{overflow:hidden}
-.cutwall{fill:none;stroke:var(--anatomy-lo);stroke-width:.8;stroke-dasharray:4 3}
-.ceiling{opacity:.35}
-.window-frame{fill:var(--anatomy-paper);stroke:var(--anatomy-mid);stroke-width:.6}
-.glass{fill:rgba(140,190,230,.35);stroke:var(--anatomy-mid);stroke-width:.4}.mullion{stroke:var(--anatomy-mid);stroke-width:.8;fill:none}
-.door-frame{fill:var(--anatomy-paper);stroke:var(--anatomy-mid);stroke-width:.6}.door{fill:#9a7650;stroke:var(--anatomy-mid);stroke-width:.4}.knob{fill:#d6d9dc}
-.plate{fill:#f2f2ee;stroke:var(--anatomy-mid);stroke-width:.3}.toggle{fill:#bfc3c8}.toggle[data-on="true"]{fill:#9fc3ff}
-.detector{fill:#f2f2ee;stroke:var(--anatomy-mid);stroke-width:.4}.det-led{fill:#2a2a2a}.det-led[data-on="true"]{fill:#ff3b30}
-.gasknob[data-on="true"] .iso-fill,.gasknob[data-on="true"] .iso-top{fill:#ff6a3d}
-.fridge .iso-fill,.fridge .iso-shade,.fridge .iso-top{fill:#e8eaec}
-.gas path{stroke:none;transition:fill .3s}
-.gas[data-band="lean"] path{fill:#5fbf86}.gas[data-band="flam"] path{fill:#ff8a3a}.gas[data-band="rich"] path{fill:#9b59b6}.gas[data-band="burnt"] path{fill:#ff5a2a}
-.gas .gas-top{opacity:.25}
-.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
-.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.ctl-label{min-width:72px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
-.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
-.ctl button:hover{border-color:var(--anatomy-mid)}
-.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
-.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
-.ctl #gasb{font-weight:600;letter-spacing:.04em;border-color:var(--anatomy-lit);color:var(--anatomy-lit)}
-.ctl [data-spark]{border-color:#ff6a3d;color:#ff6a3d}
-.ctl output{min-width:72px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
-.meter{position:relative;flex:1;min-width:110px;height:10px;margin-top:14px;border:1px solid var(--anatomy-lo);border-radius:5px}
-.meter .fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .1s;background:var(--anatomy-mid)}
-.meter .fill[data-state="ok"]{background:#5fbf86}.meter .fill[data-state="warn"]{background:#ffb347}.meter .fill[data-state="bad"]{background:#ff5a2a}.meter .fill[data-state="rich"]{background:#9b59b6}
-.mark{position:absolute;top:-14px;bottom:-3px;width:0;border-left:1px dashed #ff6a3d;pointer-events:none}
-.mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:#ff6a3d}
-#stats{font-size:12px;color:var(--anatomy-mid);line-height:1.5}#stats b{color:var(--anatomy-hi,var(--anatomy-mid));font-weight:600}
-#shot{min-height:3.6em;font-size:12px;line-height:1.4}
-@media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:60px}.ctl button small{display:none}}`;
+const CSS = `.lay-t[data-band="lean"]{fill:#5fbf86}.lay-t[data-band="flam"]{fill:#ff8a3a}.lay-t[data-band="rich"]{fill:#b98ad8}body[data-theme="light"] .lay-t[data-band="lean"]{fill:#2f8a56}body[data-theme="light"] .lay-t[data-band="flam"]{fill:#d0601a}body[data-theme="light"] .lay-t[data-band="rich"]{fill:#7a3fa0}
+.meter .fill[data-state="rich"]{background:#9b59b6}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Kitchen: G turns the gas on and off, space flicks the light switch, F the fridge, C the cooktop igniter, L switches the gas, W the ventilation, D the detector">${svg}<canvas class="fx-layer fx-gl" aria-hidden="true"></canvas></div>`;
+const stage = stageHtml({
+  W, H, fig: "Fig 18", title: "Gas leak in the kitchen", xray: true,
+  label: "A kitchen with two walls and the ceiling taken off: a bench with a gas cooktop and range hood, a fridge in the corner, a window, a door, a light switch and a gas detector. Leaking gas shows as coloured layers through the room. An x-ray mode puts the percentage on each layer and marks the three things that can spark.",
+  keysHelp: "Kitchen: drag to rotate, X for x-ray, G turns the gas on and off, space flicks the light switch, F the fridge, C the cooktop igniter, L switches the gas, W the ventilation, D the detector",
+  extra: ``,
+});
 
-const meter = (id, label) => `<div class="ctl-row"><span class="ctl-label">${label}</span><div class="meter"><span id="${id}-fill" class="fill"></span><span id="${id}-lel" class="mark" style="left:25%" data-label=""></span><span id="${id}-uel" class="mark" style="left:75%" data-label=""></span></div><output id="${id}-out">0.0 %</output></div>`;
 const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Gas</span><button type="button" data-gas="ng" aria-pressed="true">Natural gas<small>methane, lighter than air</small></button><button type="button" data-gas="lpg" aria-pressed="false">LPG<small>propane, heavier than air</small></button></div>
   <div class="ctl-row"><span class="ctl-label">Leak</span><button type="button" data-leak="small" aria-pressed="false">Burner left on<small>no flame</small></button><button type="button" data-leak="big" aria-pressed="true">Hose off</button></div>
@@ -397,24 +306,18 @@ const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Room</span><span id="stats"></span></div>
   <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="gasb" aria-pressed="false">LEAVE THE GAS ON</button><button type="button" data-spark="switch">Flick the light</button><button type="button" data-spark="fridge">Fridge kicks in</button><button type="button" data-spark="stove">Igniter</button></div>
   <div class="ctl-row"><span class="ctl-label"></span><button type="button" id="reset">Reset</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
-  <div id="shot" aria-live="polite"></div>
 </div>`;
 
-const card = k.plateHtml({
-  fig: "Fig 18",
-  title: "Gas leak in the kitchen",
-  hint: "Tap: flick the light",
-  readout: "",
-  keys: [
-    { mark: "lit", label: "Gas layers: green too lean, orange flammable, purple too rich; the spark; the flame" },
-    { mark: "raised", label: "Kitchen cut open: cooktop, range hood, fridge, window, door, switch, detectors" },
-  ],
-  caption: "Gas only burns in a band. Too little and there isn't enough fuel; too much and there isn't enough air. Methane burns between 5 and 15 %, propane between about 2 and 9.5 %. Natural gas is lighter than air and fills a room from the ceiling down; LPG is heavier and fills it from the floor up, which is why their detectors go in different places. Gas is odourised so you'll smell it at about a fifth of the lower limit, well before it can burn. Whatever sparks has to be inside the flammable layer to set it off: a light switch at chest height, a fridge thermostat near the floor. And a layer that's too rich to burn becomes flammable again the moment you start airing it out.",
-  body: stageHtml,
-});
 
-const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
-const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not gas safety advice. Real: methane 5 to 15 %, propane about 2.1 to 9.5 %, natural gas lighter than air and LPG heavier, odourised to be smelt at about a fifth of the LEL, natural gas detectors high and LPG ones low. Made up: the room, the leak rates, how it layers and mixes, the ventilation, the alarm level, the time-lapse (two and a half minutes a second) and the blast. If you smell gas: don't touch a switch, get out, call it in from outside.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/gas-leak" style="color:inherit">Source</a></p>`;
+const foot = footHtml({
+  theme, slug: "gas-leak",
+  real: "methane 5 to 15 %, propane about 2.1 to 9.5 %, natural gas lighter than air and LPG heavier, odourised to be smelt at about a fifth of the LEL, natural gas detectors high and LPG ones low.",
+  made: "the room, the leak rates, how it layers and mixes, the ventilation, the alarm level, the time-lapse (two and a half minutes a second) and the blast. If you smell gas: don't touch a switch, get out, call it in from outside.",
+});
 const name = theme === "light" ? "light.html" : "index.html";
-writeFileSync(join(HERE, name), k.pageHtml({ title: "Gas leak in the kitchen", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + glScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 700 }));
+writeFileSync(join(HERE, name), pageMk2({
+  k, title: "Gas leak in the kitchen", fig: "Fig 18", hint: "Tap: flick the light", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  caption: "Gas only burns in a band. Too little and there isn't enough fuel; too much and there isn't enough air. Methane burns between 5 and 15 %, propane between about 2 and 9.5 %. Natural gas is lighter than air and fills a room from the ceiling down; LPG is heavier and fills it from the floor up, which is why their detectors go in different places. Gas is odourised so you'll smell it at about a fifth of the lower limit, well before it can burn. Whatever sparks has to be inside the flammable layer to set it off: a light switch at chest height, a fridge thermostat near the floor. And a layer that's too rich to burn becomes flammable again the moment you start airing it out.",
+  script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
+}));
 console.log("wrote", name);
