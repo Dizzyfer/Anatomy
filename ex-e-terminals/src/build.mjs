@@ -2,14 +2,11 @@ import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as k from "../../kit/iso-kit.mjs";
-import { glCamera } from "../../kit/gl.mjs";
-import { kitScript, glScript } from "../../scripts/inline-kit.mjs";
+import { engineScript, stageHtml, pageMk2, footHtml } from "../../mk2/shell.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
-
-const W = 640;
-const H = 420;
+const W = 960, H = 600;
 
 // Truth: T4 = 135 °C max surface. Diethyl ether autoignition ≈ 160 °C (a T4 gas).
 // Toy: 2.5 mΩ per circuit, box rated 10 W MDP, sits at exactly 135 °C at MDP in 40 °C ambient.
@@ -26,8 +23,6 @@ const GASES = [
 ];
 const N_TERM = 16;
 const V_MIN = 24, V_MAX = 1000, I_MAX = 25;
-
-const PLATE = { x: -100, y: -80, w: 250, d: 162, r: 8 };
 const PLATE_H = 12, FOOT_H = 5;
 const BOX = { x: -62, y: -44, w: 124, d: 84 };
 const WALL = 3;
@@ -38,294 +33,45 @@ const TERM_Y = -20, TERM_D = 32, Z_TT = 23;
 const CL_A = -13, CL_B = 5; // clamp y positions
 const DRUM = [116, -46], DRUM_R = 17, DRUM_H = 52;
 const TRACK = 7; // tracking happens between terminal 7 and 8
-
-const P = k.fitProjection(
-  [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [BOX.x, BOX.y, Z_TOP + 2], [DRUM[0], DRUM[1], DRUM_H + 4]],
-  W, H, { pad: 22, azimuth: 45 },
-);
-
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const Dt = (points, style) => k.dotsSvg(points, style);
-const depth2 = ([x, y]) => k.depthOf([x, y, 0], P);
-const byDepth = (pts) => [...pts].sort((a, b) => depth2(a) - depth2(b));
-const slab = (plan, z, h, r = 1.2, bevel = 0.5) => k.slabOf({ r, ...plan }, z, h, P, 4, bevel);
-const termX = (i) => X0 + i * PITCH;
-const termC = (i) => termX(i) + TW / 2;
-
-function plate() {
-  const out = [`<path class="iso-halo" d="${k.haloOf(PLATE, -PLATE_H - FOOT_H, PLATE_H, P)}"/>`];
-  for (const [x, y] of byDepth(k.corners(PLATE, 22))) {
-    out.push(S(k.cylinder(x, y, 7, -PLATE_H - FOOT_H, 1.6, P, 28), { tone: "lo" }));
-    out.push(S(k.cylinder(x, y, 5.4, -PLATE_H - FOOT_H + 1.6, FOOT_H - 1.6, P, 28), { tone: "mid" }));
-  }
-  out.push(S(k.slabOf(PLATE, -PLATE_H, PLATE_H, P, 8, 1.6), { tone: "mid", inner: L(k.sideSeam(PLATE, -PLATE_H / 2, P), { tone: "faint" }) }));
-  out.push(L(k.planOutline(k.insetPlan(PLATE, 5), 0, P), { tone: "lo" }));
-  const screws = k.corners(PLATE, 10);
-  out.push(L(screws.map(([x, y]) => k.ring(x, y, 2.2, 0, P, 16)).join(""), { tone: "lo" }));
-  out.push(Dt(screws.map(([x, y]) => at([x, y, 0])), { size: 0.5 }));
-  out.push(k.faceTextSvg(k.topMatrix([-92, 74], 0, P, "x"), "ZONE 1 · T4 GAS", { size: 5, tone: "lo" }));
-  return out.join("");
-}
-
-function drum() {
-  const [x, y] = DRUM;
-  const out = [`<path class="iso-halo" d="${k.haloOf({ x: x - DRUM_R - 3, y: y - DRUM_R - 3, w: 2 * DRUM_R + 6, d: 2 * DRUM_R + 6, r: DRUM_R }, 0, 0.1, P)}"/>`];
-  const ribs = [DRUM_H * 0.33, DRUM_H * 0.66].map((z) => k.sideArc(x, y, DRUM_R, z, P, 40)).join("");
-  out.push(S(k.cylinder(x, y, DRUM_R, 0, DRUM_H, P, 56, 0.8), { tone: "hi", inner: L(ribs, { tone: "lo" }) + L(k.sideArc(x, y, DRUM_R, 3, P, 40) + k.sideArc(x, y, DRUM_R, DRUM_H - 3, P, 40), { tone: "faint" }) }));
-  out.push(L(k.ring(x, y, DRUM_R - 2, DRUM_H, P, 48), { tone: "lo" }));
-  out.push(S(k.cylinder(x + 8, y - 4, 2.6, DRUM_H, 1.6, P, 6), { tone: "mid" }));
-  out.push(S(k.cylinder(x - 9, y + 3, 1.8, DRUM_H, 1.4, P, 6), { tone: "mid" }));
-  out.push(k.faceTextSvg(k.topMatrix([x - 11, y + 6], DRUM_H, P, "x"), "DIETHYL", { size: 3.4, tone: "mid" }).replace("<text ", '<text data-part="drum-l1" '));
-  out.push(k.faceTextSvg(k.topMatrix([x - 11, y + 10.5], DRUM_H, P, "x"), "ETHER", { size: 3.4, tone: "mid" }).replace("<text ", '<text data-part="drum-l2" '));
-  return `<g data-part="drum">${out.join("")}</g>`;
-}
-
-function boxBack() {
-  const out = [`<path class="iso-halo" d="${k.haloOf({ ...k.insetPlan({ ...BOX, r: 3 }, -7) }, 0, 0.1, P)}"/>`];
-  // mounting lugs
-  for (const [x, y] of byDepth([[BOX.x - 6, BOX.y + 10], [BOX.x - 6, BOX.y + BOX.d - 10], [BOX.x + BOX.w + 6, BOX.y + 10]])) {
-    out.push(S(slab({ x: x - 6, y: y - 5, w: 12, d: 10 }, 0, Z_BASE, 2, 0.4), { tone: "mid" }));
-    out.push(S(k.cylinder(x, y, 2.4, Z_BASE, 1.2, P, 6), { tone: "mid" }));
-  }
-  out.push(S(slab(BOX, Z_BASE, Z_FLOOR - Z_BASE, 2.5, 0.5), { tone: "mid" }));
-  // back walls, full height, with the lid seating face on top
-  const bw1 = { x: BOX.x, y: BOX.y, w: BOX.w, d: WALL }, bw2 = { x: BOX.x, y: BOX.y + WALL, w: WALL, d: BOX.d - WALL };
-  out.push(S(slab(bw1, Z_FLOOR, Z_TOP - Z_FLOOR, 0.6, 0.3), { tone: "mid" }));
-  out.push(S(slab(bw2, Z_FLOOR, Z_TOP - Z_FLOOR, 0.6, 0.3), { tone: "mid" }));
-  out.push(L(k.segment([BOX.x + 1.5, BOX.y + 1.5, Z_TOP], [BOX.x + BOX.w - 1.5, BOX.y + 1.5, Z_TOP], P) + k.segment([BOX.x + 1.5, BOX.y + 1.5, Z_TOP], [BOX.x + 1.5, BOX.y + BOX.d - 1.5, Z_TOP], P), { tone: "faint" }));
-  out.push(Dt([[BOX.x + 1.5, BOX.y + 1.5], [BOX.x + BOX.w - 4, BOX.y + 1.5], [BOX.x + 1.5, BOX.y + BOX.d - 4]].map(([x, y]) => at([x, y, Z_TOP])), { size: 0.55 }));
-  // mounting plate and DIN rail
-  out.push(S(slab({ x: BOX.x + 6, y: BOX.y + 6, w: BOX.w - 12, d: BOX.d - 12 }, Z_FLOOR, 1, 1, 0), { tone: "lo", crease: "none" }));
-  out.push(S(slab({ x: X0 - 6, y: TERM_Y + 12, w: N_TERM * PITCH + 10, d: 8 }, Z_FLOOR + 1, 2, 0.3, 0), { tone: "mid" }));
-  // wiring ducts, back and front
-  out.push(duct(BOX.y + 7));
-  // earth bar
-  out.push(S(slab({ x: BOX.x + 8, y: BOX.y + BOX.d - 14, w: 20, d: 4 }, Z_FLOOR + 1, 4, 0.4, 0.2), { tone: "mid" }));
-  out.push(Dt([0, 1, 2, 3].map((i) => at([BOX.x + 11 + i * 5, BOX.y + BOX.d - 12, Z_FLOOR + 5])), { size: 0.5 }));
-  return out.join("");
-}
-function duct(y) {
-  const out = [];
-  {
-    const duct = { x: BOX.x + 8, y, w: BOX.w - 16, d: 9 };
-    const slots = [];
-    for (let x = duct.x + 4; x < duct.x + duct.w - 2; x += 4) slots.push(k.segment([x, y + duct.d, Z_FLOOR + 1 + 4], [x, y + duct.d, Z_FLOOR + 1 + 11], P));
-    out.push(S(slab(duct, Z_FLOOR + 1, 13, 0.6, 0.3), { tone: "mid", inner: L(slots.join(""), { tone: "faint" }) }));
-    out.push(L(k.planOutline({ ...k.insetPlan({ ...duct, r: 0.6 }, 1.2) }, Z_FLOOR + 14, P), { tone: "faint" }));
-  }
-  return out.join("");
-}
-
-function terminals() {
-  const out = [];
-  for (let i = 0; i < N_TERM; i++) {
-    const x = termX(i);
-    const t = { x, y: TERM_Y, w: TW, d: TERM_D };
-    out.push(`<g data-term="${i}">` + S(slab(t, Z_FLOOR + 3, Z_TT - Z_FLOOR - 3, 0.5, 0.25), { tone: "hi", inner: L(k.segment([x + TW, TERM_Y + 10, Z_FLOOR + 3], [x + TW, TERM_Y + 10, Z_TT], P) + k.segment([x + TW, TERM_Y + 22, Z_FLOOR + 3], [x + TW, TERM_Y + 22, Z_TT], P), { tone: "faint" }) }) +
-      L(k.ring(x + TW / 2, CL_A, 1.5, Z_TT, P, 12) + k.ring(x + TW / 2, CL_B, 1.5, Z_TT, P, 12), { tone: "lo" }) +
-      Dt([at([x + TW / 2, CL_A, Z_TT]), at([x + TW / 2, CL_B, Z_TT])], { size: 0.45 }) +
-      L(k.segment([x + 0.8, TERM_Y + 15.5, Z_TT], [x + TW - 0.8, TERM_Y + 15.5, Z_TT], P), { tone: "faint" }) + `</g>`);
-  }
-  // end stops
-  for (const x of [X0 - 4, X0 + N_TERM * PITCH - 0.4]) out.push(S(slab({ x, y: TERM_Y + 8, w: 3, d: 16 }, Z_FLOOR + 3, 10, 0.4, 0.2), { tone: "mid" }));
-  out.push(`<g data-part="wires"></g><g data-part="track"></g>`);
-  out.push(duct(TERM_Y + TERM_D + 3));
-  return out.join("");
-}
-
-function boxFront() {
-  const out = [];
-  // front walls cut down for the view, hatched where cut
-  const fw1 = { x: BOX.x + WALL, y: BOX.y + BOX.d - WALL, w: BOX.w - WALL, d: WALL }, fw2 = { x: BOX.x + BOX.w - WALL, y: BOX.y + WALL, w: WALL, d: BOX.d - 2 * WALL };
-  const hatch = (from, to) => {
-    const lines = [], n = Math.floor(Math.hypot(to[0] - from[0], to[1] - from[1]) / 3);
-    for (let i = 0; i < n; i++) {
-      const u = i / n, v = (i + 0.6) / n;
-      lines.push(k.segment([from[0] + (to[0] - from[0]) * u, from[1] + (to[1] - from[1]) * u, Z_CUT], [from[0] + (to[0] - from[0]) * v + (to[1] === from[1] ? 0 : WALL), from[1] + (to[1] - from[1]) * v + (to[0] === from[0] ? 0 : WALL), Z_CUT], P));
-    }
-    return L(lines.join(""), { tone: "faint" });
-  };
-  out.push(S(slab(fw2, Z_FLOOR, Z_CUT - Z_FLOOR, 0.3, 0), { tone: "mid", inner: hatch([fw2.x, fw2.y], [fw2.x, fw2.y + fw2.d]) }));
-  out.push(S(slab(fw1, Z_FLOOR, Z_CUT - Z_FLOOR, 0.3, 0), { tone: "mid", inner: hatch([fw1.x, fw1.y], [fw1.x + fw1.w, fw1.y]) }));
-  // glands on the front face
-  const glands = [-40, -22, -4, 14];
-  for (const gx of glands) {
-    out.push(S(slab({ x: gx - 3.4, y: BOX.y + BOX.d, w: 6.8, d: 2.2 }, Z_BASE + 1.2, 6.8, 1.6, 0.3), { tone: "mid" }));
-    out.push(S(slab({ x: gx - 2.6, y: BOX.y + BOX.d + 2.2, w: 5.2, d: 3.4 }, Z_BASE + 2, 5.2, 2.2, 0.3), { tone: "mid" }));
-  }
-  // field cables leaving across the bench
-  const cables = glands.map((gx, i) => {
-    const pts = [[gx, BOX.y + BOX.d + 5.6, Z_BASE + 4.6], [gx - 2, BOX.y + BOX.d + 12, 0.8], [gx - 10 - i * 6, BOX.y + BOX.d + 30, 0.8], [gx - 30 - i * 10, 76, 0.8]].map(at);
-    return `<path class="iso-line iso-cable" data-tone="mid" d="${k.pathOf(pts)}"/>`;
-  });
-  out.push(cables.join(""));
-  // rating plate on the front face
-  const m = k.sideMatrix([30, BOX.y + BOX.d + 0.01], Z_CUT - 1.5, P, "left");
-  out.push(`<g transform="${m}"><rect x="0" y="0" width="26" height="7" rx=".6" style="fill:var(--anatomy-paper);stroke:var(--anatomy-mid);stroke-width:.3"/><text class="iso-face-text" data-tone="mid" x="1.6" y="4.6" font-size="2.6">Ex eb IIC T4 · MDP 10 W</text></g>`);
-  return out.join("");
-}
-
 const START = { n: 6, amps: 16, volts: 230, dirty: false, gas: 0 };
-const fig = k.figureSvg({
-  width: W, height: H,
-  label: "An Ex e terminal box on a bench with its lid off and front walls cut away. A DIN rail carries sixteen terminals with wiring ducts either side. A drum of diethyl ether stands nearby. Too much current heats the box past its T4 rating; too much voltage, especially on a dirty surface, tracks or flashes over between terminals.",
-  body: [plate(), `<g data-part="box">${boxBack()}${terminals()}${boxFront()}</g>`, drum()],
-});
-
-const DATA = {
-  W, H, camera: glCamera(P), P, MODEL, GASES, TERM_D, N_TERM, V_MIN, V_MAX, I_MAX, PITCH, TW, X0, TERM_Y, Z_TT, CL_A, CL_B, TRACK, BOX, Z_FLOOR, start: START,
-  ductBack: BOX.y + 7 + 9, ductFront: TERM_Y + TERM_D + 3,
-  pivots: { drum: at([DRUM[0] - DRUM_R, DRUM[1], 0]), box: at([0, 0, 0]) },
-};
-
-const GLSL = `
-uniform float uLight;
-uniform float uHeat;
-uniform float uN;
-uniform float uTrack;
-uniform float uTrackOn;
-uniform float uFlash;
-uniform float uBoom;
-const float X0=${X0.toFixed(2)}, PITCH=${PITCH.toFixed(2)}, TW=${TW.toFixed(2)}, ZT=${Z_TT.toFixed(2)};
-const float CA=${CL_A.toFixed(2)}, CB=${CL_B.toFixed(2)};
-vec4 inkFor(vec3 seen,float cover){vec3 ab=1.-seen;float a=max(max(ab.r,max(ab.g,ab.b)),cover);return vec4(vec3(a)-ab,a);}
-vec4 over(vec4 t,vec4 u){return t+u*(1.-t.a);}
-vec4 fireInk(float e,float core){
-  vec3 hue=mix(vec3(.55,.16,.06),mix(vec3(1.,.36,.08),vec3(1.,.66,.28),smoothstep(.45,1.,core)),smoothstep(0.,.5,core));
-  vec3 c=tonemap(hue*e,1.4);float a=max(c.r,max(c.g,c.b));
-  float la=1.-exp(-1.8*e);
-  vec3 seen=mix(vec3(1.),mix(vec3(.82,.28,.06),vec3(1.,.78,.4),smoothstep(.6,1.,core)*smoothstep(.5,1.,la)),la);
-  return mix(vec4(c,a),inkFor(seen,.9*smoothstep(.75,1.,la)*core)*la,uLight);
-}
-vec4 arcInk(float e){
-  vec3 c=tonemap(vec3(.62,.78,1.)*e,1.6)+tonemap(vec3(1.)*max(0.,e-1.2),1.);
-  c=min(c,vec3(1.));float a=max(c.r,max(c.g,c.b));
-  float la=1.-exp(-1.6*e);
-  vec3 seen=mix(vec3(1.),mix(vec3(.18,.3,.85),vec3(.75,.85,1.),smoothstep(1.,2.,e)),la);
-  return mix(vec4(c,a),inkFor(seen,.85*smoothstep(1.2,2.2,e))*la,uLight);
-}
-float segDist(vec2 p,vec2 a,vec2 b){vec2 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h);}
-void main(){
-  vec2 vb=viewOf(gl_FragCoord.xy);
-  vec4 o=vec4(0.);
-  // hot terminals: glow on the clamp faces of the populated ones
-  float glow=0.;
-  if(uHeat>.01){
-    vec3 p=onFloor(vb,ZT);
-    for(int i=0;i<16;i++){
-      float on=step(float(i)+.5,uN);
-      float cx=X0+float(i)*PITCH+TW*.5;
-      float d1=length(vec2(p.x-cx,(p.y-CA)*.8)), d2=length(vec2(p.x-cx,(p.y-CB)*.8));
-      glow+=on*(exp(-pow(d1/2.6,2.))+exp(-pow(d2/2.6,2.)));
-    }
-    // shimmer above the box
-    vec3 q=onFloor(vb,ZT+8.);
-    float inBox=smoothstep(${(BOX.x + 6).toFixed(1)},${(BOX.x + 18).toFixed(1)},q.x)*(1.-smoothstep(${(BOX.x + BOX.w - 18).toFixed(1)},${(BOX.x + BOX.w - 6).toFixed(1)},q.x))*smoothstep(${(BOX.y + 6).toFixed(1)},${(BOX.y + 18).toFixed(1)},q.y)*(1.-smoothstep(${(BOX.y + BOX.d - 18).toFixed(1)},${(BOX.y + BOX.d - 6).toFixed(1)},q.y));
-    float sh=inBox*smoothstep(.45,.9,fbm2(q.xy*.06+vec2(0.,-uTime*.8)))*.35;
-    o=over(fireInk((glow*1.1+sh)*uHeat*uHeat*1.4,clamp(uHeat*1.1-.2,0.,1.)),o);
-  }
-  // creepage: a crawling spark at the tip of the carbon track
-  if(uTrackOn>.002){
-    float xa=X0+${TRACK.toFixed(1)}*PITCH+TW*.5, xb=xa+PITCH;
-    float tx=mix(xa,xb,uTrack);
-    vec2 tip=project(vec3(tx,CA,ZT+.3));
-    float d=length(vb-tip)/uK;
-    float fl=.55+.45*noise2(vec2(uTime*40.,1.3));
-    float e=(exp(-pow(d/.45,2.))*2.+exp(-pow(d/2.2,2.))*.6)*fl*uTrackOn;
-    o=over(arcInk(e),o);
-  }
-  // clearance: a flashover arc through the air between the clamps
-  if(uFlash>.002){
-    float xa=X0+${TRACK.toFixed(1)}*PITCH+TW*.5, xb=xa+PITCH;
-    vec2 a=project(vec3(xa,CA,ZT+.4)), b=project(vec3(xb,CA,ZT+.4));
-    float t=clamp(dot(vb-a,b-a)/dot(b-a,b-a),0.,1.);
-    vec2 n2=normalize(vec2(-(b-a).y,(b-a).x));
-    float bow=-sin(t*3.1416)*2.2*uK;
-    float jag=(noise2(vec2(t*10.,uTime*70.))-.5)*1.4*uK*sin(t*3.1416);
-    float d=segDist(vb-n2*(bow+jag)-vec2(0.,bow*.6),a,b)/uK;
-    float c=length(vb-mix(a,b,.5))/uK;
-    float e=(exp(-pow(d/.35,2.))*2.4+exp(-pow(c/9.,2.))*.9)*uFlash;
-    o=over(arcInk(e),o);
-  }
-  // the box fails and the ether goes up
-  if(uBoom>0.){
-    float c=uBoom;
-    vec3 C=vec3(0.,-4.,ZT+4.+30.*c);
-    vec2 dv=(vb-project(C))/uK;
-    float d=length(dv);
-    float R=18.+80.*(1.-exp(-c/.2));
-    float n=fbm3(vec3(dv*.045,c*1.6));
-    float shell=exp(-pow((d-R*(.84+.28*n))/(7.+R*.13),2.));
-    float core=(1.-smoothstep(R*.35,R*(.8+.25*n),d))*(.5+.7*n);
-    float life=smoothstep(0.,.05,c)*exp(-c/.6);
-    vec3 fp=onFloor(vb,0.);
-    float ring=exp(-pow((length(fp.xy)-(30.+380.*c))/6.,2.))*exp(-c/.32)*.7;
-    float ef=smoothstep(0.,80.,min(min(vb.x,uView.x-vb.x),min(vb.y,uView.y-vb.y)));
-    float e=((shell*1.4+core*1.1)*life+ring)*ef;
-    float hot=(core*life*exp(-c/.4)*1.4+ring*.6)*ef+e*.35;
-    o=over(fireInk(e,clamp(hot/max(e,1e-4),0.,1.)),o);
-  }
-  o.rgb=min(o.rgb,vec3(o.a));
-  float dd=(hash12(gl_FragCoord.xy+uTime)-.5)/255.*smoothstep(0.,1.5/255.,o.a);
-  gl_FragColor=max(o+dd,0.);
-}`;
-
+const PLATE = { x: -78, y: -56, w: 204, d: 140, r: 8 };
+const P = k.fitProjection([...k.boxCorners(PLATE, -0.8, 0), [-62, -44, 40], [104, -30, 80], [62, 40, 40]], W, H, { pad: 22, azimuth: 45, elevation: 30 });
+const DATA = { W, H, P, PLATE };
+Object.assign(DATA, { MODEL, GASES, TERM_D, N_TERM, V_MIN, V_MAX, I_MAX, PITCH, TW, X0, TERM_Y, Z_TT, CL_A, CL_B, TRACK, BOX, Z_FLOOR, start: START, ductBack: BOX.y + 7 + 9, ductFront: TERM_Y + TERM_D + 3, GEO: { WALL, Z_BASE, Z_TOP, DRUM: [104, -30], DRUM_R, DRUM_H, GLANDS: [-40, -22, -4, 14], GZ: 20 } });
 const LIVE = `
+${engineScript()}
 const D = __DATA__;
-const { P, MODEL: M } = D;
-const stage = document.querySelector(".fx-stage");
-const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const stage = document.querySelector(".mk-stage");
 const readout = document.querySelector("[data-readout]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
-const LIGHT = document.body.dataset.theme === "light" ? 1 : 0;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lightTheme = document.body.dataset.theme === "light";
+const E = mk2(stage, D.P, { W: D.W, H: D.H, pivot: [10, 0, 16], plate: { ...D.PLATE, h: 12, foot: 5 }, shadowBox: [-86, -64, -18, 134, 92, 110] });
+const { box, cyl, prism, circle, lathe, tube, sphere, loft, roundPoly, rrect, tris } = E;
+E.bindTools(stage);
+const xbtn = stage.querySelector('[data-mk="xray"]');
+const setX = (on) => { E.setXray(on); if (xbtn) xbtn.setAttribute("aria-pressed", String(on)); };
+const sceneG = stage.querySelector('[data-part="scene"]');
+const iso = (p) => E.project(p), depthOf = (p) => E.depthOf(p);
+const shakeEls = [stage.querySelector(".mk-gl"), stage.querySelector(".mk-over")];
+// a tap on the stage that isn't a drag or a press on the toolbar
+const onTap = (fn) => { let d0 = null; stage.addEventListener("pointerdown", (ev) => { d0 = ev.target.closest(".mk-tools,button,a") ? null : [ev.clientX, ev.clientY]; }); stage.addEventListener("pointerup", (ev) => { if (d0 && Math.hypot(ev.clientX - d0[0], ev.clientY - d0[1]) < 6) fn(ev); d0 = null; }); };
+// 3x4 matrix for a cached object turning about a vertical axis through (cx, cy)
+const rotZ = (cx, cy, a) => { const c = Math.cos(a), s = Math.sin(a); return [c, -s, 0, s, c, 0, 0, 0, 1, cx - c * cx + s * cy, cy - s * cx - c * cy, 0]; };
+const mixHex = (a, b, t) => { const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)), A = h(a), B = h(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * Math.min(1, Math.max(0, t))).toString(16).padStart(2, "0")).join(""); };
+const setShake = (x, y) => { const t = x || y ? "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)" : ""; for (const e of shakeEls) if (e.style.transform !== t) e.style.transform = t; };
+const M = D.MODEL, P = D.P;
 const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-const gl = glLayer({ canvas: stage.querySelector(".fx-gl"), fragment: ${JSON.stringify(GLSL)}, view: [D.W, D.H], camera: D.camera, uniforms: ["uHeat", "uN", "uTrack", "uTrackOn", "uFlash", "uBoom"], fixed: { uLight: LIGHT } });
-if (gl) stage.setAttribute("data-gl", "");
-
+const burst = (age, rise, fall) => (age > 0 ? sm(0, rise, age) * Math.exp(-Math.max(0, age - rise) / fall) : 0);
 let n = D.start.n, amps = D.start.amps, volts = D.start.volts, dirty = D.start.dirty;
 let on = false, temp = M.tAmb, track = 0, flashAt = -10, boomAt = null, cause = "", arcAt = null, gas = D.start.gas;
 const G = () => D.GASES[gas];
-const drumL1 = stage.querySelector('[data-part="drum-l1"]'), drumL2 = stage.querySelector('[data-part="drum-l2"]');
 let frame = 0, last = 0, now = 0, visible = false, touring = true, slow = false, tourClock = 0, tourStep = -1, lastShot = "";
 const BOOM_END = 4.2;
 const booming = () => boomAt !== null && now - boomAt < BOOM_END + 0.3;
 const power = () => n * amps * amps * M.rCircuit;
 const tSteady = () => M.tAmb + M.rth * power();
 const creepLimit = () => dirty ? M.creepDirty : M.creepClean;
-
-const wiresG = q("wires"), trackG = q("track"), boxG = q("box"), drumG = q("drum"), flash = stage.querySelector(".fx-flash");
-function drawWires() {
-  let s = "";
-  for (let i = 0; i < D.N_TERM; i++) {
-    const cx = D.X0 + i * D.PITCH + D.TW / 2;
-    const live = i < n;
-    if (!live) continue;
-    const zw = D.Z_TT - 6;
-    const a = [[cx, D.TERM_Y, zw], [cx, D.TERM_Y - 3, zw + 1.5], [cx, D.ductBack + 1, D.Z_FLOOR + 14.2], [cx, D.ductBack - 2, D.Z_FLOOR + 14.2]].map((p) => iso(p, P));
-    const b = [[cx, D.TERM_Y + D.TERM_D, zw], [cx, D.TERM_Y + D.TERM_D + 1.5, zw + 1.5], [cx, D.ductFront + 3, D.Z_FLOOR + 14.2]].map((p) => iso(p, P));
-    s += '<path class="iso-line iso-wire" data-tone="' + (on ? "hi" : "mid") + '" d="' + pathOf(a) + pathOf(b) + '"/>';
-  }
-  wiresG.innerHTML = s;
-}
-function drawTrack() {
-  if (track <= 0.001) { trackG.innerHTML = ""; return; }
-  const xa = D.X0 + D.TRACK * D.PITCH + D.TW / 2, xb = xa + D.PITCH;
-  const pts = [];
-  const N = 24;
-  for (let i = 0; i <= N; i++) {
-    const t = (i / N) * track;
-    const x = xa + (xb - xa) * t;
-    // the creepage path dips into the gap between the two terminal bodies
-    const gapMid = D.X0 + (D.TRACK + 1) * D.PITCH - (D.PITCH - D.TW) / 2;
-    const dip = Math.max(0, 1 - Math.abs(x - gapMid) / 0.9) * 3;
-    const wob = Math.sin(i * 2.3) * 0.25;
-    pts.push(iso([x, D.CL_A + wob, D.Z_TT - dip], P));
-  }
-  trackG.innerHTML = '<path class="iso-line iso-track" d="' + pathOf(pts) + '"/>';
-}
 
 const ui = {
   n: document.querySelector("#n"), nOut: document.querySelector("#n-out"), amps: document.querySelector("#amps"), aOut: document.querySelector("#amps-out"),
@@ -353,7 +99,6 @@ function syncUi() {
   ui.ait.style.left = tpos(G().ait);
   ui.ait.dataset.label = G().btn + " ignites " + G().ait;
   ui.gasBtns.forEach((b, i) => b.setAttribute("aria-pressed", String(i === gas)));
-  if (drumL1.textContent !== G().label[0]) { drumL1.textContent = G().label[0]; drumL2.textContent = G().label[1]; }
   const pos = (v) => ((v - D.V_MIN) / (D.V_MAX - D.V_MIN) * 100).toFixed(1) + "%";
   ui.creep.style.left = pos(creepLimit());
   ui.clear.style.left = pos(M.clearance);
@@ -400,31 +145,161 @@ function step(dt) {
     temp += (M.tAmb - temp) * (1 - Math.exp(-dt / (M.tau * 1.6)));
   }
 }
-
-function draw() {
-  drawWires(); drawTrack();
-  const K = chaos();
+// ---------------- the terminal box, in real 3D ----------------
+const TAU = Math.PI * 2, BX = D.BOX, GEO = D.GEO, rn = () => Math.random();
+const flashEl = stage.querySelector(".fx-flash"), overEl = stage.querySelector(".mk-over");
+const termX = (i) => D.X0 + i * D.PITCH, termC = (i) => termX(i) + D.TW / 2;
+const STEEL = "#b4bcc4", WIRE = ["#8a5a3a", "#3b3d42", "#9aa0a8"];
+const tipM = (piv, ang, axis) => { const c = Math.cos(ang), s = Math.sin(ang), R = axis === "x" ? [1, 0, 0, 0, c, -s, 0, s, c] : [c, 0, s, 0, 1, 0, -s, 0, c]; return [...R, ...[0, 1, 2].map((i) => piv[i] - (R[i * 3] * piv[0] + R[i * 3 + 1] * piv[1] + R[i * 3 + 2] * piv[2]))]; };
+function ductParts(y) {
+  const o = [], x0 = BX.x + 8, x1 = BX.x + BX.w - 8, z0 = D.Z_FLOOR + 1;
+  o.push(box(x0, x1, y, y + 9, z0, z0 + 11.4, "#aeb3ba", { mat: "plastic", bevel: 0.3 }), box(x0 - 0.3, x1 + 0.3, y - 0.3, y + 9.3, z0 + 11.4, z0 + 13, "#bcc1c8", { mat: "plastic", bevel: 0.4 }));
+  for (let x = x0 + 3; x < x1 - 2; x += 4) for (const yy of [y - 0.12, y + 9 - 0.03]) o.push(box(x - 0.55, x + 0.55, yy, yy + 0.15, z0 + 3, z0 + 11.2, "#4c5057", { bevel: 0, flat: true }));
+  return o;
+}
+function innerParts() {
+  const o = [], zf = D.Z_FLOOR;
+  // lugs, base and gland plate
+  for (const [x, y] of [[BX.x - 6, BX.y + 10], [BX.x - 6, BX.y + BX.d - 10], [BX.x + BX.w + 6, BX.y + 10], [BX.x + BX.w + 6, BX.y + BX.d - 10]]) o.push(prism(rrect(x - 6, x + 6, y - 5, y + 5, 2), "z", 0, GEO.Z_BASE, STEEL, { mat: "satin" }), cyl(x, y, 2.4, GEO.Z_BASE, GEO.Z_BASE + 1.2, "#8f959d", 6, { mat: "steel" }));
+  o.push(prism(rrect(BX.x, BX.x + BX.w, BX.y, BX.y + BX.d, 2.5), "z", GEO.Z_BASE, zf, STEEL, { mat: "satin" }));
+  // mounting plate, DIN rail, the two wiring ducts, earth bar
+  o.push(box(BX.x + 6, BX.x + BX.w - 6, BX.y + 6, BX.y + BX.d - 6, zf, zf + 1, "#c9ced3", { mat: "satin", bevel: 0 }));
+  o.push(box(D.X0 - 6, D.X0 + D.N_TERM * D.PITCH + 4, D.TERM_Y + 12, D.TERM_Y + 20, zf + 1, zf + 3, "#aeb4bb", { mat: "steel", bevel: 0.2 }));
+  o.push(...ductParts(BX.y + 7), ...ductParts(D.ductFront));
+  o.push(box(BX.x + BX.w - 28, BX.x + BX.w - 8, BX.y + BX.d - 14, BX.y + BX.d - 10, zf + 1, zf + 5, "#c9a24a", { mat: "metal", bevel: 0.3 }));
+  for (let i = 0; i < 4; i++) o.push(cyl(BX.x + BX.w - 25 + i * 5, BX.y + BX.d - 12, 1.2, zf + 5, zf + 5.9, "#d8dce0", 8, { mat: "steel" }));
+  for (const x of [D.X0 - 4, D.X0 + D.N_TERM * D.PITCH - 0.4]) o.push(box(x, x + 3, D.TERM_Y + 8, D.TERM_Y + 24, zf + 3, zf + 13, "#7d838b", { mat: "plastic", bevel: 0.4 }));
+  // glands and field cables on the front face, and the rating plate
+  const yf = BX.y + BX.d;
+  GEO.GLANDS.forEach((gx, i) => {
+    o.push(prism(circle(gx, GEO.GZ, 4.2, 6), "y", yf, yf + 2.4, "#c9a24a", { mat: "metal" }), prism(circle(gx, GEO.GZ, 3.2, 18), "y", yf + 2.4, yf + 6, "#c9a24a", { mat: "metal" }), prism(circle(gx, GEO.GZ, 2.6, 14), "y", yf + 6, yf + 7.4, "#2a2d31", { mat: "rubber" }));
+    o.push(tube([[gx, yf + 7, GEO.GZ], [gx, yf + 13, GEO.GZ - 2], [gx - 2, yf + 20, 3.4], [gx - 9 - i * 5, yf + 30, 2.2], [gx - 22 - i * 8, D.PLATE.y + D.PLATE.d - 2, 2.2], [gx - 26 - i * 8, D.PLATE.y + D.PLATE.d + 3, -2], [gx - 27 - i * 8, D.PLATE.y + D.PLATE.d + 4, -16]], 2.1, "#26282c", { seg: 10, mat: "rubber" }));
+  });
+  o.push(box(28, 60, yf, yf + 0.5, 13, 23, "#e9e6df", { mat: "matte", bevel: 0 }));
+  return o;
+}
+function wallParts(q) {
+  const o = [], zf = D.Z_FLOOR, zt = GEO.Z_TOP, W = GEO.WALL, hot = q > 1 ? { emit: ["#ff5a1a", q * 0.022] } : {}, col = mixHex(STEEL, "#c98a6a", q / 16);
+  const S = { mat: "satin", shell: true, bevel: 0.3, ...hot };
+  o.push(box(BX.x, BX.x + BX.w, BX.y, BX.y + W, zf, zt, col, S), box(BX.x, BX.x + W, BX.y + W, BX.y + BX.d - W, zf, zt, col, S), box(BX.x, BX.x + BX.w, BX.y + BX.d - W, BX.y + BX.d, zf, zt, col, S), box(BX.x + BX.w - W, BX.x + BX.w, BX.y + W, BX.y + BX.d - W, zf, zt, col, S));
+  return o;
+}
+function lidParts(q) {
+  const o = [], zt = GEO.Z_TOP, hot = q > 1 ? { emit: ["#ff5a1a", q * 0.022] } : {}, col = mixHex(STEEL, "#c98a6a", q / 16);
+  o.push(prism(rrect(BX.x - 1.5, BX.x + BX.w + 1.5, BX.y - 1.5, BX.y + BX.d + 1.5, 3), "z", zt + 0.4, zt + 3.2, col, { mat: "satin", xhide: true, ...hot }), prism(rrect(BX.x + 7, BX.x + BX.w - 7, BX.y + 7, BX.y + BX.d - 7, 2), "z", zt + 3.2, zt + 3.9, col, { mat: "satin", xhide: true, ...hot }));
+  for (const [x, y] of [[BX.x + 3.5, BX.y + 3.5], [BX.x + BX.w - 3.5, BX.y + 3.5], [BX.x + 3.5, BX.y + BX.d - 3.5], [BX.x + BX.w - 3.5, BX.y + BX.d - 3.5]]) o.push(cyl(x, y, 1.9, zt + 3.2, zt + 4.3, "#e2e5e8", 6, { mat: "steel", xhide: true }));
+  o.push(box(-16, 16, 12, 22, zt + 3.9, zt + 4.1, "#e9e6df", { mat: "matte", bevel: 0, xhide: true }));
+  return o;
+}
+function termParts(q) {
+  const o = [], zf = D.Z_FLOOR, y0 = D.TERM_Y, zt = D.Z_TT, R = (yy, zz) => [y0 + yy, zz];
+  const ring = [R(0, zf + 3), R(0, zt - 5), R(3, zt - 5), R(4, zt), R(13, zt), R(14, zt - 2.5), R(18, zt - 2.5), R(19, zt), R(28, zt), R(29, zt - 5), R(32, zt - 5), R(32, zf + 3)];
+  for (let i = 0; i < D.N_TERM; i++) {
+    const x = termX(i), cx = termC(i), live = i < n, h = live ? Math.min(1, q / 10) : 0, he = h * h;
+    o.push(prism(ring, "x", x, x + D.TW, mixHex("#e6dcc3", "#8a4a2a", he * 0.7), { mat: "plastic", bevel: 0.25, emit: he > 0.03 ? ["#ff4a12", he * 0.38] : undefined }));
+    for (const cy of [D.CL_A, D.CL_B]) o.push(cyl(cx, cy, 1.7, zt, zt + 0.5, "#d8dce0", 12, { mat: "steel", emit: he > 0.03 ? ["#ff7a2a", he] : undefined, emitK: 2 }), box(cx - 1.3, cx + 1.3, cy - 0.25, cy + 0.25, zt + 0.5, zt + 0.56, "#3a3d42", { bevel: 0, flat: true }));
+    o.push(box(x + 0.6, x + D.TW - 0.6, y0 + 14.6, y0 + 17.4, zt - 2.5, zt - 2.1, "#f6f4ee", { mat: "matte", bevel: 0 }));
+  }
+  return o;
+}
+function wireParts() {
+  const o = [], zw = D.Z_TT - 6, zd = D.Z_FLOOR + 14.2;
+  for (let i = 0; i < n; i++) {
+    const cx = termC(i), col = WIRE[i % 3], O = { seg: 8, mat: "plastic", emit: on ? [col, 0.07] : undefined };
+    o.push(tube([[cx, D.TERM_Y + 1.5, zw], [cx, D.TERM_Y - 1.5, zw + 1.2], [cx, D.TERM_Y - 4.5, zw + 2.6], [cx, D.ductBack + 1, zw + 1.6], [cx, D.ductBack - 1.5, zw - 0.5]], 0.95, col, O));
+    o.push(tube([[cx, D.TERM_Y + D.TERM_D - 1.5, zw], [cx, D.TERM_Y + D.TERM_D + 1, zw + 1.4], [cx, D.ductFront + 0.6, zw + 0.4], [cx, D.ductFront + 3, zw - 1.5]], 0.95, col, O));
+  }
+  return o;
+}
+function drumParts() {
+  const R = GEO.DRUM_R, Hh = GEO.DRUM_H, o = [], prof = [[0, 0], [R, 0], [R, 2.4], [R + 0.7, 3], [R, 3.6]];
+  for (const z of [Hh * 0.33, Hh * 0.66]) prof.push([R, z - 1.4], [R + 0.9, z], [R, z + 1.4]);
+  prof.push([R, Hh - 2], [R + 0.7, Hh - 1.2], [R + 0.7, Hh + 0.6], [R - 1.2, Hh + 0.6], [R - 1.2, Hh - 0.6], [0, Hh - 0.6]);
+  o.push(lathe(prof, "#2e6aa8", { c: [0, 0, 0], seg: 48, mat: "paint" }));
+  o.push(cyl(8, -4, 2.6, Hh - 0.6, Hh + 0.9, "#c9ced3", 12, { mat: "steel" }), cyl(-10, -4, 1.8, Hh - 0.6, Hh + 0.7, "#c9ced3", 10, { mat: "steel" }));
+  o.push(prism(rrect(-10, 10, 2, 10, 1), "z", Hh - 0.6, Hh - 0.45, "#f4f2ec", { mat: "matte", bevel: 0 }), prism([[-1, -12.4], [4.4, -7], [-1, -1.6], [-6.4, -7]], "z", Hh - 0.6, Hh - 0.45, "#d0342c", { bevel: 0, flat: true }));
+  return o;
+}
+let fx = [];
+function draw(dt = 0) {
+  const K = chaos(), g = G(), heat = clamp((temp - 50) / 110, 0, 1.2), q = Math.round((K.c >= 0 ? heat * Math.max(0, 1 - K.c * 2) : heat) * 10), zt = D.Z_TT;
+  // on a bang the box hops and the drum goes over
+  let bm, lm, dm = [1, 0, 0, 0, 1, 0, 0, 0, 1, GEO.DRUM[0], GEO.DRUM[1], 0];
   if (K.c >= 0) {
-    const c = K.c;
-    drumG.setAttribute("transform", "rotate(" + (tip(c, 0.05, -82) * K.back).toFixed(1) + " " + D.pivots.drum[0].toFixed(1) + " " + D.pivots.drum[1].toFixed(1) + ")");
-    const hop = c < 0.6 ? -40 * Math.sin(c / 0.6 * Math.PI) : 0;
-    boxG.setAttribute("transform", "translate(0 " + (hop * K.back).toFixed(1) + ") rotate(" + (8 * Math.sin(Math.min(c, 0.6) / 0.6 * Math.PI) * K.back).toFixed(1) + " " + D.pivots.box[0].toFixed(1) + " " + D.pivots.box[1].toFixed(1) + ")");
-    const A = 7 * Math.exp(-c / 0.35);
-    stage.style.transform = "translate(" + (A * Math.sin(c * 90)).toFixed(1) + "px," + (A * Math.cos(c * 71)).toFixed(1) + "px)";
-    flash.style.opacity = (0.8 * burst(c, 0.03, 0.22)).toFixed(3);
-  } else if (boomAt !== null && now - boomAt > BOOM_END) {
+    const c = K.c, hop = c < 0.6 ? 26 * Math.sin((c / 0.6) * Math.PI) : 0, a = ((8 * Math.sin((Math.min(c, 0.6) / 0.6) * Math.PI) * K.back) * Math.PI) / 180;
+    bm = tipM([0, 0, 0], a, "y"); bm[11] += hop * K.back;
+    lm = [...bm]; lm[11] += Math.min(460, 620 * c) * K.back; lm[9] += Math.min(60, 120 * c) * K.back;
+    const t = tipM([0, GEO.DRUM_R, 0], (-tip(c, 0.05, 82) * K.back * Math.PI) / 180, "x"); dm = [...t.slice(0, 9), t[9] + GEO.DRUM[0], t[10] + GEO.DRUM[1], t[11]];
+  }
+  const objs = [{ cache: "inner", rev: 0, m: bm, parts: innerParts }, { cache: "walls", rev: q, m: bm, parts: () => wallParts(q) }, { cache: "lid", rev: q, m: lm, parts: () => lidParts(q) },
+    { cache: "terms", rev: n * 100 + q, m: bm, parts: () => termParts(q) }, { cache: "wires", rev: n * 2 + (on ? 1 : 0), m: bm, parts: wireParts }, { cache: "drum", rev: 0, m: dm, parts: drumParts }];
+  let svg = E.render(objs);
+  const xc = termC(2), xa = termC(D.TRACK), xb = xa + D.PITCH, gapMid = D.X0 + (D.TRACK + 1) * D.PITCH - (D.PITCH - D.TW) / 2, inside = E.xray > 0.5;
+  // the two distances that matter, drawn on the next pair along
+  if (E.xray > 0.3 && K.c < 0) {
+    const a = E.xray, xd = xc + D.PITCH, gm = xc + D.PITCH / 2, cr = lightTheme ? "#b06a00" : "#ffc24a", cl = lightTheme ? "#0a6fb0" : "#6fd0ff";
+    E.line([xc, D.CL_B, zt + 2.6], [xd, D.CL_B, zt + 2.6], 2, cl, a);
+    const pts = [[xc, D.CL_B, zt + 0.7], [gm - 0.55, D.CL_B, zt + 0.7], [gm - 0.55, D.CL_B, zt - 2.6], [gm + 0.55, D.CL_B, zt - 2.6], [gm + 0.55, D.CL_B, zt + 0.7], [xd, D.CL_B, zt + 0.7]];
+    for (let i = 0; i < pts.length - 1; i++) E.line(pts[i], pts[i + 1], 2, cr, a);
+  }
+  // creepage: a carbon track cooking its way across, with a spark crawling at its tip
+  if (track > 0.001 && K.c < 0.3) {
+    let prev = null, tipP = null;
+    for (let i = 0; i <= 24; i++) { const x = xa + (xb - xa) * (i / 24) * track, dip = Math.max(0, 1 - Math.abs(x - gapMid) / 0.9) * 3, p = [x, D.CL_A + Math.sin(i * 2.3) * 0.25, zt + 0.5 - dip]; if (prev) E.line(prev, p, 3.2, lightTheme ? "#4a2a12" : "#b0602c", 1); prev = p; tipP = p; }
+    if (on && boomAt === null && tipP) { const fl = 0.55 + 0.45 * rn(); E.sprite(tipP, 1.6, "#bcd8ff", 0.9 * fl, true, 1); E.sprite(tipP, 4.5, "#6f9bff", 0.35 * fl, true, 1); if (dt > 0 && rn() < 0.5) fx.push({ k: "spark", p: [...tipP], v: [(rn() - 0.5) * 30, (rn() - 0.5) * 30, 20 + rn() * 40], life: 0, max: 0.15 + rn() * 0.2, s: 1 }); }
+  }
+  // clearance: straight through the air between the clamps
+  const arcing = arcAt !== null && (boomAt === null || now < boomAt + 0.2), fl = Math.max(burst(now - flashAt, 0.01, 0.25), arcing ? 0.8 + 0.2 * Math.sin(now * 90) : 0);
+  if (fl > 0.02) {
+    for (let s = 0; s < 2; s++) { let prev = [xa, D.CL_A, zt + 0.6]; for (let i = 1; i <= 8; i++) { const t = i / 8, bow = Math.sin(t * Math.PI), p = [xa + (xb - xa) * t, D.CL_A + (rn() - 0.5) * 1.4 * bow, zt + 0.6 + bow * (2.2 + rn() * 1.4)]; E.line(prev, p, s ? 1.6 : 4, s ? "#ffffff" : "#8fb4ff", fl, true); prev = p; } }
+    E.sprite([(xa + xb) / 2, D.CL_A, zt + 2], 10, "#bcd0ff", 0.7 * fl, true, 1);
+  }
+  // heat coming off the terminals
+  if (dt > 0 && q > 3 && K.c < 0 && rn() < q * 0.06) { const i = Math.floor(rn() * n); fx.push({ k: "haze", p: [termC(i), D.CL_A + rn() * 18, zt + 2], v: [(rn() - 0.5) * 4, (rn() - 0.5) * 4, 14 + rn() * 12], life: 0, max: 0.8 + rn() * 0.6, s: 0.6 + q / 14 }); }
+  // the box fails and the vapour goes up
+  if (K.c >= 0) {
+    const c = K.c, life = Math.exp(-c / 0.5), Rr = 18 + 70 * (1 - Math.exp(-c / 0.2));
+    if (life > 0.02) { E.sprite([0, -4, zt + 6 + 30 * c], Rr * 0.8, "#ffb04a", 0.5 * life, true, 1); E.sprite([0, -4, zt + 6 + 30 * c], Rr * 0.35, "#fff0c8", 0.6 * life, true, 1); }
+    if (dt > 0 && c < 1.0) for (let j = 0; j < 8; j++) fx.push({ k: "flame", p: [(rn() - 0.5) * 150, (rn() - 0.5) * 110, 8 + rn() * 70], v: [(rn() - 0.5) * 140, (rn() - 0.5) * 140, 40 + rn() * 130], life: 0, max: 0.45 + rn() * 0.6, s: 1.7 + rn() });
+    if (dt > 0 && c >= 0.3 && c < 2.8 && rn() < dt * 40) fx.push({ k: "smoke", p: [(rn() - 0.5) * 160, (rn() - 0.5) * 100, 20 + rn() * 50], v: [(rn() - 0.5) * 20, (rn() - 0.5) * 20, 30 + rn() * 40], life: 0, max: 2 + rn() * 2, s: 1.5 });
+  }
+  fx = fx.filter((p) => {
+    p.life += dt; if (p.life > p.max) return false;
+    const t = p.life / p.max;
+    if (p.k === "flame") { p.v[0] *= 0.93; p.v[1] *= 0.93; }
+    if (p.k === "spark") p.v[2] -= 260 * dt;
+    for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * dt;
+    if (p.k === "flame") E.sprite(p.p, (5 + 15 * t) * p.s, t < 0.25 ? "#fff0b8" : t < 0.6 ? "#ff9a2e" : "#d8481a", 0.8 * (1 - t * t), true, 2);
+    else if (p.k === "spark") E.sprite(p.p, 0.7, "#dfe9ff", 1 - t, true, 1);
+    else if (p.k === "haze") E.sprite(p.p, (3 + 7 * t) * p.s, "#ff8a3a", 0.16 * Math.sin(t * Math.PI), true);
+    else E.sprite(p.p, (12 + 40 * t) * p.s, lightTheme ? "#4a4744" : "#2e2c2b", 0.45 * (1 - t));
+    return true;
+  });
+  // lettering: bench, rating plate, lid tag, drum label
+  let m = E.faceMatrix([D.PLATE.x + D.PLATE.w - 66, D.PLATE.y + D.PLATE.d - 13, 0.05], [1, 0, 0], [0, 1, 0]);
+  if (m) svg += '<g transform="' + m + '"><text class="pt bench" x="0" y="5" font-size="5">ZONE 1 · T4 GAS</text></g>';
+  if (K.c < 0) {
+    m = E.faceMatrix([28, BX.y + BX.d + 0.55, 23], [1, 0, 0], [0, 0, -1]);
+    if (m) svg += '<g transform="' + m + '"><text class="pt" x="1.6" y="4.4" font-size="2.5">Ex eb IIC T4</text><text class="pt lo" x="1.6" y="8" font-size="2.3">MDP 10 W</text></g>';
+    if (E.xray < 0.5) { m = E.faceMatrix([-16, 12, GEO.Z_TOP + 4.15], [1, 0, 0], [0, 1, 0]); if (m) svg += '<g transform="' + m + '" opacity="' + (1 - E.xray * 2).toFixed(2) + '"><text class="pt" x="3" y="6.6" font-size="5">TB-01</text></g>'; }
+    m = E.faceMatrix([GEO.DRUM[0] - 10, GEO.DRUM[1] + 2, GEO.DRUM_H - 0.4], [1, 0, 0], [0, 1, 0]);
+    if (m) svg += '<g transform="' + m + '"><text class="pt" x="1" y="3.5" font-size="2.9">' + g.label[0] + '</text><text class="pt" x="1" y="7" font-size="2.9">' + g.label[1] + "</text></g>";
+    { const p = E.project([GEO.DRUM[0], GEO.DRUM[1], GEO.DRUM_H + 12]); svg += '<text class="mk-lab" text-anchor="middle" x="' + p[0].toFixed(1) + '" y="' + (p[1] - 13).toFixed(1) + '">' + g.name + '</text><text class="mk-lab dsub" text-anchor="middle" x="' + p[0].toFixed(1) + '" y="' + p[1].toFixed(1) + '">' + g.tc + " · lights itself at " + (g.id === "diesel" ? "~" : "") + g.ait + " °C</text>"; }
+    // the surface temperature, floating over the box
+    if (on || temp > M.tAmb + 2) { const p = E.project([0, 0, GEO.Z_TOP + (inside ? 10 : 16)]); svg += '<text class="mk-lab tlab" data-s="' + (temp >= g.ait ? "fire" : temp > M.t4 ? "hot" : "ok") + '" text-anchor="middle" x="' + p[0].toFixed(1) + '" y="' + p[1].toFixed(1) + '">' + Math.round(temp) + " °C</text>"; }
+  }
+  if (E.xray > 0.02 && K.c < 0) svg += E.callouts([
+    { p: [termC(1), D.CL_A, zt], text: "Terminals", sub: n + " live, I²R in every one" }, { p: [xc + D.PITCH / 2, D.CL_B, zt + 2.6], text: "Clearance", sub: "the distance through the air" },
+    { p: [xc + D.PITCH / 2, D.CL_B, zt - 1], text: "Creepage", sub: "the distance along the surface" },
+  ], E.xray, E.fs < 0.62 ? {} : { topL: 70, topR: 70 });
+  if (sceneG.innerHTML !== svg) sceneG.innerHTML = svg;
+  if (K.c >= 0) { const A = 7 * Math.exp(-K.c / 0.35); setShake(A * Math.sin(K.c * 90), A * Math.cos(K.c * 71)); flashEl.style.opacity = (0.8 * burst(K.c, 0.03, 0.22)).toFixed(3); }
+  else if (boomAt !== null && now - boomAt > BOOM_END) {
     boomAt = null; temp = M.tAmb; track = 0; arcAt = null;
-    drumG.removeAttribute("transform"); boxG.removeAttribute("transform");
-    stage.style.transform = ""; flash.style.opacity = "0";
+    setShake(0, 0); flashEl.style.opacity = "0";
     say("Reset. Fewer circuits, less current, lower voltage or a cleaner box.");
   }
-  if (gl) {
-    const heat = clamp((temp - 50) / 110, 0, 1.2);
-    const tOn = on && track > 0 && boomAt === null ? 1 : (boomAt !== null && cause === "creep" ? Math.max(0, 1 - (now - boomAt) * 4) : 0);
-    const arcing = arcAt !== null && (boomAt === null || now < boomAt + 0.2);
-    const fl = Math.max(burst(now - flashAt, 0.01, 0.25), arcing ? 0.8 + 0.2 * Math.sin(now * 90) : 0);
-    gl.draw({ uHeat: K.c >= 0 ? heat * Math.max(0, 1 - K.c * 2) : heat, uN: n, uTrack: track, uTrackOn: tOn, uFlash: fl, uBoom: K.c }, now);
-  }
+
   const p = power();
   const t4 = temp > M.t4 ? "over T4" : "T4 ok";
   const ins = volts > M.clearance ? "clearance gone" : volts > creepLimit() ? "creepage over" : "insulation ok";
@@ -441,7 +316,6 @@ function draw() {
     else say("Live and happy: " + p.toFixed(1) + " W of " + M.mdp + " W, " + Math.round(temp) + " °C, insulation fine.");
   }
 }
-
 // demo: a happy box, then each way to kill it
 const TOUR = [
   { n: 6, amps: 16, volts: 230, dirty: false, gas: 0, hold: 4.5 },
@@ -468,9 +342,9 @@ function tick(t) {
     }
   }
   step(sdt);
-  draw(); syncUi();
+  draw(sdt); syncUi();
   const busy = touring || on || boomAt !== null || Math.abs(temp - M.tAmb) > 0.5 || drag;
-  frame = visible && busy ? requestAnimationFrame(tick) : 0;
+  frame = visible ? requestAnimationFrame(tick) : 0;
 }
 const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
 const takeOver = () => { touring = false; };
@@ -493,95 +367,64 @@ ui.gasBtns.forEach((b, i) => b.addEventListener("click", () => setGas(i)));
 ui.on.addEventListener("click", toggle);
 ui.slow.addEventListener("click", () => { slow = !slow; run(); });
 ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; tourClock = 0; } else on = false; run(); });
-
 let drag = null;
-stage.addEventListener("pointerdown", (ev) => { drag = { x: ev.clientX, y: ev.clientY, from: amps, moved: false }; stage.setPointerCapture(ev.pointerId); });
-stage.addEventListener("pointermove", (ev) => {
-  if (!drag) return;
-  const dy = drag.y - ev.clientY;
-  if (!drag.moved && Math.hypot(dy, ev.clientX - drag.x) < 5) return;
-  drag.moved = true;
-  setA(drag.from + dy / (stage.getBoundingClientRect().height * 0.5) * D.I_MAX);
+// tap the drum to change what's in it, tap anywhere else to switch the box on or off
+onTap((ev) => {
+  const m0 = overEl.getScreenCTM(); if (!m0) return toggle();
+  const pt = overEl.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY; const q2 = pt.matrixTransform(m0.inverse());
+  const a = E.project([GEO.DRUM[0], GEO.DRUM[1], 4]), c = E.project([GEO.DRUM[0], GEO.DRUM[1], GEO.DRUM_H]), t = clamp((q2.y - a[1]) / ((c[1] - a[1]) || 1), 0, 1);
+  const rpx = Math.abs(E.project([GEO.DRUM[0] + GEO.DRUM_R, GEO.DRUM[1] - GEO.DRUM_R, 0])[0] - E.project([GEO.DRUM[0] - GEO.DRUM_R, GEO.DRUM[1] + GEO.DRUM_R, 0])[0]) / 2;
+  if (Math.hypot(q2.x - (a[0] + (c[0] - a[0]) * t), q2.y - (a[1] + (c[1] - a[1]) * t)) < rpx * 1.05) setGas((gas + 1) % D.GASES.length); else toggle();
 });
-stage.addEventListener("pointerup", () => { if (!drag) return; const was = drag; drag = null; if (!was.moved) toggle(); else run(); });
-stage.addEventListener("pointercancel", () => { drag = null; });
 stage.addEventListener("keydown", (ev) => {
-  const map = { ArrowUp: () => setA(amps + 1), ArrowDown: () => setA(amps - 1), ArrowRight: () => setV(volts + 10), ArrowLeft: () => setV(volts - 10), "+": () => setN(n + 1), "-": () => setN(n - 1), d: () => setDirty(!dirty), " ": toggle, Enter: toggle, s: () => { slow = !slow; run(); } };
+  const map = { x: () => { setX(!E.xrayOn); run(); }, X: () => { setX(!E.xrayOn); run(); }, ArrowUp: () => setA(amps + 1), ArrowDown: () => setA(amps - 1), ArrowRight: () => setV(volts + 10), ArrowLeft: () => setV(volts - 10), "+": () => setN(n + 1), "-": () => setN(n - 1), d: () => setDirty(!dirty), " ": toggle, Enter: toggle, s: () => { slow = !slow; run(); } };
   if (map[ev.key]) { ev.preventDefault(); map[ev.key](); }
 });
-window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
-syncUi(); draw();
+window.__fig = { E, freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+setX(true); syncUi(); draw();
 `;
 
-const CSS = `.fx-stage{position:relative;cursor:ns-resize;touch-action:none}
-.fx-layer{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.fx-gl{display:block}
-body[data-theme="dark"] .fx-gl{mix-blend-mode:screen}
-.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(closest-side at 42% 45%,#fff8e8 0%,#ffd9a0 40%,rgba(255,170,90,0) 100%)}
-.iso-plate{overflow:hidden}
-.iso-cable{stroke-width:1.5}
-.iso-wire{stroke-width:.8}
-.iso-track{stroke:#5a3418;stroke-width:1.5;fill:none;stroke-linecap:round}
-body[data-theme="dark"] .iso-track{stroke:#a4572a}
-.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
-.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.ctl-label{min-width:64px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
-.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
-.ctl button:hover{border-color:var(--anatomy-mid)}
-.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
-.ctl #energise{border-color:var(--anatomy-lit);color:var(--anatomy-lit);padding:7px 14px;font-weight:600;letter-spacing:.06em;min-width:128px;text-align:center}
-.ctl #energise[aria-pressed="true"]{background:var(--anatomy-lit);color:var(--anatomy-paper)}
-.slide{position:relative;flex:1;min-width:110px}
-.slide input{width:100%;accent-color:var(--anatomy-lit);margin:0}
-.slide.marked{padding-top:16px}
-.ctl output{min-width:84px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
-.meter{position:relative;flex:1;min-width:110px;height:10px;margin-top:14px;border:1px solid var(--anatomy-lo);border-radius:5px}
-#heat-fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--anatomy-mid);transition:width .15s}
-#heat-fill[data-bad="true"]{background:#ff8a3d}
-.mark{position:absolute;top:0;bottom:2px;width:0;border-left:1px dashed var(--anatomy-lit);pointer-events:none;transition:left .3s}
-.mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:var(--anatomy-lit)}
-#mdp-mark{left:50%;top:-14px;bottom:-3px}
-.tmeter{margin-top:26px}
-#temp-fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--anatomy-mid);transition:width .1s}
-#temp-fill[data-state="hot"]{background:#ffb347}
-#temp-fill[data-state="fire"]{background:#ff5a2a}
-#t4-mark{top:-14px;bottom:-3px;border-left-style:solid;border-left-color:var(--anatomy-mid)}
-#t4-mark::after{color:var(--anatomy-mid)}
-#ait-mark{top:-26px;bottom:-3px;border-left-color:#ff6a3d}
-#ait-mark::after{color:#ff6a3d}
-.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
-#clear-mark{border-left-style:solid}
-#shot{min-height:2.6em;font-size:12px;line-height:1.4}
-@media (max-width:520px){.ctl-label{min-width:48px}.ctl button{padding:7px 8px}.ctl output{min-width:64px}}`;
+const CSS = `.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle 70% at 50% 50%,#fff8e8 0%,#ffd9a0 40%,rgba(255,170,90,0) 100%)}
+.pt{font-family:var(--anatomy-mono);fill:#23262b;font-weight:700}.pt.lo{fill:#5a6068;font-weight:600}.pt.bench{fill:var(--anatomy-muted);font-weight:600;letter-spacing:.08em;opacity:.8}
+.mk-hint{top:46px}
+.dsub{font-weight:400;font-size:calc(10px*var(--mk-ts,1))}
+.tlab{font-size:calc(13px*var(--mk-ts,1))}.tlab[data-s="hot"]{fill:var(--mk-warn)}.tlab[data-s="fire"]{fill:var(--mk-danger)}
+.ctl #energise{padding:7px 14px;font-weight:600;letter-spacing:.06em;min-width:128px;text-align:center}
+.meter{margin-top:12px}.mark{transition:left .3s}
+#heat-fill[data-bad="true"]{background:var(--mk-danger)}#temp-fill{transition:width .1s}#temp-fill[data-state="hot"]{background:var(--mk-warn)}#temp-fill[data-state="fire"]{background:var(--mk-danger)}
+#mdp-mark{left:50%;border-left-color:var(--anatomy-mid)}#mdp-mark::after{color:var(--anatomy-muted)}
+#t4-mark{border-left-color:var(--anatomy-mid)}#t4-mark::after{color:var(--anatomy-muted)}
+.tmeter{margin-top:24px}#ait-mark{top:-17px}
+.slide.marked{padding-top:12px}.slide.marked .mark{top:8px;bottom:-2px}#creep-mark{border-left-style:dashed}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="slider" aria-label="Current per circuit: drag up and down or arrow keys; left and right change voltage; space energises" aria-valuemin="0" aria-valuemax="${I_MAX}" aria-valuenow="${START.amps}">${fig}<canvas class="fx-layer fx-gl" aria-hidden="true"></canvas><div class="fx-flash" aria-hidden="true"></div></div>`;
+const stage = stageHtml({
+  W, H, fig: "Fig 5", title: "Ex e, MDP and creepage", xray: true,
+  label: "An Ex e terminal box on a bench. A DIN rail carries sixteen terminals with wiring ducts either side, glands and field cables on the front face. A drum of solvent stands nearby. An x-ray mode takes the lid off and turns the walls to glass. Too much current heats the box past its T4 rating; too much voltage, especially on a dirty surface, tracks or flashes over between terminals.",
+  keysHelp: "Current per circuit: drag to rotate, X for x-ray, tap the drum to change the gas, drag up and down or arrow keys; left and right change voltage; space energises",
+  extra: `<div class="fx-flash" aria-hidden="true"></div>`,
+});
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Gas</span>${GASES.map((g, i) => `<button type="button" data-gas="${i}" aria-pressed="${i === 0}">${g.btn}<small>${g.tc} · lights ${g.id === "diesel" ? "~" : ""}${g.ait} °C</small></button>`).join("")}</div>
   <div class="ctl-row"><span class="ctl-label">Circuits</span><div class="slide"><input id="n" type="range" min="1" max="16" step="1" value="${START.n}" aria-label="Populated circuits"></div><output id="n-out">${START.n} of 16</output></div>
   <div class="ctl-row"><span class="ctl-label">Current</span><div class="slide"><input id="amps" type="range" min="0" max="${I_MAX}" step="1" value="${START.amps}" aria-label="Current per circuit in amps"></div><output id="amps-out">${START.amps} A</output></div>
-  <div class="ctl-row"><span class="ctl-label">Heat</span><div class="meter" aria-hidden="true"><span id="heat-fill"></span><span id="mdp-mark" class="mark" data-label="MDP 10 W"></span></div><output id="heat-out">0 W</output></div>
-  <div class="ctl-row"><span class="ctl-label">Surface °C</span><div class="meter tmeter" aria-hidden="true"><span id="temp-fill"></span><span id="t4-mark" class="mark" data-label="T4 135"></span><span id="ait-mark" class="mark ait" data-label="ignites"></span></div><output id="temp-out">40 °C</output></div>
+  <div class="ctl-row"><span class="ctl-label">Heat</span><div class="meter" aria-hidden="true"><span id="heat-fill" class="fill"></span><span id="mdp-mark" class="mark" data-label="MDP 10 W"></span></div><output id="heat-out">0 W</output></div>
+  <div class="ctl-row"><span class="ctl-label">Surface °C</span><div class="meter tmeter" aria-hidden="true"><span id="temp-fill" class="fill"></span><span id="t4-mark" class="mark" data-label="T4 135"></span><span id="ait-mark" class="mark ait" data-label="ignites"></span></div><output id="temp-out">40 °C</output></div>
   <div class="ctl-row"><span class="ctl-label">Volts</span><div class="slide marked"><span id="creep-mark" class="mark" data-label="creepage"></span><span id="clear-mark" class="mark" data-label="clearance"></span><input id="volts" type="range" min="${V_MIN}" max="${V_MAX}" step="10" value="${START.volts}" aria-label="Working voltage"></div><output id="volts-out">${START.volts} V</output></div>
   <div class="ctl-row"><span class="ctl-label">Surface</span><button type="button" data-surf="clean" aria-pressed="true">Clean</button><button type="button" data-surf="dirty" aria-pressed="false">Dusty &amp; damp</button></div>
-  <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="energise" aria-pressed="false">ENERGISE</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
-  <div id="shot" aria-live="polite">Pick the gas, set the circuits, current and voltage, clean or grubby, then ENERGISE.</div>
+  <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="energise" class="danger" aria-pressed="false">ENERGISE</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
 </div>`;
 
-const card = k.plateHtml({
-  fig: "Fig 5",
-  title: "Ex e, MDP and creepage",
-  hint: "Drag: amps · tap: power",
-  readout: "",
-  keys: [
-    { mark: "lit", label: "Live terminals, heat, tracking and arcs" },
-    { mark: "raised", label: "Terminal box, lid off, front walls cut away" },
-  ],
-  caption: "Ex e has no flamepath to save it. It works by never making a spark or a hot surface in the first place. Heat: every circuit dissipates I²R, and the box is only certified to keep its surface inside T4 (135 °C) up to its maximum dissipated power. A gas lights itself on hot metal at its autoignition temperature, no spark needed, so the gas must ignite above the box's T-class. Insulation: creepage is the distance along the surface between terminals. Leakage over a dirty, damp surface cooks the plastic into a carbon track, the track bridges, and the short arcs. Clearance is the distance through air; exceed it and it flashes straight over.",
-  body: stageHtml,
-});
 
-const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
-const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a certified anything. T4 (135 °C) and the autoignition temperatures (ether ~160 °C, carbon disulphide ~90 °C, diesel ~240 °C) are real; the box's resistance, MDP and the creepage and clearance limits are made up to show the idea.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/ex-e-terminals" style="color:inherit">Source</a></p>`;
+const foot = footHtml({
+  theme, slug: "ex-e-terminals",
+  real: "T4 (135 °C) and the autoignition temperatures (ether ~160 °C, carbon disulphide ~90 °C, diesel ~240 °C).",
+  made: "the box's resistance, MDP and the creepage and clearance limits, chosen to show the idea.",
+});
 const name = theme === "light" ? "light.html" : "index.html";
-writeFileSync(join(HERE, name), k.pageHtml({ title: "Ex e terminals", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + glScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 700 }));
+writeFileSync(join(HERE, name), pageMk2({
+  k, title: "Ex e, MDP and creepage", fig: "Fig 5", hint: "Drag: amps · tap: power", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  caption: "Ex e has no flamepath to save it. It works by never making a spark or a hot surface in the first place. Heat: every circuit dissipates I²R, and the box is only certified to keep its surface inside T4 (135 °C) up to its maximum dissipated power. A gas lights itself on hot metal at its autoignition temperature, no spark needed, so the gas must ignite above the box's T-class. Insulation: creepage is the distance along the surface between terminals. Leakage over a dirty, damp surface cooks the plastic into a carbon track, the track bridges, and the short arcs. Clearance is the distance through air; exceed it and it flashes straight over.",
+  script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
+}));
 console.log("wrote", name);
