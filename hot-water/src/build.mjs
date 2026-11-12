@@ -2,14 +2,11 @@ import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as k from "../../kit/iso-kit.mjs";
-import { glCamera } from "../../kit/gl.mjs";
-import { kitScript, glScript } from "../../scripts/inline-kit.mjs";
+import { engineScript, stageHtml, pageMk2, footHtml } from "../../mk2/shell.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
-
-const W = 640;
-const H = 460;
+const W = 960, H = 640;
 
 // Truth: T&PR valves (AS 1357.1) are set at a pressure (850 kPa here) and 99 °C. Water's boiling point rises with pressure
 // (Antoine fit below). When a hot tank fails, the water above 100 °C flashes: the fraction that turns to steam is
@@ -21,204 +18,38 @@ const MODEL = {
 };
 
 const TK = { x: 0, y: -24, ro: 17, rf: 16.3, rt: 14, rw: 13.4, z0: 6, z1: 88 };
-const PLATE = { x: -96, y: -62, w: 192, d: 124, r: 8 };
-const PLATE_H = 12, FOOT_H = 5;
 const WALL = { x: -92, y: -60, w: 184, d: 6, h: 136 };
 const EAVE_Z = 136;
 const TPR_A = 335, TPR_Z = 80, ELEM_Z = 20;
-
-const P = k.fitProjection(
-  [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [WALL.x, WALL.y, EAVE_Z + 6], [WALL.x + WALL.w, 24, EAVE_Z + 4]],
-  W, H, { pad: 18, azimuth: 45 },
-);
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const Dt = (points, style) => k.dotsSvg(points, style);
-const depth2 = ([x, y]) => k.depthOf([x, y, 0], P);
-const byDepth = (pts) => [...pts].sort((a, b) => depth2(a) - depth2(b));
-const slab = (plan, z, h, r = 1.2, bevel = 0.5) => k.slabOf({ r, ...plan }, z, h, P, 4, bevel);
-const rad = (d) => (d * Math.PI) / 180;
-const pol = (r, a) => [TK.x + r * Math.cos(rad(a)), TK.y + r * Math.sin(rad(a))];
-function sector(r0, r1, a0, a1, n = 24) {
-  const out = [];
-  for (let i = 0; i <= n; i++) out.push(pol(r1, a0 + ((a1 - a0) * i) / n));
-  for (let i = n; i >= 0; i--) out.push(pol(r0, a0 + ((a1 - a0) * i) / n));
-  return out;
-}
-const ring = (r0, r1, a0, a1, z, h, n) => k.extrude(sector(r0, r1, a0, a1, n), z, h, P, { convex: false });
-const quad = (pts, cls) => `<path class="${cls}" d="${k.pathOf(pts.map(at), true)}"/>`;
-
-function plate() {
-  const out = [`<path class="iso-halo" d="${k.haloOf(PLATE, -PLATE_H - FOOT_H, PLATE_H, P)}"/>`];
-  for (const [x, y] of byDepth(k.corners(PLATE, 22))) {
-    out.push(S(k.cylinder(x, y, 7, -PLATE_H - FOOT_H, 1.6, P, 28), { tone: "lo" }));
-    out.push(S(k.cylinder(x, y, 5.4, -PLATE_H - FOOT_H + 1.6, FOOT_H - 1.6, P, 28), { tone: "mid" }));
-  }
-  out.push(S(k.slabOf(PLATE, -PLATE_H, PLATE_H, P, 8, 1.6), { tone: "mid", inner: L(k.sideSeam(PLATE, -PLATE_H / 2, P), { tone: "faint" }) }));
-  out.push(L(k.planOutline(k.insetPlan(PLATE, 5), 0, P), { tone: "lo" }));
-  const screws = k.corners(PLATE, 10);
-  out.push(L(screws.map(([x, y]) => k.ring(x, y, 2.2, 0, P, 16)).join(""), { tone: "lo" }));
-  out.push(Dt(screws.map(([x, y]) => at([x, y, 0])), { size: 0.5 }));
-  return out.join("");
-}
-
-function wall() {
-  const out = [];
-  out.push(`<g class="brick">${S(slab(WALL, 0, WALL.h, 0.4, 0.2), { tone: "mid" })}</g>`);
-  const lines = [];
-  for (let z = 8; z < WALL.h; z += 8) lines.push(k.segment([WALL.x, WALL.y + WALL.d, z], [WALL.x + WALL.w, WALL.y + WALL.d, z], P));
-  out.push(L(lines.join(""), { tone: "faint" }));
-  // the power point and the pipes into the wall
-  out.push(S(slab({ x: 30, y: WALL.y + WALL.d, w: 8, d: 1.2 }, 46, 10, 0.4, 0.2), { tone: "hi" }));
-  return out.join("");
-}
-
-// the eave above, in three pieces so the middle one can go
-function eave() {
-  const out = [];
-  const seg = (x0, x1, part) => `<g data-part="${part}">${S(slab({ x: x0, y: WALL.y, w: x1 - x0, d: 84 }, EAVE_Z, 4, 0.4, 0.2), { tone: "lo" })}${L([0.2, 0.4, 0.6, 0.8].map((f) => k.segment([x0, WALL.y + 84 * f, EAVE_Z + 4], [x1, WALL.y + 84 * f, EAVE_Z + 4], P)).join(""), { tone: "faint" })}</g>`;
-  out.push(seg(WALL.x, -24, "eave-l"), seg(-24, 24, "eave-m"), seg(24, WALL.x + WALL.w, "eave-r"));
-  return out.join("");
-}
-
-function tankBack() {
-  const out = [];
-  out.push(`<path class="iso-halo" d="${k.haloOf({ x: TK.x - TK.ro - 3, y: TK.y - TK.ro - 3, w: TK.ro * 2 + 6, d: TK.ro * 2 + 6, r: TK.ro }, 0, 0.1, P)}"/>`);
-  out.push(S(slab({ x: TK.x - 20, y: TK.y - 20, w: 40, d: 40 }, 0, TK.z0, 2, 0.5), { tone: "mid" }));
-  return out.join("");
-}
-
-function tank() {
-  const out = [];
-  const zb = TK.z0, h = TK.z1 - TK.z0;
-  // back half: jacket, foam, steel tank
-  out.push(`<g class="jacket">${S(ring(TK.rf, TK.ro, 135, 315, zb, h, 30), { tone: "hi" })}</g>`);
-  out.push(`<g class="foam">${S(ring(TK.rt, TK.rf, 135, 315, zb + 2, h - 4, 30), { tone: "hi" })}</g>`);
-  // the water (and its cut faces)
-  out.push(`<g class="water">${S(k.extrude(sector(0.01, TK.rw, 90, 360, 40), zb + 4, h - 10, P), { tone: "hi", crease: "none" })}</g>`);
-  // the element across the bottom and the thermostat probe
-  const e = [pol(2, 45), pol(12, 45)];
-  out.push(`<path data-part="element" class="element" data-on="false" d="${k.pathOf([[...pol(TK.rw, 330), ELEM_Z], [...pol(4, 20), ELEM_Z], [...pol(4, 60), ELEM_Z + 2.2], [...pol(TK.rw, 70), ELEM_Z + 2.2]].map(at))}"/>`);
-  // front pieces
-  for (const [a0, a1] of [[90, 135], [315, 360]]) {
-    out.push(`<g class="jacket">${S(ring(TK.rf, TK.ro, a0, a1, zb, h, 8), { tone: "hi" })}</g>`);
-    out.push(`<g class="foam">${S(ring(TK.rt, TK.rf, a0, a1, zb + 2, h - 4, 8), { tone: "hi" })}</g>`);
-  }
-  // the steel tank wall on the cut faces
-  for (const a of [90, 0]) {
-    const p = (r, z) => [...pol(r, a), z];
-    out.push(quad([p(TK.rw, zb + 4), p(TK.rt, zb + 4), p(TK.rt, TK.z1 - 6), p(TK.rw, TK.z1 - 6)], "steel"));
-  }
-  // lid
-  out.push(`<g class="jacket">${S(k.extrude(sector(0.01, TK.ro, 90, 360, 40), TK.z1, 3, P), { tone: "hi" })}</g>`);
-  // thermostat cover low on the right side
-  const tc = pol(TK.ro, 345);
-  out.push(`<g class="cover">${S(slab({ x: tc[0] - 3, y: tc[1] - 5, w: 4, d: 10 }, 12, 16, 0.8, 0.3), { tone: "hi" })}</g>`);
-  out.push(`<circle data-part="lamp" class="lamp" data-on="false" cx="${at([tc[0] + 1.1, tc[1], 24])[0].toFixed(1)}" cy="${at([tc[0] + 1.1, tc[1], 24])[1].toFixed(1)}" r="1.6"/>`);
-  // the T&PR valve near the top, with its lever and drain line down the side
-  const tv = pol(TK.ro + 2, TPR_A), tv2 = pol(TK.ro + 6, TPR_A);
-  out.push(`<g class="brass">${S(k.cylinder(tv[0], tv[1], 2.4, TPR_Z - 3, 7, P, 16, 0.4), { tone: "hi" })}</g>`);
-  out.push(`<g class="brass">${S(k.cylinder(tv2[0], tv2[1], 1.6, TPR_Z - 6, 5, P, 12), { tone: "hi" })}</g>`);
-  out.push(`<path data-part="lever" class="lever" d="${k.pathOf([[tv[0], tv[1], TPR_Z + 4], [tv[0] + 4, tv[1] + 2, TPR_Z + 8]].map(at))}"/>`);
-  out.push(`<path class="drain-o" d="${k.pathOf([[tv2[0], tv2[1], TPR_Z - 6], [tv2[0], tv2[1], 4], [tv2[0] + 10, tv2[1], 4]].map(at))}"/><path class="drain" d="${k.pathOf([[tv2[0], tv2[1], TPR_Z - 6], [tv2[0], tv2[1], 4], [tv2[0] + 10, tv2[1], 4]].map(at))}"/>`);
-  out.push(`<g data-part="tpr-cap" style="display:none">${S(k.cylinder(tv2[0] + 10, tv2[1], 2, 2, 4, P, 12, 0.3), { tone: "hi" })}</g>`);
-  // the label
-  const m = k.sideMatrix([...pol(TK.ro + 0.05, 110)], 66, P, "left");
-  out.push(`<g transform="${m}"><text class="iso-face-text" data-tone="lo" x="0" y="0" font-size="2.6">250 L · 3.6 kW</text></g>`);
-  return `<g data-part="tank">${out.join("")}</g>`;
-}
-
-function pipes() {
-  const out = [];
-  const pipe = (pts, cls = "") => `<path class="pipe-o" d="${k.pathOf(pts.map(at))}"/><path class="pipe ${cls}" d="${k.pathOf(pts.map(at))}"/>`;
-  const ci = pol(TK.ro, 125), ho = pol(TK.ro, 200);
-  out.push(pipe([[ci[0], ci[1], 16], [-30, ci[1] + 4, 16], [-30, WALL.y + WALL.d, 16]], "cold"));
-  out.push(S(slab({ x: -34, y: ci[1], w: 8, d: 8 }, 12, 8, 1, 0.3), { tone: "hi" }));
-  out.push(pipe([[TK.x, TK.y, TK.z1 + 3], [TK.x, TK.y, TK.z1 + 10], [TK.x, WALL.y + WALL.d, TK.z1 + 10]], "hot"));
-  return out.join("");
-}
-
-const backSvg = k.figureSvg({
-  width: W, height: H,
-  label: "An electric storage hot water system against a house wall under the eave, cut open to show the water, the element across the bottom and the insulation. A temperature and pressure relief valve sits near the top with its drain line running down the side.",
-  body: [plate(), wall(), tankBack(), pipes(), tank()],
-});
-const layer = (body) => `<svg xmlns="http://www.w3.org/2000/svg" class="iso-svg fx-layer" viewBox="0 0 ${W} ${H}" aria-hidden="true">${body}</svg>`;
-const frontSvg = layer(eave());
-
-const DRAIN = [...pol(TK.ro + 6, TPR_A)].map((v, i) => (i === 0 ? v + 10 : v));
-const DATA = {
-  W, H, camera: glCamera(P), P, MODEL,
-  base: at([TK.x, TK.y, 0]), mid: at([TK.x, TK.y, 45]), up: (() => { const a = at([0, 0, 0]), b = at([0, 0, 1]); return b[1] - a[1]; })(),
-};
-
-const FRAG = `
-uniform float uLight;
-uniform float uDrip;
-uniform float uSteamV;
-uniform float uBoom;
-uniform float uFlash;
-uniform float uRise;
-vec4 inkFor(vec3 seen,float cover){vec3 ab=1.-seen;float a=max(max(ab.r,max(ab.g,ab.b)),cover);return vec4(vec3(a)-ab,a);}
-vec4 over(vec4 t,vec4 u){return t+u*(1.-t.a);}
-vec4 steamInk(float h){float a=(1.-exp(-h))*mix(.75,.6,uLight);return vec4(mix(vec3(.93,.95,.97),vec3(.6,.64,.68),uLight)*a,a);}
-vec4 waterInk(float h){float a=(1.-exp(-h))*mix(.7,.55,uLight);return vec4(mix(vec3(.45,.7,1.),vec3(.2,.45,.8),uLight)*a,a);}
-float edgeFade(vec2 vb){return smoothstep(0.,40.,min(min(vb.x,uView.x-vb.x),min(vb.y,uView.y-vb.y)));}
-const vec3 DR=vec3(${DRAIN[0].toFixed(1)},${DRAIN[1].toFixed(1)},4.);
-const vec3 TB=vec3(${TK.x.toFixed(1)},${TK.y.toFixed(1)},8.);
-void main(){
-  vec2 vb=viewOf(gl_FragCoord.xy);
-  vec4 o=vec4(0.);
-  // the T&PR drain: hot water, or steam once it's boiling
-  if(uDrip+uSteamV>.002){
-    vec2 d=(vb-project(DR))/uK;
-    float w=exp(-pow((d.x-2.)/2.,2.))*smoothstep(-1.,2.,d.y)*(1.-smoothstep(4.,9.,d.y))*(.6+.6*noise2(vec2(d.y*.8-uTime*12.,d.x)));
-    o=waterInk(w*uDrip*2.);
-    float up=-d.y;
-    float s=exp(-pow(d.x/(2.+up*.4),2.))*smoothstep(-1.,3.,up)*exp(-up/26.)*smoothstep(.3,.8,fbm2(vec2(d.x*.15,up*.08-uTime*1.8)));
-    o=over(steamInk(s*(uSteamV*1.6+uDrip*.2)),o);
-  }
-  if(uBoom>0.){
-    float c=uBoom;
-    vec2 d=(vb-project(TB))/uK;
-    float R=12.+130.*(1.-exp(-c/.35));
-    float n=fbm2(d*.03+vec2(c*.4,-c*.6));
-    float cloud=(1.-smoothstep(R*.5,R*(1.+.25*n),length(d*vec2(1.,1.25)-vec2(0.,-R*.2))))*(.6+.7*n)*exp(-c/2.6);
-    // the steam trail under the rocket
-    vec2 dt=(vb-(project(TB)+vec2(0.,uRise)))/uK;
-    float trail=exp(-pow(dt.x/(6.+abs(dt.y)*.12),2.))*step(0.,dt.y)*step(dt.y,-uRise/uK+10.)*.9*exp(-c/1.8);
-    // water thrown out
-    float sp=0.;
-    for(int i=0;i<18;i++){
-      float h1=hash12(vec2(float(i),2.1)),h2=hash12(vec2(float(i),5.3));
-      vec2 v=vec2((h1-.5)*220.,40.+h2*120.);
-      vec2 p=v*c-vec2(0.,-160.*c*c);
-      p.y=-p.y;
-      sp+=exp(-pow(length(d-vec2(p.x,-p.y)*vec2(1.,-1.))/1.4,2.))*exp(-c/1.2);
-    }
-    float ef=edgeFade(vb);
-    o=over(steamInk((cloud*1.6+trail)*ef),o);
-    o=over(waterInk(sp*ef),o);
-  }
-  o.rgb=min(o.rgb,vec3(o.a));
-  float dd=(hash12(gl_FragCoord.xy+uTime)-.5)/255.*smoothstep(0.,1.5/255.,o.a);
-  gl_FragColor=max(o+dd,0.);
-}`;
-
+const PLATE = { x: -72, y: -64, w: 144, d: 112, r: 8 };
+const P = k.fitProjection([...k.boxCorners(PLATE, -0.8, 0), [-62, -60, 144], [62, -60, 144], [62, 6, 144], [-62, 6, 144]], W, H, { pad: 20, azimuth: 45, elevation: 30 });
+const DATA = { W, H, P, PLATE };
+WALL.x = -62; WALL.w = 124;
+Object.assign(DATA, { MODEL, TK, WALL, EAVE_Z, TPR_A, TPR_Z, ELEM_Z });
 const LIVE = `
+${engineScript()}
 const D = __DATA__;
-const { P, MODEL: M } = D;
-const stage = document.querySelector(".fx-stage");
-const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const stage = document.querySelector(".mk-stage");
 const readout = document.querySelector("[data-readout]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
-const LIGHT = document.body.dataset.theme === "light" ? 1 : 0;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lightTheme = document.body.dataset.theme === "light";
+const E = mk2(stage, D.P, { W: D.W, H: D.H, pivot: [0, -20, 60], plate: { ...D.PLATE, h: 12, foot: 5 }, shadowBox: [-80, -70, -18, 80, 56, 150] });
+const { box, cyl, prism, circle, lathe, tube, sphere, loft, roundPoly, rrect, tris } = E;
+E.bindTools(stage);
+const xbtn = stage.querySelector('[data-mk="xray"]');
+const setX = (on) => { E.setXray(on); if (xbtn) xbtn.setAttribute("aria-pressed", String(on)); };
+const sceneG = stage.querySelector('[data-part="scene"]');
+const iso = (p) => E.project(p), depthOf = (p) => E.depthOf(p);
+const shakeEls = [stage.querySelector(".mk-gl"), stage.querySelector(".mk-over")];
+// a tap on the stage that isn't a drag or a press on the toolbar
+const onTap = (fn) => { let d0 = null; stage.addEventListener("pointerdown", (ev) => { d0 = ev.target.closest(".mk-tools,button,a") ? null : [ev.clientX, ev.clientY]; }); stage.addEventListener("pointerup", (ev) => { if (d0 && Math.hypot(ev.clientX - d0[0], ev.clientY - d0[1]) < 6) fn(ev); d0 = null; }); };
+// 3x4 matrix for a cached object turning about a vertical axis through (cx, cy)
+const rotZ = (cx, cy, a) => { const c = Math.cos(a), s = Math.sin(a); return [c, -s, 0, s, c, 0, 0, 0, 1, cx - c * cx + s * cy, cy - s * cx - c * cy, 0]; };
+const mixHex = (a, b, t) => { const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)), A = h(a), B = h(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * Math.min(1, Math.max(0, t))).toString(16).padStart(2, "0")).join(""); };
+const setShake = (x, y) => { const t = x || y ? "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)" : ""; for (const e of shakeEls) if (e.style.transform !== t) e.style.transform = t; };
+const M = D.MODEL, P = D.P;
 const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-const gl = glLayer({ canvas: stage.querySelector(".fx-gl"), fragment: ${JSON.stringify(FRAG)}, view: [D.W, D.H], camera: D.camera, uniforms: ["uDrip", "uSteamV", "uBoom", "uFlash", "uRise"], fixed: { uLight: LIGHT } });
-if (gl) stage.setAttribute("data-gl", "");
-
 // water: boiling point vs pressure (Antoine, kPa absolute)
 const psat = (t) => Math.exp(16.3872 - 3885.7 / (t + 230.17));
 const tsat = (pa) => 3885.7 / (16.3872 - Math.log(pa)) - 230.17;
@@ -266,52 +97,113 @@ function blow() {
     : boomF > 0.03 ? "The " + (tankKind === "corroded" ? "corroded " : "") + "tank split at " + Math.round(Pg) + " kPa. The water was at " + Math.round(T) + " °C, so " + kg + " kg flashed to steam and blew it apart."
     : "The tank split, but the water was under 100 °C, so nothing flashed. A flood and a mess, not a bomb.");
 }
-
-const tankG = q("tank"), eaveM = q("eave-m"), eaveL = q("eave-l"), eaveR = q("eave-r"), elem = q("element"), lamp = q("lamp"), lever = q("lever"), cap = q("tpr-cap"), flash = stage.querySelector(".fx-flash");
 const ui = {
   stat: [...document.querySelectorAll("[data-stat]")], eco: [...document.querySelectorAll("[data-eco]")], tpr: [...document.querySelectorAll("[data-tpr]")], tank: [...document.querySelectorAll("[data-tank]")],
   tFill: document.querySelector("#t-fill"), tOut: document.querySelector("#t-out"), pFill: document.querySelector("#p-fill"), pOut: document.querySelector("#p-out"), burstMark: document.querySelector("#burst-mark"),
   stats: document.querySelector("#stats"), power: document.querySelector("#power"), reset: document.querySelector("#reset"), slow: document.querySelector("#slow"), tour: document.querySelector("#tour"), shot: document.querySelector("#shot"),
 };
 const say = (t) => { if (t !== lastShot) { ui.shot.textContent = t; lastShot = t; } };
-
-function waterColour(t) {
-  const f = clamp((t - 15) / 210, 0, 1);
-  const a = [70, 140, 230], b = [255, 120, 40];
-  return "rgb(" + a.map((v, i) => Math.round(v + (b[i] - v) * f)).join(",") + ")";
+// ---------------- the tank, the wall and the roof, in real 3D ----------------
+const TAU = Math.PI * 2, rad = (d) => (d * Math.PI) / 180, TK = D.TK, WL = D.WALL, EZ = D.EAVE_Z;
+const pol = (r, a) => [TK.x + r * Math.cos(rad(a)), TK.y + r * Math.sin(rad(a))];
+const C0 = [TK.x, TK.y, 0], KEEP = { c: C0, a0: Math.PI / 2, a1: TAU, seg: 48 };
+const flashEl = stage.querySelector(".fx-flash");
+function houseStatic() {
+  const o = [];
+  // brick wall: courses and staggered joints
+  o.push(box(WL.x, WL.x + WL.w, WL.y, WL.y + WL.d, 0, WL.h, "#a8573d", { mat: "matte" }));
+  const yf = WL.y + WL.d;
+  for (let z = 8, r = 0; z < WL.h; z += 8, r++) { o.push(box(WL.x, WL.x + WL.w, yf, yf + 0.12, z - 0.5, z + 0.5, "#cdbfae", { bevel: 0, mat: "matte" })); for (let x = WL.x + (r % 2 ? 8 : 16); x < WL.x + WL.w; x += 16) o.push(box(x - 0.5, x + 0.5, yf, yf + 0.12, z - 8, z, "#cdbfae", { bevel: 0, mat: "matte" })); }
+  // the pad it stands on, the power point, and the tempering valve where the cold comes in
+  o.push(prism(rrect(TK.x - 22, TK.x + 22, TK.y - 22, TK.y + 22, 2), "z", 0, TK.z0, "#9b968c", { mat: "concrete" }));
+  o.push(box(30, 38, yf, yf + 1.4, 46, 56, "#eceae4", { mat: "plastic" }), box(32.5, 35.5, yf + 1.4, yf + 1.9, 49, 52, "#d0cdc6", { mat: "plastic", bevel: 0 }));
+  o.push(tube([[34, yf + 1.5, 47], [34, yf + 3, 30], [pol(TK.ro, 345)[0] + 2, pol(TK.ro, 345)[1], 22]], 0.7, "#e8e6e0", { seg: 6, mat: "plastic" }));
+  const ci = pol(TK.ro, 125);
+  o.push(tube([[ci[0], ci[1], 16], [-30, ci[1] + 4, 16], [-30, yf, 16]], 1.5, "#b8703f", { seg: 8, mat: "copper" }), box(-34, -26, ci[1], ci[1] + 8, 12, 20, "#c9a24a", { mat: "metal" }));
+  return o;
 }
-
-function draw() {
-  const c = boomAt === null ? -1 : now - boomAt;
-  stage.style.setProperty("--water", waterColour(T));
-  elem.dataset.on = String(heating && c < 0);
-  lamp.dataset.on = String(heating && c < 0);
-  lever.dataset.open = String(tprOpen && c < 0);
-  cap.style.display = tpr === "blocked" ? "" : "none";
-  let tT = "", mT = "", lT = "", rT = "";
+// the tank itself: thrown as one piece when it goes
+function tankParts() {
+  const o = [], zb = TK.z0, zt = TK.z1;
+  o.push(lathe([[TK.rf, zb], [TK.ro, zb], [TK.ro, zt], [TK.rf, zt], [TK.rf, zb]], "#ebe8e1", { ...KEEP, closed: true, cap: "#f7f5f0", mat: "paint", shell: true }));
+  o.push(lathe([[TK.rt, zb + 2], [TK.rf, zb + 2], [TK.rf, zt - 2], [TK.rt, zt - 2], [TK.rt, zb + 2]], "#e3c665", { ...KEEP, closed: true, mat: "matte", xhide: true }));
+  o.push(lathe([[TK.rw, zb + 4], [TK.rt, zb + 4], [TK.rt, zt - 4], [TK.rw, zt - 4], [TK.rw, zb + 4]], tankKind === "corroded" ? "#8a5a3c" : "#7f8790", { ...KEEP, closed: true, cap: tankKind === "corroded" ? "#a06a42" : "#aab1b9", mat: "steel", xhide: true }));
+  o.push(lathe([[0, zt], [TK.ro, zt], [TK.ro, zt + 2.2], [TK.ro - 1.5, zt + 3], [0, zt + 3]], "#ebe8e1", { ...KEEP, mat: "paint", shell: true }));
+  // thermostat and cutout behind a cover low on the side, with the lamp
+  const tc = pol(TK.ro, 345);
+  o.push(box(tc[0] - 1, tc[0] + 2.2, tc[1] - 5, tc[1] + 5, 12, 28, "#d9d6cf", { mat: "plastic" }));
+  // T&PR valve near the top, its drain line down the side and out
+  const tv = pol(TK.ro + 2, D.TPR_A), tv2 = pol(TK.ro + 6, D.TPR_A);
+  o.push(cyl(tv[0], tv[1], 2.4, D.TPR_Z - 3, D.TPR_Z + 4, "#c9a24a", 14, { mat: "metal" }), cyl(tv2[0], tv2[1], 1.6, D.TPR_Z - 6, D.TPR_Z - 1, "#c9a24a", 12, { mat: "metal" }), tube([[tv[0], tv[1], D.TPR_Z - 2], [tv2[0], tv2[1], D.TPR_Z - 3]], 1.3, "#c9a24a", { seg: 6, mat: "metal" }));
+  o.push(tube([[tv2[0], tv2[1], D.TPR_Z - 6], [tv2[0], tv2[1], 4], [tv2[0] + 10, tv2[1], 4]], 1.1, "#b8703f", { seg: 8, mat: "copper" }));
+  // hot out of the top and back into the wall, the anode hanging in the water
+  o.push(tube([[TK.x - 5, TK.y - 5, zt + 2], [TK.x - 5, TK.y - 5, zt + 10], [TK.x - 5, WL.y + WL.d, zt + 10]], 1.5, "#b8703f", { seg: 8, mat: "copper" }));
+  const an = pol(7, 45);
+  o.push(tube([[an[0], an[1], zt - 5], [an[0], an[1], 36]], 0.9, "#9aa0a8", { seg: 6, mat: "matte" }));
+  return o;
+}
+function eaveParts(x0, x1) {
+  const y0 = WL.y, y1 = WL.y + 62;
+  return [box(x0, x1, y0, y1, EZ, EZ + 2, "#d9d5cc", { mat: "paint" }), box(x0, x1, y1 - 1.5, y1, EZ - 5, EZ + 4, "#f1efe9", { mat: "paint" }), box(x0, x1, y0, y1, EZ + 2, EZ + 4.2, "#7a4a3a", { mat: "matte" }),
+    ...Array.from({ length: 5 }, (_, i) => box(x0, x1, y0 + 8 + i * 12, y0 + 9 + i * 12, EZ + 4.2, EZ + 5, "#643a2d", { bevel: 0 })), tube([[x0, y1 + 2.2, EZ + 1], [x1, y1 + 2.2, EZ + 1]], 2.4, "#c9ced3", { seg: 8, mat: "paint" })];
+}
+function flyM(piv, a, axis, t) { const cs = Math.cos(a), sn = Math.sin(a), Rm = axis === "x" ? [1, 0, 0, 0, cs, -sn, 0, sn, cs] : [cs, 0, sn, 0, 1, 0, -sn, 0, cs]; return [...Rm, ...[0, 1, 2].map((i) => piv[i] - (Rm[i * 3] * piv[0] + Rm[i * 3 + 1] * piv[1] + Rm[i * 3 + 2] * piv[2]) + t[i])]; }
+let fx = [];
+const rn = () => Math.random();
+function draw(dt = 0) {
+  const c = boomAt === null ? -1 : now - boomAt, f = boomF, live = [], objs = [{ cache: "house", rev: 0, parts: houseStatic }];
+  let tankM, midM, sideM, shakeA = 0, showTank = true;
   if (c >= 0) {
-    const f = boomF;
-    if (f > 0.12) {
-      // through the roof
-      const rise = 900 * c * c + 80 * c;
-      tT = "translate(" + (12 * c).toFixed(1) + " " + (-rise).toFixed(1) + ") rotate(" + (25 * c).toFixed(1) + " " + D.mid[0].toFixed(1) + " " + D.mid[1].toFixed(1) + ")";
-      const lift = c > 0.18 ? (c - 0.18) : 0;
-      mT = "translate(" + (40 * lift).toFixed(1) + " " + (-700 * lift + 300 * lift * lift).toFixed(1) + ") rotate(" + (-160 * lift).toFixed(1) + " " + D.mid[0].toFixed(1) + " " + (D.mid[1] - 120).toFixed(1) + ")";
-      const A = 10 * Math.exp(-c / 0.5);
-      lT = "translate(" + (A * Math.sin(c * 70)).toFixed(1) + " " + (A * Math.cos(c * 55)).toFixed(1) + ")"; rT = lT;
-    } else if (f > 0.03) {
-      // blown apart and knocked over
-      const kd = sm(0, 0.4, c);
-      tT = "translate(" + (30 * kd).toFixed(1) + " " + (-40 * Math.sin(Math.min(c, 0.5) * Math.PI * 2) * (c < 0.5 ? 1 : 0)).toFixed(1) + ") rotate(" + (70 * kd).toFixed(1) + " " + D.base[0].toFixed(1) + " " + D.base[1].toFixed(1) + ")";
-    }
-    const A = (f > 0.12 ? 14 : f > 0.03 ? 7 : 2) * Math.exp(-c / 0.5);
-    stage.style.transform = "translate(" + (A * Math.sin(c * 90)).toFixed(1) + "px," + (A * Math.cos(c * 71)).toFixed(1) + "px)";
-    flash.style.opacity = (f > 0.03 ? 0.7 * Math.exp(-c / 0.25) : 0).toFixed(3);
-    if (c > BOOM_END) { stage.style.transform = ""; flash.style.opacity = "0"; reset(); event("Reset: new tank, new roof, back to " + M.start + " °C."); return draw(); }
+    if (f > 0.12) { // through the roof
+      const rise = 600 * c * c + 55 * c; tankM = flyM([TK.x, TK.y, 45], 0.45 * c, "y", [8 * c, 0, rise]); showTank = rise < 420;
+      const lift = c > 0.16 ? c - 0.16 : 0; if (lift > 0) midM = flyM([0, WL.y + 31, EZ], -2.8 * lift, "x", [0, 26 * lift, 460 * lift - 260 * lift * lift]);
+    } else if (f > 0.03) { const kd = sm(0, 0.4, c); tankM = flyM([TK.x + TK.ro, TK.y, TK.z0], 1.25 * kd, "y", [8 * kd, 0, 26 * Math.sin(Math.min(c, 0.5) * TAU) * (c < 0.5 ? 1 : 0)]); }
+    shakeA = (f > 0.12 ? 14 : f > 0.03 ? 7 : 2) * Math.exp(-c / 0.5);
+    if (c > BOOM_END) { setShake(0, 0); flashEl.style.opacity = "0"; reset(); fx = []; event("Reset: new tank, new roof, back to " + M.start + " °C."); return draw(); }
   }
-  tankG.setAttribute("transform", tT); eaveM.setAttribute("transform", mT); eaveL.setAttribute("transform", lT); eaveR.setAttribute("transform", rT);
-  if (gl && !window.__noGL) gl.draw({ uDrip: c < 0 && tprOpen ? (tprTemp ? 1 : 0.5) : 0, uSteamV: c < 0 && (boiling || (tprOpen && T > 100)) ? 1 : 0, uBoom: c, uFlash: 0, uRise: c >= 0 && boomF > 0.12 ? -(900 * c * c + 80 * c) : 0 }, now);
-  const text = c >= 0 ? (boomF > 0.12 ? "BOOM · " + Math.round(boomF * M.litres) + " kg flashed to steam" : boomF > 0.03 ? "BURST" : "SPLIT, no flash") : Math.round(T) + " °C · " + Math.round(Pg) + " kPa · " + (heating ? "heating" : ecoTripped ? "cutout tripped" : "element off") + (tprOpen ? " · T&PR open" : "");
+  if (showTank) objs.push({ cache: "tank", rev: tankKind, m: tankM, parts: tankParts });
+  if (!(midM && now - boomAt > 2.6)) objs.push({ cache: "eave-m", rev: 0, m: midM, parts: () => eaveParts(-24, 24) });
+  objs.push({ cache: "eave-l", rev: 0, parts: () => eaveParts(WL.x, -24) }, { cache: "eave-r", rev: 0, parts: () => eaveParts(24, WL.x + WL.w) });
+  if (c < 0) {
+    // the water, coloured by how hot it is, and the element that's heating it
+    const tf = clamp((T - 15) / 210, 0, 1), wc = mixHex("#468ce6", "#ff7828", tf);
+    live.push(lathe([[0, TK.z1 - 5], [TK.rw - 0.05, TK.z1 - 5], [TK.rw - 0.05, TK.z0 + 4.2], [0, TK.z0 + 4.2]], wc, { ...KEEP, seg: 36, mat: "satin", emit: [wc, 0.04 + 0.16 * tf], emitK: 0.8 }));
+    const e0 = pol(TK.rw, 330), e1 = pol(4, 20), e2 = pol(4, 60), e3 = pol(TK.rw, 70);
+    live.push(tube([[e0[0], e0[1], D.ELEM_Z], [e1[0], e1[1], D.ELEM_Z], [e2[0], e2[1], D.ELEM_Z + 2.2], [e3[0], e3[1], D.ELEM_Z + 2.2]], 0.9, heating ? "#ff8a3a" : "#5d646c", { seg: 8, mat: "steel", emit: heating ? ["#ff6a1a", 1] : undefined, emitK: 2.6 }));
+    const tc = pol(TK.ro, 345), tv = pol(TK.ro + 2, D.TPR_A), tv2 = pol(TK.ro + 6, D.TPR_A);
+    live.push(sphere([tc[0] + 2.4, tc[1], 24], 1.2, heating ? "#ff8a3a" : "#5a3a2a", { lat: 6, lon: 8, emit: heating ? ["#ff7a2a", 1] : undefined, emitK: 2.4 }));
+    live.push(tube([[tv[0], tv[1], D.TPR_Z + 4], tprOpen ? [tv[0] + 1, tv[1] + 0.5, D.TPR_Z + 10] : [tv[0] + 5, tv[1] + 2.5, D.TPR_Z + 6]], 0.6, "#2a2d31", { seg: 5, mat: "plastic" }));
+    if (tpr === "blocked") live.push(cyl(tv2[0] + 10, tv2[1], 2, 2, 6, "#d0342c", 12, { mat: "plastic" }));
+    // the relief valve dumping down the drain, and steam when it's past boiling
+    const dp = [tv2[0] + 11, tv2[1], 4];
+    if (tprOpen && dt > 0) { for (let i = 0; i < (tprTemp ? 4 : 2); i++) fx.push({ k: "drop", p: [...dp], v: [40 + rn() * 30, (rn() - 0.5) * 14, 6 + rn() * 14], life: 0, max: 0.5 + rn() * 0.3 }); if ((boiling || T > 100) && rn() < 0.7) fx.push({ k: "steam", p: [dp[0] + 4, dp[1], 5], v: [14 + rn() * 14, (rn() - 0.5) * 10, 18 + rn() * 18], life: 0, max: 1.4 + rn(), s: 0.5 }); }
+    objs.push({ parts: live });
+  }
+  let svg = E.render(objs);
+  // the blast: the water that was above 100 °C is steam now, all of it at once
+  if (c >= 0 && dt > 0 && f > 0.03 && c < 0.7) for (let i = 0; i < (f > 0.12 ? 9 : 4); i++) { const a = rn() * TAU, sp = 60 + rn() * 160; fx.push({ k: "steam", p: [TK.x + (rn() - 0.5) * 20, TK.y + (rn() - 0.5) * 20, 10 + rn() * 70], v: [Math.cos(a) * sp, Math.sin(a) * sp * 0.6 + 30, 40 + rn() * (f > 0.12 ? 260 : 90)], life: 0, max: 1.6 + rn() * 2.2, s: f > 0.12 ? 1.5 : 0.9 }); }
+  if (c >= 0 && dt > 0 && f <= 0.03 && c < 1.2) for (let i = 0; i < 5; i++) fx.push({ k: "drop", p: [TK.x + TK.ro, TK.y + (rn() - 0.5) * 16, 10 + rn() * 30], v: [50 + rn() * 60, (rn() - 0.5) * 50, 10 + rn() * 40], life: 0, max: 0.6 + rn() * 0.5 });
+  if (c >= 0 && c < 0.5 && f > 0.03) for (let i = 0; i < 3; i++) fx.push({ k: "bit", p: [TK.x, TK.y, 50], v: [(rn() - 0.5) * 420, rn() * 300, 100 + rn() * 420], life: 0, max: 1 + rn() });
+  fx = fx.filter((p) => {
+    p.life += dt; if (p.life > p.max) return false;
+    const t = p.life / p.max, o = [p.p[0], p.p[1], p.p[2]];
+    if (p.k !== "steam") p.v[2] -= 420 * dt; else { p.v[0] *= 0.97; p.v[1] *= 0.97; p.v[2] *= 0.985; }
+    for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * dt;
+    if (p.k === "drop" && p.p[2] < 0.5) { p.p[2] = 0.5; p.v = [p.v[0] * 0.3, p.v[1] * 0.3, 0]; }
+    if (p.k === "steam") E.sprite(p.p, (7 + 46 * t) * p.s, lightTheme ? "#c3cbd4" : "#eef3f8", (lightTheme ? 0.6 : 0.42) * (1 - t));
+    else if (p.k === "drop") E.line(o, p.p, 2, lightTheme ? "#3a7ed0" : "#9fd0ff", 0.85 * (1 - t), !lightTheme);
+    else E.line(o, p.p, 2.5, "#d9d6cf", 1 - t);
+    return true;
+  });
+  if (E.xray > 0.02 && c < 0) svg += E.callouts([
+    { p: [...pol(8, 40), D.ELEM_Z + 1], text: "Element", sub: heating ? "3.6 kW, on" : "off" }, { p: [...pol(TK.ro + 1, 345), 20], text: "Thermostat and cutout", sub: stat === "stuck" ? "thermostat stuck on" : ecoTripped ? "cutout tripped" : "set to " + M.set + " °C" },
+    { p: [...pol(TK.ro + 2, D.TPR_A), D.TPR_Z + 2], text: "T&PR valve", sub: tpr === "blocked" ? "drain capped off" : tpr === "pressure" ? "pressure only" : "850 kPa or 99 °C" }, { p: [...pol(9, 200), TK.z1 - 5], text: "The water", sub: Math.round(T) + " °C, boils at " + Math.round(tsat(Pg + 101.3)) + " °C here" },
+    { p: [...pol(15.2, 91), 60], text: "Foam", sub: "keeps the heat in" }, { p: [...pol(7, 45), 44], text: "Anode", sub: "corrodes so the tank doesn't" },
+  ], E.xray, E.fs < 0.62 ? {} : { topL: 70 });
+  if (sceneG.innerHTML !== svg) sceneG.innerHTML = svg;
+  setShake(shakeA * Math.sin(c * 90), shakeA * Math.cos(c * 71));
+  flashEl.style.opacity = c >= 0 ? (f > 0.03 ? 0.7 * Math.exp(-c / 0.25) : 0).toFixed(3) : "0";
+  const text = c >= 0 ? (f > 0.12 ? "BOOM · " + Math.round(f * M.litres) + " kg flashed to steam" : f > 0.03 ? "BURST" : "SPLIT, no flash") : Math.round(T) + " °C · " + Math.round(Pg) + " kPa · " + (heating ? "heating" : ecoTripped ? "cutout tripped" : "element off") + (tprOpen ? " · T&PR open" : "");
   if (readout.textContent !== text) readout.textContent = text;
 }
 
@@ -367,7 +259,7 @@ function tick(t) {
     }
   }
   for (let i = 0; i < 8; i++) step(sdt / 8);
-  draw(); syncUi(); story();
+  draw(sdt); syncUi(); story();
   frame = visible ? requestAnimationFrame(tick) : 0;
 }
 const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
@@ -388,56 +280,23 @@ ui.power.addEventListener("click", togglePower);
 ui.reset.addEventListener("click", doReset);
 ui.slow.addEventListener("click", () => { slow = !slow; run(); });
 ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; tourClock = 0; } run(); });
-stage.addEventListener("click", () => setTpr(tpr === "ok" ? "pressure" : tpr === "pressure" ? "blocked" : "ok"));
+onTap(() => setTpr(tpr === "ok" ? "pressure" : tpr === "pressure" ? "blocked" : "ok"));
 stage.addEventListener("keydown", (ev) => {
-  const map = { " ": togglePower, t: () => setStat(stat === "ok" ? "stuck" : "ok"), e: () => setEco(eco === "ok" ? "welded" : "ok"), v: () => setTpr(tpr === "ok" ? "pressure" : tpr === "pressure" ? "blocked" : "ok"), c: () => setTank(tankKind === "fresh" ? "corroded" : "fresh"), r: doReset, s: () => { slow = !slow; run(); } };
+  const map = { x: () => { setX(!E.xrayOn); run(); }, " ": togglePower, t: () => setStat(stat === "ok" ? "stuck" : "ok"), e: () => setEco(eco === "ok" ? "welded" : "ok"), v: () => setTpr(tpr === "ok" ? "pressure" : tpr === "pressure" ? "blocked" : "ok"), c: () => setTank(tankKind === "fresh" ? "corroded" : "fresh"), r: doReset, s: () => { slow = !slow; run(); } };
   if (map[ev.key]) { ev.preventDefault(); map[ev.key](); }
 });
-window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+window.__fig = { E, freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
 draw(); syncUi(); story();
 `;
 
-const CSS = `.fx-stage{position:relative;cursor:pointer}
-.fx-layer{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.fx-gl{display:block}
-body[data-theme="dark"] .fx-gl{mix-blend-mode:screen}
-.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(closest-side at 50% 55%,#ffffff 0%,#e8f2ff 45%,rgba(220,235,255,0) 100%)}
-.iso-plate{overflow:hidden}
-.brick .iso-fill,.brick .iso-shade{fill:#8a5a44}.brick .iso-top{fill:#a06a50}
-body[data-theme="light"] .brick .iso-fill,body[data-theme="light"] .brick .iso-shade{fill:#c99a80}body[data-theme="light"] .brick .iso-top{fill:#d8ad94}
-.jacket .iso-fill,.jacket .iso-shade{fill:#d9dcdf}.jacket .iso-top{fill:#eceef0}
-body[data-theme="dark"] .jacket .iso-fill,body[data-theme="dark"] .jacket .iso-shade{fill:#8d9298}body[data-theme="dark"] .jacket .iso-top{fill:#a5aab0}
-.foam .iso-fill,.foam .iso-shade,.foam .iso-top{fill:#e8c95a}
-.water .iso-fill,.water .iso-shade,.water .iso-top{fill:var(--water,#4a8ce6);transition:fill .3s}
-.steel{fill:#6f7b86;stroke:none}
-.element{fill:none;stroke:#6a6a6a;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.element[data-on="true"]{stroke:#ff6a2a}
-.cover .iso-fill,.cover .iso-shade,.cover .iso-top{fill:#f2f2ee}
-.brass .iso-fill,.brass .iso-shade,.brass .iso-top{fill:#c9a24a}
-.lever{fill:none;stroke:#c9a24a;stroke-width:1.4;stroke-linecap:round}.lever[data-open="true"]{stroke:#ffd36a}
-.drain{fill:none;stroke:#cfd3d8;stroke-width:1.6;stroke-linejoin:round}.drain-o{fill:none;stroke:var(--anatomy-mid);stroke-width:2.6;stroke-linejoin:round}
-.pipe{fill:none;stroke:#b87333;stroke-width:2.2;stroke-linejoin:round}.pipe-o{fill:none;stroke:var(--anatomy-mid);stroke-width:3.2;stroke-linejoin:round}
-.pipe.cold{stroke:#4a8ce6}.pipe.hot{stroke:#e0603a}
-.lamp{stroke:var(--anatomy-mid);stroke-width:.3;fill:var(--anatomy-paper)}.lamp[data-on="true"]{fill:#ff6a2a}
-.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
-.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.ctl-label{min-width:72px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
-.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
-.ctl button:hover{border-color:var(--anatomy-mid)}
-.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
-.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
-.ctl #power{font-weight:600;letter-spacing:.06em;min-width:100px;text-align:center;border-color:var(--anatomy-lit);color:var(--anatomy-lit)}
-.ctl [data-tpr="blocked"],.ctl #reset{border-color:#ff6a3d;color:#ff6a3d}
-.ctl output{min-width:72px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
-.meter{position:relative;flex:1;min-width:110px;height:10px;margin-top:14px;border:1px solid var(--anatomy-lo);border-radius:5px}
-.meter .fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .1s;background:var(--anatomy-mid)}
-.meter .fill[data-state="ok"]{background:#3ddc84}.meter .fill[data-state="warn"]{background:#ffb347}.meter .fill[data-state="bad"]{background:#ff5a2a}
-.mark{position:absolute;top:-14px;bottom:-3px;width:0;border-left:1px dashed var(--anatomy-lit);pointer-events:none}
-.mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:var(--anatomy-lit)}
-.mark.red{border-left-color:#ff6a3d}.mark.red::after{color:#ff6a3d}
-#stats{font-size:12px;color:var(--anatomy-mid);line-height:1.5}#stats b{color:var(--anatomy-hi,var(--anatomy-mid));font-weight:600}
-#shot{min-height:3.6em;font-size:12px;line-height:1.4}
-@media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:60px}.ctl button small{display:none}}`;
+const CSS = `.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle 60% at 50% 55%,#ffffff 0%,#eef4ff 40%,rgba(220,235,255,0) 100%)}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Hot water system: space turns the power on and off, T sticks the thermostat, E welds the cutout, V cycles the relief valve, C swaps in a corroded tank, R resets">${backSvg}<canvas class="fx-layer fx-gl" aria-hidden="true"></canvas>${frontSvg}<div class="fx-flash" aria-hidden="true"></div></div>`;
+const stage = stageHtml({
+  W, H, fig: "Fig 16", title: "Hot water system", xray: true,
+  label: "An electric storage hot water system against a brick house wall under the eave, a quarter cut away to show the water, the element across the bottom and the insulation. A temperature and pressure relief valve sits near the top with its drain line running down the side. An x-ray mode turns the jacket, foam and steel tank to glass.",
+  keysHelp: "Hot water system: drag to rotate, X for x-ray, space turns the power on and off, T sticks the thermostat, E welds the cutout, V cycles the relief valve, C swaps in a corroded tank, R resets",
+  extra: `<div class="fx-flash" aria-hidden="true"></div>`,
+});
 
 const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Thermostat</span><button type="button" data-stat="ok" aria-pressed="true">Working<small>65 °C</small></button><button type="button" data-stat="stuck" aria-pressed="false">Stuck on</button></div>
@@ -448,24 +307,18 @@ const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Pressure</span><div class="meter"><span id="p-fill" class="fill"></span><span class="mark" style="left:${(850 / 2600 * 100).toFixed(1)}%" data-label="850 T&amp;PR"></span><span id="burst-mark" class="mark red" style="left:92%" data-label="tank bursts"></span></div><output id="p-out">500 kPa</output></div>
   <div class="ctl-row"><span class="ctl-label">Stored</span><span id="stats"></span></div>
   <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="power" aria-pressed="true">POWER OFF</button><button type="button" id="reset">Reset</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
-  <div id="shot" aria-live="polite"></div>
 </div>`;
 
-const card = k.plateHtml({
-  fig: "Fig 16",
-  title: "Hot water system",
-  hint: "Tap: change the relief valve",
-  readout: "",
-  keys: [
-    { mark: "lit", label: "Water colour shows its temperature; relief valve discharge and steam" },
-    { mark: "raised", label: "250 L electric storage tank cut open: jacket, insulation, tank, element, T&PR valve" },
-  ],
-  caption: "Water's boiling point goes up with pressure, so a sealed tank can hold water well past 100 °C without it boiling. That's the danger: if the tank then fails, the pressure drops to nothing in an instant, and all the water above 100 °C flashes to steam at once, about 1600 times its volume. At 200 °C that's around a fifth of the tank. Three things stand in the way: the thermostat, the over-temperature cutout, and the temperature and pressure relief valve, which opens at 850 kPa and, crucially, at 99 °C. The temperature part is the bit that matters: it dumps hot water before it can ever get above boiling, so even a burst tank is just a flood.",
-  body: stageHtml,
-});
 
-const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
-const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not plumbing advice. Real: T&amp;PR valves set at a pressure (850 kPa here) and 99 °C (AS 1357.1), water's boiling point against pressure, and the flash fraction cp·(T − 100)/hfg. Typical: 250 L, 3.6 kW, 500 kPa mains. Made up: the thermal expansion pressure rise, the burst pressures, the time-lapse (about 50 minutes a second) and how high it flies. Never cap or block a relief drain.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/hot-water" style="color:inherit">Source</a></p>`;
+const foot = footHtml({
+  theme, slug: "hot-water",
+  real: "T&amp;PR valves set at a pressure (850 kPa here) and 99 °C (AS 1357.1), water's boiling point against pressure, and the flash fraction cp·(T − 100)/hfg. Typical: 250 L, 3.6 kW, 500 kPa mains.",
+  made: "the thermal expansion pressure rise, the burst pressures, the time-lapse (about 50 minutes a second) and how high it flies. Never cap or block a relief drain.",
+});
 const name = theme === "light" ? "light.html" : "index.html";
-writeFileSync(join(HERE, name), k.pageHtml({ title: "Hot water system", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + glScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 700 }));
+writeFileSync(join(HERE, name), pageMk2({
+  k, title: "Hot water system", fig: "Fig 16", hint: "Tap: change the relief valve", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  caption: "Water's boiling point goes up with pressure, so a sealed tank can hold water well past 100 °C without it boiling. That's the danger: if the tank then fails, the pressure drops to nothing in an instant, and all the water above 100 °C flashes to steam at once, about 1600 times its volume. At 200 °C that's around a fifth of the tank. Three things stand in the way: the thermostat, the over-temperature cutout, and the temperature and pressure relief valve, which opens at 850 kPa and, crucially, at 99 °C. The temperature part is the bit that matters: it dumps hot water before it can ever get above boiling, so even a burst tank is just a flood.",
+  script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
+}));
 console.log("wrote", name);

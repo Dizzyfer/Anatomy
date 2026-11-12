@@ -37,4 +37,4 @@ Made up for the toy: the thermal expansion pressure rise, the burst pressures, t
 
 ## How it's built
 
-Built with [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22). To rebuild, drop `src/build.mjs` into Anatomy as `examples/hot-water/build.mjs` and run `node build.mjs` (`--light` for the light theme).
+Mark II: drawn in real 3D with a small WebGL2 renderer (`mk2/engine.mjs` in this repo: soft shadows, ambient occlusion, ink outlines, bloom, x-ray), on top of the camera and page conventions of [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22). Drag to rotate, pinch or ctrl-scroll to zoom, double click to reset the view. To rebuild, copy this repo's `mk2/` folder into an Anatomy checkout, drop `src/build.mjs` in as `examples/hot-water/build.mjs` and run `node build.mjs` (`--light` for the light theme).
