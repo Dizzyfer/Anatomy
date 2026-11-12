@@ -2,14 +2,11 @@ import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as k from "../../kit/iso-kit.mjs";
-import { glCamera } from "../../kit/gl.mjs";
-import { kitScript, glScript } from "../../scripts/inline-kit.mjs";
+import { engineScript, stageHtml, pageMk2, footHtml } from "../../mk2/shell.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
-
-const W = 640;
-const H = 420;
+const W = 960, H = 600;
 
 // Truth: IEEE 1584-2002 empirical model, LV (< 1 kV), enclosed switchgear, solidly earthed, 32 mm gap, x = 1.473, Cf = 1.5.
 // Arc flash boundary at 1.2 cal/cm² (onset of a second-degree burn). NFPA 70E PPE categories: 1 = 4, 2 = 8, 3 = 25, 4 = 40 cal/cm².
@@ -17,258 +14,40 @@ const H = 420;
 const MODEL = { V: 0.415, G: 32, x: 1.473, cf: 1.5, inst: 0.06, delay: 0.4, backup: 1.0, pickup: 10, pickupMaint: 3, eb: 1.2, ppe: { 0: 0, 1: 4, 2: 8, 4: 40 } };
 
 const U = 40; // plot units per metre
-const PLATE = { x: -130, y: -52, w: 172, d: 104, r: 8 };
-const PLATE_H = 12, FOOT_H = 5;
 const BX0 = -118, BX1 = -88, BY0 = -26, BY1 = 26, ZB = 4, ZT = 86;
 const BAR_X = -98;
 const ARC = [BAR_X, -6, 44];
 const PERCH = [BAR_X + 5, -6, 69];
-
-const P = k.fitProjection(
-  [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [BX0, BY0, ZT + 4], [BX1, BY1, ZT], [24, 0, 76]],
-  W, H, { pad: 20, azimuth: 45 },
-);
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const Dt = (points, style) => k.dotsSvg(points, style);
-const depth2 = ([x, y]) => k.depthOf([x, y, 0], P);
-const byDepth = (pts) => [...pts].sort((a, b) => depth2(a) - depth2(b));
-const slab = (plan, z, h, r = 1.2, bevel = 0.5) => k.slabOf({ r, ...plan }, z, h, P, 4, bevel);
-const box = (x0, x1, y0, y1, z, h, r = 0.4, bevel = 0.2) => slab({ x: x0, y: y0, w: x1 - x0, d: y1 - y0 }, z, h, r, bevel);
-
-function plate() {
-  const out = [`<path class="iso-halo" d="${k.haloOf(PLATE, -PLATE_H - FOOT_H, PLATE_H, P)}"/>`];
-  for (const [x, y] of byDepth(k.corners(PLATE, 22))) {
-    out.push(S(k.cylinder(x, y, 7, -PLATE_H - FOOT_H, 1.6, P, 28), { tone: "lo" }));
-    out.push(S(k.cylinder(x, y, 5.4, -PLATE_H - FOOT_H + 1.6, FOOT_H - 1.6, P, 28), { tone: "mid" }));
-  }
-  out.push(S(k.slabOf(PLATE, -PLATE_H, PLATE_H, P, 8, 1.6), { tone: "mid", inner: L(k.sideSeam(PLATE, -PLATE_H / 2, P), { tone: "faint" }) }));
-  out.push(L(k.planOutline(k.insetPlan(PLATE, 5), 0, P), { tone: "lo" }));
-  const screws = k.corners(PLATE, 10);
-  out.push(L(screws.map(([x, y]) => k.ring(x, y, 2.2, 0, P, 16)).join(""), { tone: "lo" }));
-  out.push(Dt(screws.map(([x, y]) => at([x, y, 0])), { size: 0.5 }));
-  // the clip for the boundary drawn on the floor
-  out.push(`<clipPath id="floor-clip"><path d="${k.planOutline(k.insetPlan(PLATE, 3), 0, P)}"/></clipPath>`);
-  out.push(`<g clip-path="url(#floor-clip)"><path data-part="zone" class="afb-zone" d=""/><path data-part="afb" class="afb" d=""/></g>`);
-  out.push(`<g data-part="dim"><path class="dim" d=""/><text class="dim-t" x="0" y="0"></text></g>`);
-  return out.join("");
-}
-
-function boardBack() {
-  const out = [];
-  out.push(`<path class="iso-halo" d="${k.haloOf({ x: BX0 - 3, y: BY0 - 3, w: BX1 - BX0 + 6, d: BY1 - BY0 + 6, r: 2 }, 0, 0.1, P)}"/>`);
-  // plinth, back pan, far side
-  out.push(S(box(BX0, BX1, BY0, BY1, 0, ZB, 0.8, 0.3), { tone: "mid" }));
-  out.push(S(box(BX0, BX0 + 2, BY0, BY1, ZB, ZT - ZB), { tone: "mid" }));
-  out.push(S(box(BX0 + 2, BX1, BY0, BY0 + 1.6, ZB, ZT - ZB), { tone: "mid" }));
-  out.push(S(box(BX0 + 2, BX1 - 2, BY0 + 1.6, BY1 - 1.6, ZB, 1.2, 0.2, 0), { tone: "lo", crease: "none" }));
-  // incoming breaker up top, with a trip lamp
-  out.push(S(box(BX0 + 2, BX1 - 6, BY0 + 4, BY1 - 4, 74, 10, 0.6, 0.3), { tone: "hi", inner: L([77, 80].map((z) => k.segment([BX1 - 6, BY0 + 6, z], [BX1 - 6, BY1 - 6, z], P)).join(""), { tone: "faint" }) }));
-  out.push(`<g data-part="lamp" class="lamp" data-on="false"><path d="${k.cylinder(BX1 - 5.6, 14, 1.6, 79, 0.6, P, 16).fill}"/></g>`);
-  // insulated supports behind the bars
-  for (const z of [16, 64]) out.push(S(box(BX0 + 2, BAR_X + 3, -20, 20, z, 4, 0.4, 0.2), { tone: "lo" }));
-  // L1 L2 L3 copper busbars
-  for (const [i, y] of [-12, 0, 12].entries()) {
-    out.push(`<g class="cu">${S(box(BAR_X - 3, BAR_X + 3, y - 1, y + 1, 14, 58, 0.2, 0.1), { tone: "hi" })}</g>`);
-    out.push(k.faceTextSvg(k.sideMatrix([BAR_X + 3.01, y + 0.8], 74, P, "right"), "L" + (i + 1), { size: 2.4, tone: "mid" }));
-  }
-  // the door, swung wide open against the far side
-  out.push(S(box(BX1, BX1 + 50, BY0 - 2.6, BY0 - 1, ZB + 2, ZT - ZB - 4, 0.4, 0.2), { tone: "hi", inner: L(k.segment([BX1 + 4, BY0 - 1, 60], [BX1 + 46, BY0 - 1, 60], P), { tone: "faint" }) }));
-  return out.join("");
-}
-
-function spanner() {
-  // drawn lying across the bars (L1 to L2) at the arc point; JS slides it up to its perch until it falls
-  const out = [];
-  const z = ARC[2], x = BAR_X + 3.4;
-  out.push(S(box(x, x + 1.2, -16, 3, z - 1.4, 2.8, 0.3, 0.1), { tone: "hi" }));
-  out.push(S(k.cylinder(x + 0.6, -17.5, 3.2, z - 1.6, 3.2, P, 20, 0.3), { tone: "hi" }));
-  out.push(S(k.cylinder(x + 0.6, 4.5, 2.8, z - 1.4, 2.8, P, 20, 0.3), { tone: "hi" }));
-  return `<g data-part="spanner">${out.join("")}</g>`;
-}
-
-function boardFront() {
-  const out = [];
-  out.push(S(box(BX0, BX1, BY1 - 1.6, BY1, ZB, ZT - ZB), { tone: "mid" }));
-  out.push(S(box(BX0 - 0.6, BX1 + 0.6, BY0 - 0.6, BY1 + 0.6, ZT - 2, 3, 0.6, 0.3), { tone: "mid" }));
-  out.push(S(box(BX1 - 1.4, BX1, BY0, BY1, ZB, 2.6, 0.2, 0), { tone: "mid" }));
-  // the arc flash label on the near side
-  const m = k.sideMatrix([BX0 + 4, BY1 + 0.02], 72, P, "left");
-  out.push(`<g transform="${m}"><rect x="0" y="0" width="22" height="15" rx=".6" class="afl"/><rect x="0" y="0" width="22" height="3.6" rx=".6" class="afl-head"/>
-    <text class="iso-face-text afl-h" x="11" y="2.7" font-size="2.3" text-anchor="middle">ARC FLASH</text>
-    <text data-part="lab-e" class="iso-face-text" data-tone="hi" x="1.4" y="6.6" font-size="1.9">1.5 cal/cm²</text>
-    <text data-part="lab-d" class="iso-face-text" data-tone="mid" x="1.4" y="9.2" font-size="1.5">at 610 mm</text>
-    <text data-part="lab-b" class="iso-face-text" data-tone="mid" x="1.4" y="11.6" font-size="1.5">boundary 0.7 m</text>
-    <text data-part="lab-p" class="iso-face-text" data-tone="mid" x="1.4" y="14" font-size="1.5">415 V · PPE CAT 1</text></g>`);
-  return out.join("");
-}
-
-// a person, standing at x = 0 and facing the board (−x); JS slides them out to the working distance
-// boots stay put, the clothes are separate pieces, and underneath there's a bloke in his undies,
-// so the extreme case can blow him clean out of his clothes
-function worker() {
-  const g = (cls, paths, extra = "") => `<g class="${cls}"${extra}>${S(paths, { tone: "hi" })}</g>`;
-  const boots = g("boot", box(-5, 2.6, -5.6, -1.4, 0, 3, 0.8, 0.4)) + g("boot", box(-5, 2.6, 1.4, 5.6, 0, 3, 0.8, 0.4));
-  const under = [
-    g("skin", box(-1.8, 1.8, -4.8, -1.4, 3, 20, 0.9, 0.3)), g("skin", box(-1.8, 1.8, 1.4, 4.8, 3, 20, 0.9, 0.3)),
-    g("undies", box(-2.4, 2.4, -5.4, 5.4, 22, 13, 1.2, 0.4)),
-    g("skin", box(-1.6, 1.6, -9.6, -7.4, 38, 20, 1, 0.4)), g("skin", box(-3.1, 3.1, -6.6, 6.6, 35, 25, 2, 0.8)), g("skin", box(-1.6, 1.6, 7.4, 9.6, 38, 20, 1, 0.4)),
-  ].join("");
-  const clothes = [
-    g("arm", box(-2, 2, -10.4, -7, 37, 22, 1.2, 0.5), ' data-frag="0"'),
-    g("pants", box(-2.2, 2.2, -5.2, -1, 3, 32, 1, 0.3), ' data-frag="1"'),
-    g("pants", box(-2.2, 2.2, 1, 5.2, 3, 32, 1, 0.3), ' data-frag="2"'),
-    g("shirt", box(-3.6, 3.6, -7.2, 7.2, 34, 26, 2.2, 0.8), ' data-frag="3"'),
-    g("arm", box(-2, 2, 7, 10.4, 37, 22, 1.2, 0.5), ' data-frag="4"'),
-  ].join("");
-  const head = g("skin", k.cylinder(0, 0, 2, 59.5, 3.5, P, 20)) + g("skin", k.cylinder(0, 0, 4.2, 62.5, 10, P, 28, 2.2))
-    + `<g class="shield">${S(box(-6.4, -5.6, -5, 5, 61, 10.5, 0.3, 0.1), { tone: "hi" })}</g>`
-    + `<g class="hood">${S(slab({ x: -5.2, y: -5.6, w: 10, d: 11.2 }, 59.5, 15, 3.6, 2), { tone: "hi" })}</g>`
-    + g("hat", k.cylinder(0, 0, 5, 71, 3.4, P, 28, 1.6));
-  return `<g data-part="worker" class="wk" data-ppe="2" data-burn="0">${boots}<g data-part="body-under" class="under" style="display:none">${under}</g><g data-part="clothes">${clothes}</g><g data-part="body-head">${head}</g></g>`;
-}
-
-const backSvg = k.figureSvg({
-  width: W, height: H,
-  label: "A 415 volt switchboard with its door open, three copper busbars inside and a breaker on top. A spanner has been left on the bar support. A person stands in front of it at the working distance, and the arc flash boundary is drawn on the floor around the bars.",
-  body: [plate(), boardBack()],
-});
-const layer = (body) => `<svg xmlns="http://www.w3.org/2000/svg" class="iso-svg fx-layer" viewBox="0 0 ${W} ${H}" aria-hidden="true">${body}</svg>`;
-const frontSvg = layer([spanner(), boardFront(), worker()].join(""));
-
-const DATA = {
-  W, H, camera: glCamera(P), P, MODEL, U, BAR_X, BX1, ARC, PERCH,
-  ax: k.axisVector(P, [1, 0, 0]),
-  drop: (() => { const a = at(PERCH), b = at([ARC[0] + 3.4, ARC[1], ARC[2]]); return [a[0] - b[0], a[1] - b[1]]; })(),
-  feet0: at([0, 0, 0]), body0: at([0, 0, 40]),
-  fallDeg: (() => { const a = k.axisVector(P, [1, 0, 0]); return Math.atan2(a[0], -a[1]) * 180 / Math.PI; })(),
-};
-
-const SHARED = `
-uniform float uLight;
-uniform float uArc;
-uniform float uC;
-uniform float uTv;
-uniform float uReach;
-uniform float uWx;
-uniform float uFz;
-uniform float uBurnF;
-uniform float uPow;
-vec4 inkFor(vec3 seen,float cover){vec3 ab=1.-seen;float a=max(max(ab.r,max(ab.g,ab.b)),cover);return vec4(vec3(a)-ab,a);}
-vec4 over(vec4 t,vec4 u){return t+u*(1.-t.a);}
-vec4 fireInk(float e,float core){
-  vec3 hue=mix(vec3(.55,.16,.06),mix(vec3(1.,.36,.08),vec3(1.,.66,.28),smoothstep(.45,1.,core)),smoothstep(0.,.5,core));
-  vec3 c=tonemap(hue*e,1.4);float a=max(c.r,max(c.g,c.b));
-  float la=1.-exp(-1.8*e);
-  vec3 seen=mix(vec3(1.),mix(vec3(.82,.28,.06),vec3(1.,.78,.4),smoothstep(.6,1.,core)*smoothstep(.5,1.,la)),la);
-  return mix(vec4(c,a),inkFor(seen,.9*smoothstep(.75,1.,la)*core)*la,uLight);
-}
-vec4 arcInk(float e){
-  vec3 c=tonemap(vec3(.62,.78,1.)*e,1.6)+tonemap(vec3(1.)*max(0.,e-1.2),1.);
-  c=min(c,vec3(1.));float a=max(c.r,max(c.g,c.b));
-  float la=1.-exp(-1.6*e);
-  vec3 seen=mix(vec3(1.),mix(vec3(.18,.3,.85),vec3(.75,.85,1.),smoothstep(1.,2.,e)),la);
-  return mix(vec4(c,a),inkFor(seen,.85*smoothstep(1.2,2.2,e))*la,uLight);
-}
-vec4 smokeInk(float h){float a=(1.-exp(-h))*mix(.55,.45,uLight);return vec4(mix(vec3(.32,.3,.28),vec3(.22,.2,.18),uLight)*a,a);}
-float edgeFade(vec2 vb){return smoothstep(0.,60.,min(min(vb.x,uView.x-vb.x),min(vb.y,uView.y-vb.y)));}
-const vec3 A=vec3(${ARC.map((v) => v.toFixed(1)).join(",")});
-`;
-
-// inside the board: the arc itself, behind the near panel and the person
-const INNER = SHARED + `
-void main(){
-  vec2 vb=viewOf(gl_FragCoord.xy);
-  vec4 o=vec4(0.);
-  if(uArc>.002){
-    vec2 dv=(vb-project(A))/uK;
-    float fl=.65+.35*noise2(vec2(uTime*60.,1.));
-    float jag=noise2(vec2(dv.y*.4,uTime*40.));
-    float core=exp(-pow(length(dv*vec2(1.,1.6+jag))/1.6,2.))*2.6;
-    float glow=exp(-pow(length(dv)/(7.+5.*uPow),2.))*1.1+exp(-pow(length(dv)/22.,2.))*.45*uPow;
-    o=arcInk((core+glow)*uArc*fl);
-  }
-  o.rgb=min(o.rgb,vec3(o.a));
-  float dd=(hash12(gl_FragCoord.xy+uTime)-.5)/255.*smoothstep(0.,1.5/255.,o.a);
-  gl_FragColor=max(o+dd,0.);
-}`;
-
-// out the front: the plasma plume, molten copper, the person's clothes on fire, smoke
-const OUTER = SHARED + `
-void main(){
-  vec2 vb=viewOf(gl_FragCoord.xy);
-  vec4 o=vec4(0.);
-  float c=uC;
-  if(c>=0.){
-    float g=1.-exp(-c/.07);
-    float fade=c<uTv?1.:exp(-(c-uTv)/.32);
-    float e=0.,hot=0.,sm=0.;
-    for(int i=0;i<4;i++){
-      float f=(float(i)+.5)/4.;
-      vec3 C=A+vec3(uReach*f*g,0.,f*f*14.+c*10.);
-      float r=(5.+uReach*.34*f+6.*uPow)*g;
-      vec2 dv=(vb-project(C))/uK;
-      float d=length(dv);
-      float n=fbm2(dv*.07+vec2(c*3.,float(i)*7.));
-      float body=1.-smoothstep(r*.35,r*(.95+.35*n),d);
-      e+=body*(.45+.75*n)*(1.15-f*.5);
-      hot+=body*(1.-f)*exp(-c/.25);
-      // smoke left behind once the arc is out
-      vec3 Cs=C+vec3(0.,0.,max(0.,c-uTv)*18.);
-      float ds=length((vb-project(Cs))/uK);
-      sm+=(1.-smoothstep(r*.6,r*1.5,ds))*fbm2(dv*.05+vec2(0.,-c))*smoothstep(uTv,uTv+.3,c)*exp(-max(0.,c-uTv)/1.4)*.9;
-    }
-    float ef=edgeFade(vb);
-    o=over(fireInk(e*fade*ef*(.8+.6*uPow),clamp(hot*1.4/max(e,1e-3),0.,1.)),smokeInk(sm*uPow*ef));
-    // molten copper thrown out of the board
-    float sp=0.;
-    for(int i=0;i<26;i++){
-      float h1=hash12(vec2(float(i),3.1)),h2=hash12(vec2(float(i),7.7)),h3=hash12(vec2(float(i),11.3));
-      vec3 v=vec3(90.+190.*h1,(h2-.5)*170.,(h3-.25)*120.)*(.5+.6*uPow);
-      float tt=c-h3*.05;
-      if(tt<0.) continue;
-      vec3 p=A+v*tt-vec3(0.,0.,300.*tt*tt);
-      if(p.z<0.) continue;
-      float d=length((vb-project(p))/uK);
-      sp+=exp(-pow(d/.8,2.))*exp(-tt/.7)*1.6;
-      vec3 pt=A+v*max(0.,tt-.03)-vec3(0.,0.,300.*pow(max(0.,tt-.03),2.));
-      vec2 sa=project(pt),sb=project(p),ab=sb-sa;
-      float hh=clamp(dot(vb-sa,ab)/max(dot(ab,ab),1e-3),0.,1.);
-      sp+=exp(-pow(length(vb-sa-ab*hh)/uK/.45,2.))*exp(-tt/.6)*.7;
-    }
-    o=over(fireInk(sp*ef,.9),o);
-  }
-  if(uBurnF>.002){
-    vec3 C=vec3(uWx,0.,uFz);
-    vec2 dv=(vb-project(C))/uK;
-    float n=fbm2(vec2(dv.x*.18,dv.y*.12+uTime*3.));
-    float m=exp(-pow(abs(dv.x)/9.,2.))*smoothstep(26.,4.,dv.y)*smoothstep(-34.,-8.,dv.y);
-    float e=m*smoothstep(.35,.8,n+.2*(1.-smoothstep(-30.,10.,dv.y)))*1.8*uBurnF;
-    o=over(fireInk(e,.6),o);
-  }
-  o.rgb=min(o.rgb,vec3(o.a));
-  float dd=(hash12(gl_FragCoord.xy+uTime)-.5)/255.*smoothstep(0.,1.5/255.,o.a);
-  gl_FragColor=max(o+dd,0.);
-}`;
-
+const PLATE = { x: -130, y: -52, w: 172, d: 104, r: 8 };
+const P = k.fitProjection([...k.boxCorners(PLATE, -0.8, 0), [-118, -28, 90], [-88, 28, 90], [14, -28, 0], [14, 30, 70], [-118, 28, 90]], W, H, { pad: 30, azimuth: 45, elevation: 30 });
+const DATA = { W, H, P, PLATE };
+Object.assign(DATA, { MODEL, U, BAR_X, BX1, ARC, PERCH, GEO: { BX0, BY0, BY1, ZB, ZT } });
+const ePct = (e) => ((Math.log10(e) - Math.log10(0.3)) / (Math.log10(100) - Math.log10(0.3)) * 100).toFixed(1);
 const LIVE = `
+${engineScript()}
 const D = __DATA__;
-const { P, MODEL: M } = D;
-const stage = document.querySelector(".fx-stage");
-const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const stage = document.querySelector(".mk-stage");
 const readout = document.querySelector("[data-readout]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
-const LIGHT = document.body.dataset.theme === "light" ? 1 : 0;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lightTheme = document.body.dataset.theme === "light";
+const E = mk2(stage, D.P, { W: D.W, H: D.H, pivot: [-40, 0, 40], plate: { ...D.PLATE, h: 12, foot: 5 }, shadowBox: [-138, -60, -18, 50, 60, 96] });
+const { box, cyl, prism, circle, lathe, tube, sphere, loft, roundPoly, rrect, tris } = E;
+E.bindTools(stage);
+const xbtn = stage.querySelector('[data-mk="xray"]');
+const setX = (on) => { E.setXray(on); if (xbtn) xbtn.setAttribute("aria-pressed", String(on)); };
+const sceneG = stage.querySelector('[data-part="scene"]');
+const iso = (p) => E.project(p), depthOf = (p) => E.depthOf(p);
+const shakeEls = [stage.querySelector(".mk-gl"), stage.querySelector(".mk-over")];
+// a tap on the stage that isn't a drag or a press on the toolbar
+const onTap = (fn) => { let d0 = null; stage.addEventListener("pointerdown", (ev) => { d0 = ev.target.closest(".mk-tools,button,a") ? null : [ev.clientX, ev.clientY]; }); stage.addEventListener("pointerup", (ev) => { if (d0 && Math.hypot(ev.clientX - d0[0], ev.clientY - d0[1]) < 6) fn(ev); d0 = null; }); };
+// 3x4 matrix for a cached object turning about a vertical axis through (cx, cy)
+const rotZ = (cx, cy, a) => { const c = Math.cos(a), s = Math.sin(a); return [c, -s, 0, s, c, 0, 0, 0, 1, cx - c * cx + s * cy, cy - s * cx - c * cy, 0]; };
+const mixHex = (a, b, t) => { const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)), A = h(a), B = h(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * Math.min(1, Math.max(0, t))).toString(16).padStart(2, "0")).join(""); };
+const setShake = (x, y) => { const t = x || y ? "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)" : ""; for (const e of shakeEls) if (e.style.transform !== t) e.style.transform = t; };
+const M = D.MODEL, P = D.P;
 const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 const lg = Math.log10;
-const UN = ["uArc", "uC", "uTv", "uReach", "uWx", "uFz", "uBurnF", "uPow"];
-const inner = glLayer({ canvas: stage.querySelector(".fx-inner"), fragment: ${JSON.stringify(INNER)}, view: [D.W, D.H], camera: D.camera, uniforms: UN, fixed: { uLight: LIGHT } });
-const outer = glLayer({ canvas: stage.querySelector(".fx-outer"), fragment: ${JSON.stringify(OUTER)}, view: [D.W, D.H], camera: D.camera, uniforms: UN, fixed: { uLight: LIGHT } });
-const GL = !!(inner && outer);
-if (GL) stage.setAttribute("data-gl", "");
-
 // IEEE 1584-2002, under 1 kV, enclosed, solidly earthed
 function calc(ibf, dmm, prot) {
   const li = lg(ibf), V = M.V, G = M.G;
@@ -288,11 +67,6 @@ let frags = [], arcAt = null, res = null, out = null, frame = 0, last = 0, now =
 const END_PAD = 4.2;
 const vt = (t) => 0.22 + t * 1.1;
 const busy = () => arcAt !== null;
-
-const bodyUnder = q("body-under"), bodyHead = q("body-head"), clothesG = q("clothes"), fragEls = [...stage.querySelectorAll("[data-frag]")];
-const wk = q("worker"), sp = q("spanner"), lamp = q("lamp"), zone = q("zone"), afb = q("afb"), dim = q("dim"), flash = stage.querySelector(".fx-flash");
-const dimPath = dim.querySelector("path"), dimText = dim.querySelector("text");
-const lab = { e: q("lab-e"), d: q("lab-d"), b: q("lab-b"), p: q("lab-p") };
 const ui = {
   fault: document.querySelector("#fault"), faultOut: document.querySelector("#fault-out"),
   dist: document.querySelector("#dist"), distOut: document.querySelector("#dist-out"),
@@ -321,14 +95,6 @@ function syncUi() {
   ui.tour.setAttribute("aria-pressed", String(touring));
 }
 
-function floorPath(rU, closed) {
-  const dx = D.BX1 - D.BAR_X;
-  if (rU <= dx + 0.5) return "";
-  const th = Math.acos(dx / rU), n = 64, pts = [];
-  for (let i = 0; i <= n; i++) { const a = -th + (2 * th * i) / n; pts.push(iso([D.BAR_X + rU * Math.cos(a), D.ARC[1] + rU * Math.sin(a), 0.2], P)); }
-  return "M" + pts.map((p) => p[0].toFixed(1) + " " + p[1].toFixed(1)).join("L") + (closed ? "Z" : "");
-}
-
 function strike() {
   if (busy()) return;
   res = calc(ibf, dmm, prot);
@@ -351,82 +117,132 @@ function verdict() {
   return "Arc for " + tt + ", " + e + " cal/cm² at " + dmm + " mm. Your " + ppeName(ppe) + " wasn't enough: " + (o.burn === 2 ? "serious burns" : "second-degree burns") + (o.knock ? ", and the blast knocked you off your feet" : "") + "." + (r.e > 40 ? " Above 40 there's no PPE category at all. Switch it off." : "") + why;
 }
 
-function draw() {
-  const r = calc(ibf, dmm, prot);
-  const c = arcAt === null ? -1 : now - arcAt;
-  const shown = res && c > -0.45 ? res : r;
-  // where the person stands
-  const wx = D.BAR_X + (dmm / 1000) * D.U + 3.6;
-  let tf = "translate(" + (D.ax[0] * wx).toFixed(2) + " " + (D.ax[1] * wx).toFixed(2) + ")";
+// ---------------- the switchboard and the person in front of it, in real 3D ----------------
+const TAU = Math.PI * 2, G2 = D.GEO, BX0 = G2.BX0, BX1 = D.BX1, BY0 = G2.BY0, BY1 = G2.BY1, ZB = G2.ZB, ZT = G2.ZT, BAR = D.BAR_X, ARC = D.ARC;
+const flashEl = stage.querySelector(".fx-flash"), rn = () => Math.random();
+function boardStatic() {
+  const o = [], PT = { mat: "paint" }, GREY = "#c2c7cd";
+  o.push(box(BX0, BX1, BY0, BY1, 0, ZB, "#565d65", PT));
+  o.push(box(BX0, BX0 + 2, BY0, BY1, ZB, ZT, GREY, PT), box(BX0 + 2, BX1, BY0, BY0 + 1.6, ZB, ZT, GREY, PT), box(BX0 + 2, BX1 - 2, BY0 + 1.6, BY1 - 1.6, ZB, ZB + 1.2, "#8f959d", PT));
+  // the near side and the top: glass in x-ray, so you can see the bars
+  o.push(box(BX0, BX1, BY1 - 1.6, BY1, ZB, ZT, GREY, { ...PT, shell: true }), box(BX0 - 0.6, BX1 + 0.6, BY0 - 0.6, BY1 + 0.6, ZT - 2, ZT + 1, "#aab0b8", { ...PT, shell: true }), box(BX1 - 1.4, BX1, BY0, BY1, ZB, ZB + 2.6, GREY, PT));
+  // incoming breaker up top
+  o.push(box(BX0 + 2, BX1 - 6, BY0 + 4, BY1 - 4, 74, 84, "#2f3338", { mat: "plastic" }), box(BX1 - 6, BX1 - 5.2, -4, 4, 76, 82, "#d9d6cf", { mat: "plastic" }), box(BX1 - 5.2, BX1 - 4, -1.2, 1.2, 77.5, 80.5, "#1b1c1f", { mat: "plastic", bevel: 0 }));
+  // insulated supports behind the bars, then L1 L2 L3 in copper
+  for (const z of [16, 64]) o.push(box(BX0 + 2, BAR + 3, -20, 20, z, z + 4, "#b5452f", { mat: "matte" }));
+  for (const y of [-12, 0, 12]) { o.push(box(BAR - 3, BAR + 3, y - 1, y + 1, 14, 72, "#c8794a", { mat: "copper" })); for (const z of [18, 66]) o.push(cyl(BAR + 3, y, 0.01, z, z, "#000", 3), prism(circle(y, z, 1.3, 8), "x", BAR + 3, BAR + 4, "#aeb4bb", { mat: "steel", bevel: 0 })); }
+  // the door, swung wide open against the far side, and a rubber mat on the floor
+  o.push(box(BX1, BX1 + 50, BY0 - 2.6, BY0 - 1, ZB + 2, ZT - 2, GREY, PT), box(BX1 + 44, BX1 + 46, BY0 - 1, BY0 - 0.2, 40, 52, "#2a2d31", { mat: "plastic" }));
+  o.push(box(BX1 + 4, BX1 + 44, -22, 22, 0, 0.8, "#2a2d31", { mat: "rubber" }));
+  // the arc flash label on the near side
+  o.push(box(BX0 + 4, BX0 + 26, BY1, BY1 + 0.3, 57, 72, "#f4f2ec", { mat: "matte", bevel: 0 }), box(BX0 + 4, BX0 + 26, BY1 + 0.3, BY1 + 0.4, 68.4, 72, "#e2742a", { mat: "matte", bevel: 0 }));
+  return o;
+}
+// the bloke: boots stay put, the clothes are separate pieces, and underneath there's a bloke in his undies
+const SKIN = "#d8a888";
+function workerParts(ppe2, burn, what) {
+  const o = [], dark = (c2) => (burn === 2 ? mixHex(c2, "#141210", 0.78) : burn === 1 ? mixHex(c2, "#3a2a1a", 0.5) : c2);
+  const shirt = dark(ppe2 === 4 ? "#a39466" : ppe2 ? "#2e4a7a" : "#4f74b0"), pants = dark(ppe2 === 4 ? "#a39466" : "#3a4150");
+  const limb = (a, b, r, col, m) => tube([a, b], r, col, { seg: 10, mat: m || "matte" });
+  if (what === "boots") { for (const y of [-3.5, 3.5]) o.push(prism(rrect(-5, 2.6, y - 2.1, y + 2.1, 1.2), "z", 0.8, 3.8, "#2a2724", { mat: "rubber" })); return o; }
+  if (what === "under") {
+    for (const y of [-3.1, 3.1]) o.push(limb([0, y, 3.5], [0, y, 23], 1.9, SKIN));
+    o.push(prism(rrect(-2.6, 2.6, -5.4, 5.4, 1.6), "z", 22, 35, "#d94040", { mat: "matte" }), prism(rrect(-3.1, 3.1, -6.6, 6.6, 2.2), "z", 35, 60, SKIN, { mat: "matte" }));
+    for (const y of [-8.5, 8.5]) o.push(limb([0, y, 58], [0, y, 38], 1.7, SKIN));
+    return o;
+  }
+  if (what === "head") {
+    o.push(cyl(0, 0, 2, 59.5, 63, SKIN, 12, { mat: "matte" }), sphere([0, 0, 67.5], 4.6, burn ? dark(SKIN) : SKIN, { squash: [1, 1, 1.12], lat: 10, lon: 16, mat: "matte" }));
+    if (ppe2 === 4) o.push(lathe([[5.9, 58.5], [6.4, 66], [5.6, 73], [3, 75.6], [0, 76]], dark("#8b7d55"), { c: [0, 0, 0], seg: 20, mat: "matte" }), box(-6.6, -5.8, -3.6, 3.6, 63.5, 70.5, "#31404a", { mat: "gloss", bevel: 0 }));
+    else { o.push(lathe([[5.2, 70.6], [5.4, 72], [4.6, 74.4], [2.4, 75.6], [0, 75.8]], "#f2f2ee", { c: [0, 0, 0], seg: 20, mat: "plastic" }), lathe([[5.2, 70.4], [6.6, 70.4], [6.6, 71]], "#f2f2ee", { c: [0, 0, 0], seg: 20, mat: "plastic" }));
+      if (ppe2 === 2) o.push(lathe([[5.9, 61], [5.9, 70.4]], "#a0c8e6", { c: [0, 0, 0], a0: Math.PI * 0.62, a1: Math.PI * 1.38, seg: 16, mat: "glass", opacity: 0.4 })); }
+    return o;
+  }
+  // clothes, as five pieces: 0 arm, 1 leg, 2 leg, 3 shirt, 4 arm
+  const pc = [[limb([0, -8.7, 59], [0, -8.7, 37], 2.3, shirt)], [limb([0, -3.1, 3.5], [0, -3.1, 35], 2.4, pants)], [limb([0, 3.1, 3.5], [0, 3.1, 35], 2.4, pants)], [prism(rrect(-3.7, 3.7, -7.2, 7.2, 2.6), "z", 34, 60, shirt, { mat: "matte" })], [limb([0, 8.7, 59], [0, 8.7, 37], 2.3, shirt)]];
+  if (what >= 0) return pc[what];
+  return pc.flat().concat([sphere([0, -8.7, 35.6], 1.9, ppe2 ? "#3a3d42" : SKIN, { lat: 6, lon: 8, mat: "matte" }), sphere([0, 8.7, 35.6], 1.9, ppe2 ? "#3a3d42" : SKIN, { lat: 6, lon: 8, mat: "matte" })]);
+}
+let fx = [], lampOn = false;
+function draw(dt = 0) {
+  const r = calc(ibf, dmm, prot), c = arcAt === null ? -1 : now - arcAt, shown = res && c > -0.45 ? res : r;
+  const wx = BAR + (dmm / 1000) * D.U + 3.6, live = [], objs = [{ cache: "board", rev: 0, parts: boardStatic }];
   let burnLvl = 0, fireF = 0, kd = 0;
   if (c >= 0 && out) {
-    const tv = vt(res.t), after = c - tv;
+    const tv = vt(res.t);
     if (c > 0.05) burnLvl = out.burn;
-    if (out.knock) { kd = sm(0.02, 0.5, c) * (1 - sm(END_PAD + tv - 0.9, END_PAD + tv - 0.2, c)); const f = D.feet0, sh = 10 * kd; tf += " translate(" + (D.ax[0] * sh).toFixed(1) + " " + (D.ax[1] * sh).toFixed(1) + ") rotate(" + (D.fallDeg * 0.86 * kd).toFixed(1) + " " + f[0].toFixed(1) + " " + f[1].toFixed(1) + ")"; }
+    if (out.knock) kd = sm(0.02, 0.5, c) * (1 - sm(END_PAD + tv - 0.9, END_PAD + tv - 0.2, c));
     if (out.fire) fireF = sm(0.05, 0.4, c) * (1 - sm(tv + 2.4, tv + 3.4, c));
     if (out.extreme) fireF = 0.55 * sm(0.05, 0.3, c) * (1 - sm(tv + 2.6, tv + 3.6, c));
     if (c > tv + END_PAD - 0.8) burnLvl = 0;
   }
-  wk.setAttribute("transform", tf);
-  wk.dataset.ppe = String(ppe); wk.dataset.burn = String(burnLvl);
   const tb = c - 0.03, flying = c >= 0 && out && out.extreme && tb > 0 && c < vt(res.t) + END_PAD - 0.8;
-  bodyUnder.style.display = flying ? "" : "none";
-  if (flying) {
-    // launched away from the board, up and over, spinning
-    const ax = D.ax[0], ay = D.ax[1], m = Math.hypot(ax, ay), ux = ax / m, uy = ay / m;
-    const bx = ux * 420 * tb, by = uy * 420 * tb - 330 * tb + 420 * tb * tb, rot = 720 * tb;
-    const t2 = "translate(" + bx.toFixed(1) + " " + by.toFixed(1) + ") rotate(" + rot.toFixed(0) + " " + D.body0[0].toFixed(1) + " " + D.body0[1].toFixed(1) + ")";
-    bodyUnder.setAttribute("transform", t2); bodyHead.setAttribute("transform", t2);
-    fragEls.forEach((f, i) => {
-      const q2 = frags[i];
-      const fx = ux * q2.vx * tb + (i - 2) * 40 * tb, fy = uy * q2.vx * tb - q2.vy * tb + 380 * tb * tb;
-      f.setAttribute("transform", "translate(" + fx.toFixed(1) + " " + fy.toFixed(1) + ") rotate(" + (q2.w * tb).toFixed(0) + " " + D.body0[0].toFixed(1) + " " + D.body0[1].toFixed(1) + ")");
-      f.style.opacity = (1 - sm(0.9, 1.8, tb)).toFixed(2);
-    });
-    wk.dataset.burn = "0"; clothesG.dataset.burn = "2";
-  } else {
-    bodyUnder.removeAttribute("transform"); bodyHead.removeAttribute("transform");
-    fragEls.forEach((f) => { f.removeAttribute("transform"); f.style.opacity = ""; });
-    clothesG.dataset.burn = "0";
+  // knocked flat: tipped over backwards about the heels
+  const ka = kd * 1.35, kc = Math.cos(ka), ks = Math.sin(ka), stand = (p) => [wx + 10 * kd + p[0] * kc + p[2] * ks, p[1], Math.max(0.8, -p[0] * ks + p[2] * kc + 1.2 * kd)];
+  objs.push({ parts: workerParts(ppe, 0, "boots"), xf: (p) => [wx + p[0], p[1], p[2]] });
+  if (!flying) objs.push({ parts: [...workerParts(ppe, burnLvl, -1), ...workerParts(ppe, burnLvl, "head")], xf: stand });
+  else {
+    // launched away from the board, up and over, spinning, and his clothes go their own way
+    const a = 9 * tb, ca = Math.cos(a), sa = Math.sin(a), fly = (p) => { const dx = p[0], dz = p[2] - 40; return [wx + 300 * tb + dx * ca + dz * sa, p[1], Math.max(1, 40 + 240 * tb - 300 * tb * tb - dx * sa + dz * ca)]; };
+    objs.push({ parts: [...workerParts(ppe, 0, "under"), ...workerParts(ppe, 1, "head")], xf: fly });
+    if (tb < 1.8) for (let i = 0; i < 5; i++) { const q2 = frags[i], w = (q2.w / 400) * tb, cw = Math.cos(w), sw = Math.sin(w); objs.push({ parts: workerParts(ppe, 2, i), xf: (p) => { const dx = p[0], dz = p[2] - 40; return [wx + q2.vx * 0.7 * tb + dx * cw + dz * sw, p[1] + (i - 2) * 40 * tb, Math.max(1, 40 + q2.vy * 0.6 * tb - 260 * tb * tb - dx * sw + dz * cw)]; } }); }
   }
   // the spanner: on its perch, then falling onto L1 and L2
-  const fall = arcAt === null ? 0 : clamp((now - (arcAt - 0.45)) / 0.42, 0, 1);
-  const k2 = 1 - fall * fall;
-  sp.setAttribute("transform", "translate(" + (D.drop[0] * k2).toFixed(2) + " " + (D.drop[1] * k2).toFixed(2) + ")");
-  sp.style.opacity = c > 0.08 ? "0" : "1";
-  // the boundary on the floor
-  const rU = (shown.db / 1000) * D.U;
-  afb.setAttribute("d", floorPath(rU, false)); zone.setAttribute("d", floorPath(rU, true));
+  const fall = arcAt === null ? 0 : clamp((now - (arcAt - 0.45)) / 0.42, 0, 1), k2 = 1 - fall * fall;
+  if (!(c > 0.08)) { const sx = BAR + 3.4 + (D.PERCH[0] - BAR - 3.4) * k2, sz = ARC[2] + (D.PERCH[2] - ARC[2]) * k2; live.push(box(sx, sx + 1.2, -16, 3, sz - 1.4, sz + 1.4, "#c9ced3", { mat: "chrome" }), prism(circle(sx + 0.6, -17.5, 3.2, 14), "z", sz - 1.6, sz + 1.6, "#c9ced3", { mat: "chrome" }), prism(circle(sx + 0.6, 4.5, 2.8, 14), "z", sz - 1.4, sz + 1.4, "#c9ced3", { mat: "chrome" })); }
+  // the trip lamp on the breaker
+  let arc = 0; const pow = clamp(lg(Math.max(shown.e, 0.5) / 0.5) / lg(80), 0, 1);
+  if (c >= 0) { const tv = vt(res.t); arc = c < tv ? sm(0, 0.02, c) : 0; lampOn = c > tv - 0.02 && Math.sin(now * 9) > -0.2; } else lampOn = false;
+  live.push(prism(circle(14, 79, 1.6, 12), "x", BX1 - 6, BX1 - 5, lampOn ? "#ff4a3d" : "#5a3a36", { mat: "plastic", bevel: 0, emit: lampOn ? ["#ff4a3d", 1] : undefined, emitK: 2.6 }));
+  // the boundary on the floor: inside this arc you get a second-degree burn or worse
+  const rU = Math.min(190, (shown.db / 1000) * D.U), dx0 = BX1 - BAR;
+  if (rU > dx0 + 0.5) { const th = Math.acos(dx0 / rU), n = 48, fan = [], pts = []; for (let i = 0; i <= n; i++) { const a = -th + (2 * th * i) / n; pts.push([BAR + rU * Math.cos(a), ARC[1] + rU * Math.sin(a), 0.9]); } for (let i = 0; i < n; i++) fan.push([[BX1, ARC[1], 0.9], pts[i], pts[i + 1]]); live.push(tris(fan, "#ff5a2a", { flat: true, opacity: lightTheme ? 0.16 : 0.12 })); for (let i = 0; i < n; i += 2) E.line(pts[i], pts[i + 1], 2.2, "#ff6a3d", 0.95); }
+  objs.push({ parts: live });
+  let svg = E.render(objs);
+  // the arc itself, the plasma out the front, molten copper, and the smoke after
+  if (arc > 0.02) {
+    E.sprite(ARC, 16 + 10 * pow, "#eaf2ff", 0.95, true, 1); E.sprite([BX1 + 6, ARC[1], ARC[2]], 30 + 40 * pow, "#bcd4ff", 0.5, true, 1);
+    for (let j = 0; j < 4; j++) E.line([BAR + 3.5, -12 + rn() * 2, ARC[2] + (rn() - 0.5) * 10], [BAR + 3.5, 0 - rn() * 2, ARC[2] + (rn() - 0.5) * 10], 3, "#ffffff", 1, true);
+    const reach = Math.min(rU, 150) * (0.55 + 0.45 * pow);
+    if (dt > 0) { for (let j = 0; j < 4 + 8 * pow; j++) fx.push({ k: "flame", p: [BX1 - 4, ARC[1] + (rn() - 0.5) * 20, ARC[2] + (rn() - 0.5) * 30], v: [reach * (2.2 + rn() * 2.4), (rn() - 0.5) * 70, (rn() - 0.5) * 60 + 20], life: 0, max: 0.22 + rn() * 0.2, s: 0.8 + pow }); for (let j = 0; j < 3 + 5 * pow; j++) fx.push({ k: "spark", p: [BAR + 4, ARC[1] + (rn() - 0.5) * 8, ARC[2]], v: [80 + rn() * 300, (rn() - 0.5) * 240, (rn() - 0.3) * 260], life: 0, max: 0.5 + rn() * 0.8 }); }
+  }
+  if (c >= 0 && res && c > vt(res.t) && c < vt(res.t) + 2.5 && dt > 0 && rn() < dt * 30) fx.push({ k: "smoke", p: [BX1 - 6 + rn() * 10, (rn() - 0.5) * 30, 40 + rn() * 30], v: [10 + rn() * 14, (rn() - 0.5) * 10, 24 + rn() * 20], life: 0, max: 2 + rn() * 2, s: 1.2 });
+  if (fireF > 0.03 && dt > 0) { const bx = flying ? wx + 300 * tb : wx + 10 * kd + 34 * kd, bz = flying ? 40 + 240 * tb - 300 * tb * tb : 46 - kd * 38; for (let j = 0; j < 3; j++) if (rn() < fireF) fx.push({ k: "flame", p: [bx + (rn() - 0.5) * 8, (rn() - 0.5) * 14, Math.max(4, bz + (rn() - 0.5) * 30)], v: [(rn() - 0.5) * 16, (rn() - 0.5) * 16, 50 + rn() * 50], life: 0, max: 0.3 + rn() * 0.35, s: 0.55 }); if (rn() < dt * 14) fx.push({ k: "smoke", p: [bx, (rn() - 0.5) * 10, bz + 20], v: [(rn() - 0.5) * 8, (rn() - 0.5) * 8, 26 + rn() * 16], life: 0, max: 1.6 + rn() * 1.6, s: 0.7 }); }
+  fx = fx.filter((p) => {
+    p.life += dt; if (p.life > p.max) return false;
+    const t = p.life / p.max, o = [p.p[0], p.p[1], p.p[2]];
+    if (p.k === "spark") p.v[2] -= 420 * dt; else if (p.k === "flame") { p.v[0] *= 0.9; p.v[2] += 40 * dt; }
+    for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * dt;
+    if (p.k === "spark" && p.p[2] < 1) { p.p[2] = 1; p.v[2] *= -0.3; p.v[0] *= 0.6; }
+    if (p.k === "flame") E.sprite(p.p, (6 + 20 * t) * p.s, t < 0.3 ? "#f4f8ff" : t < 0.6 ? "#ffd27a" : "#e2601a", 0.8 * (1 - t * t), true, 2);
+    else if (p.k === "smoke") E.sprite(p.p, (7 + 28 * t) * p.s, lightTheme ? "#4a4744" : "#2e2c2b", 0.45 * (1 - t));
+    else E.line(o, p.p, 2, t < 0.4 ? "#fff1c4" : "#ff8a3a", 1 - t, true);
+    return true;
+  });
   // the working distance, beside the person
-  const y = 16, a0 = iso([D.BAR_X, y, 0.3], P), a1 = iso([D.BAR_X + (dmm / 1000) * D.U, y, 0.3], P);
-  dimPath.setAttribute("d", "M" + a0[0].toFixed(1) + " " + a0[1].toFixed(1) + "L" + a1[0].toFixed(1) + " " + a1[1].toFixed(1));
-  dimText.setAttribute("x", ((a0[0] + a1[0]) / 2 + 4).toFixed(1)); dimText.setAttribute("y", ((a0[1] + a1[1]) / 2 + 13).toFixed(1));
-  dimText.textContent = dmm + " mm";
+  const d0 = [BAR, 16, 1], d1 = [BAR + (dmm / 1000) * D.U, 16, 1], dm = E.project([(d0[0] + d1[0]) / 2, 20, 1]);
+  E.line(d0, d1, 1.6, lightTheme ? "#2a2d31" : "#e8eaed", 0.9); E.line([d0[0], 13, 1], [d0[0], 19, 1], 1.6, lightTheme ? "#2a2d31" : "#e8eaed", 0.9); E.line([d1[0], 13, 1], [d1[0], 19, 1], 1.6, lightTheme ? "#2a2d31" : "#e8eaed", 0.9);
+  svg += '<text class="mk-lab" x="' + (dm[0] + 6).toFixed(1) + '" y="' + (dm[1] + 12).toFixed(1) + '">' + dmm + " mm</text>";
   // the label on the board
-  lab.e.textContent = shown.e.toFixed(1) + " cal/cm²"; lab.d.textContent = "at " + dmm + " mm";
-  lab.b.textContent = "boundary " + (shown.db / 1000).toFixed(1) + " m"; lab.p.textContent = "415 V · " + (shown.e <= 1.2 ? "no PPE cat" : catOf(shown.e) === "no category" ? "DO NOT WORK LIVE" : "PPE " + catOf(shown.e));
-  let arc = 0, pow = clamp(lg(Math.max(shown.e, 0.5) / 0.5) / lg(80), 0, 1);
+  const m = E.faceMatrix([BX0 + 4, BY1 + 0.45, 72], [1, 0, 0], [0, 0, -1]);
+  if (m) svg += '<g transform="' + m + '"><text class="afl-h" x="11" y="2.7" font-size="2.3" text-anchor="middle">ARC FLASH</text><text class="afl hi" x="1.4" y="6.6" font-size="1.9">' + shown.e.toFixed(1) + ' cal/cm²</text><text class="afl" x="1.4" y="9.2" font-size="1.5">at ' + dmm + ' mm</text><text class="afl" x="1.4" y="11.6" font-size="1.5">boundary ' + (shown.db / 1000).toFixed(1) + ' m</text><text class="afl" x="1.4" y="14" font-size="1.5">415 V · ' + (shown.e <= 1.2 ? "no PPE cat" : catOf(shown.e) === "no category" ? "DO NOT WORK LIVE" : "PPE " + catOf(shown.e)) + "</text></g>";
+  if (E.xray > 0.02 && c < 0) svg += E.callouts([
+    { p: [BAR + 3, 12, 60], text: "Busbars", sub: "415 V, " + ibf + " kA available" }, { p: [BX1 - 6, 0, 79], text: "Incoming breaker", sub: "clears this fault in " + r.t.toFixed(2) + " s" },
+    { p: [BAR + rU * 0.8, ARC[1] + rU * 0.55, 1], text: "Arc flash boundary", sub: (r.db / 1000).toFixed(1) + " m: 1.2 cal/cm² out here" }, { p: [wx, 0, 50], text: "You", sub: r.e.toFixed(1) + " cal/cm², wearing " + (ppe ? M.ppe[ppe] : "nothing rated") },
+  ], E.xray, E.fs < 0.62 ? {} : { topL: 70 });
+  if (sceneG.innerHTML !== svg) sceneG.innerHTML = svg;
   if (c >= 0) {
-    const tv = vt(res.t);
-    arc = c < tv ? sm(0, 0.02, c) : 0;
-    lamp.dataset.on = String(c > tv - 0.02 && Math.sin(now * 9) > -0.2);
-    const A = (out && out.extreme ? 22 : 9 * pow) * Math.exp(-c / (out && out.extreme ? 0.5 : 0.35));
-    stage.style.transform = "translate(" + (A * Math.sin(c * 95)).toFixed(1) + "px," + (A * Math.cos(c * 77)).toFixed(1) + "px)";
-    flash.style.opacity = ((0.35 + 0.6 * pow) * (c < tv ? 0.75 + 0.25 * Math.sin(now * 80) : Math.exp(-(c - tv) / 0.15))).toFixed(3);
+    const tv = vt(res.t), A = (out && out.extreme ? 22 : 9 * pow) * Math.exp(-c / (out && out.extreme ? 0.5 : 0.35));
+    setShake(A * Math.sin(c * 95), A * Math.cos(c * 77));
+    flashEl.style.opacity = ((0.35 + 0.6 * pow) * (c < tv ? 0.75 + 0.25 * Math.sin(now * 80) : Math.exp(-(c - tv) / 0.15))).toFixed(3);
     if (c > tv + 0.05) say(verdict());
     if (c > tv + END_PAD) {
-      arcAt = null; res = null; out = null; stage.style.transform = ""; flash.style.opacity = "0"; lamp.dataset.on = "false";
+      arcAt = null; res = null; out = null; setShake(0, 0); flashEl.style.opacity = "0";
       say("Reset. Someone's left the spanner on the bar support again. Change the protection, the fault level, where you stand or what you're wearing, and drop it.");
       return draw();
     }
   }
-  if (GL) {
-    const tv = res ? vt(res.t) : 0;
-    const u = { uArc: arc, uC: c, uTv: tv, uReach: Math.min(rU, 150) * (0.55 + 0.45 * pow), uWx: wx + kd * 34, uFz: out && out.extreme ? 2 : 46 - kd * 38, uBurnF: fireF, uPow: pow };
-    inner.draw(u, now); outer.draw(u, now);
-  }
-  const text = c >= 0 ? (c < vt(res.t) ? "ARC · " + res.ia.toFixed(1) + " kA · " + res.t.toFixed(2) + " s" : "cleared · " + res.e.toFixed(1) + " cal/cm² at " + dmm + " mm")
-    : ibf + " kA bolted · " + r.t.toFixed(2) + " s · " + r.e.toFixed(1) + " cal/cm² at " + dmm + " mm";
+  const text = c >= 0 ? (c < vt(res.t) ? "ARC · " + res.ia.toFixed(1) + " kA · " + res.t.toFixed(2) + " s" : "cleared · " + res.e.toFixed(1) + " cal/cm² at " + dmm + " mm") : ibf + " kA bolted · " + r.t.toFixed(2) + " s · " + r.e.toFixed(1) + " cal/cm² at " + dmm + " mm";
   if (readout.textContent !== text) readout.textContent = text;
   if (arcAt === null && !touring) {
     const lim = Math.max(1.2, M.ppe[ppe]);
@@ -460,8 +276,8 @@ function tick(t) {
       if (a === "go") strike(); else if (a === "end") actions = [];
     }
   }
-  draw(); syncUi();
-  const idle = !touring && arcAt === null;
+  draw(sdt); syncUi();
+  const idle = fx.length === 0 && !touring && arcAt === null;
   frame = visible && !idle ? requestAnimationFrame(tick) : 0;
 }
 const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
@@ -482,71 +298,26 @@ ui.ppe.forEach((b) => b.addEventListener("click", () => setPpe(+b.dataset.ppeBtn
 ui.go.addEventListener("click", go);
 ui.slow.addEventListener("click", () => { slow = !slow; syncUi(); run(); });
 ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; tourClock = 0; actions = []; } syncUi(); run(); });
-stage.addEventListener("click", go);
+onTap(go);
 stage.addEventListener("keydown", (ev) => {
-  const map = { " ": go, Enter: go, ArrowRight: () => setDist(clamp(dmm + 50, 400, 3000)), ArrowLeft: () => setDist(clamp(dmm - 50, 400, 3000)), ArrowUp: () => setFault(clamp(ibf + 1, 5, 60)), ArrowDown: () => setFault(clamp(ibf - 1, 5, 60)), m: () => setProt(prot === "maint" ? "inst" : "maint"), s: () => { slow = !slow; syncUi(); run(); } };
+  const map = { x: () => { setX(!E.xrayOn); run(); }, " ": go, Enter: go, ArrowRight: () => setDist(clamp(dmm + 50, 400, 3000)), ArrowLeft: () => setDist(clamp(dmm - 50, 400, 3000)), ArrowUp: () => setFault(clamp(ibf + 1, 5, 60)), ArrowDown: () => setFault(clamp(ibf - 1, 5, 60)), m: () => setProt(prot === "maint" ? "inst" : "maint"), s: () => { slow = !slow; syncUi(); run(); } };
   if (map[ev.key]) { ev.preventDefault(); map[ev.key](); }
 });
-window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+window.__fig = { E, freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
 syncUi(); draw();
 `;
 
-const CSS = `.fx-stage{position:relative;cursor:pointer}
-.fx-layer{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.fx-gl{display:block}
-body[data-theme="dark"] .fx-gl{mix-blend-mode:screen}
-.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(closest-side at 32% 40%,#f4f8ff 0%,#cfe0ff 38%,rgba(170,200,255,0) 100%)}
-.iso-plate{overflow:hidden}
-.cu .iso-fill,.cu .iso-shade{fill:#b0643a}.cu .iso-top{fill:#d08a5a}
-.afb{fill:none;stroke:#ff6a3d;stroke-width:1.1;stroke-dasharray:4 3}
-.afb-zone{fill:rgba(255,106,61,.10);stroke:none}
-.dim{stroke:var(--anatomy-lit);stroke-width:.8;fill:none;stroke-dasharray:2 2}
-.dim-t{font-family:var(--anatomy-mono);font-size:8px;fill:var(--anatomy-lit)}
-.afl{fill:var(--anatomy-paper);stroke:#ff6a3d;stroke-width:.35}.afl-head{fill:#ff6a3d}.afl-h{fill:#fff;font-weight:700}
-.lamp path{fill:var(--anatomy-paper);stroke:var(--anatomy-mid);stroke-width:.3}.lamp[data-on="true"] path{fill:#ffc23d}
-.wk .shirt .iso-fill,.wk .shirt .iso-shade,.wk .arm .iso-fill,.wk .arm .iso-shade{fill:#4f74b0}.wk .shirt .iso-top,.wk .arm .iso-top{fill:#6a8cc4}
-.wk .pants .iso-fill,.wk .pants .iso-shade,.wk .pants .iso-top{fill:#3a4150}
-.wk .boot .iso-fill,.wk .boot .iso-shade,.wk .boot .iso-top{fill:#2a2724}
-.wk .skin .iso-fill,.wk .skin .iso-shade,.wk .skin .iso-top{fill:#d8a888}
-.wk .hat .iso-fill,.wk .hat .iso-shade,.wk .hat .iso-top{fill:#f2f2ee}
-.wk .shield .iso-fill,.wk .shield .iso-shade,.wk .shield .iso-top{fill:rgba(160,200,230,.45)}
-.wk .hood .iso-fill,.wk .hood .iso-shade,.wk .hood .iso-top{fill:#8b7d55}
-.wk .shield,.wk .hood{display:none}
-.wk[data-ppe="1"] .shirt .iso-fill,.wk[data-ppe="1"] .shirt .iso-shade,.wk[data-ppe="1"] .arm .iso-fill,.wk[data-ppe="1"] .arm .iso-shade{fill:#2e4a7a}
-.wk[data-ppe="2"] .shirt .iso-fill,.wk[data-ppe="2"] .shirt .iso-shade,.wk[data-ppe="2"] .arm .iso-fill,.wk[data-ppe="2"] .arm .iso-shade{fill:#2e4a7a}
-.wk[data-ppe="2"] .shield{display:inline}
-.wk[data-ppe="4"] .shirt .iso-fill,.wk[data-ppe="4"] .shirt .iso-shade,.wk[data-ppe="4"] .arm .iso-fill,.wk[data-ppe="4"] .arm .iso-shade,.wk[data-ppe="4"] .pants .iso-fill,.wk[data-ppe="4"] .pants .iso-shade{fill:#a39466}
-.wk[data-ppe="4"] .shirt .iso-top,.wk[data-ppe="4"] .arm .iso-top,.wk[data-ppe="4"] .pants .iso-top{fill:#b8aa7c}
-.wk[data-ppe="4"] .hood{display:inline}.wk[data-ppe="4"] .hat{display:none}
-.wk{transition:filter .25s}
-.wk .undies .iso-fill,.wk .undies .iso-shade,.wk .undies .iso-top{fill:#d94040}
-[data-part="clothes"][data-burn="2"]{filter:sepia(.8) brightness(.35)}
-.wk[data-burn="1"]{filter:sepia(.7) brightness(.62) saturate(1.4)}
-.wk[data-burn="2"]{filter:sepia(.8) brightness(.32)}
-.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
-.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.ctl-label{min-width:72px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
-.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
-.ctl button:hover{border-color:var(--anatomy-mid)}
-.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
-.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
-.ctl #go{font-weight:600;letter-spacing:.06em;border-color:#ff6a3d;color:#ff6a3d;text-align:center}
-.ctl #go:disabled{opacity:.4;cursor:default}
-.slide{position:relative;flex:1;min-width:110px}
-.slide input{width:100%;accent-color:var(--anatomy-lit);margin:0}
-.ctl output{min-width:72px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
-.meter{position:relative;flex:1;min-width:110px;height:10px;margin-top:14px;border:1px solid var(--anatomy-lo);border-radius:5px}
-.meter .fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .1s;background:var(--anatomy-mid)}
-.meter .fill[data-state="ok"]{background:#3ddc84}.meter .fill[data-state="bad"]{background:#ff5a2a}
-.mark{position:absolute;top:-14px;bottom:-3px;width:0;border-left:1px dashed var(--anatomy-lit);pointer-events:none}
-.mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:var(--anatomy-lit)}
-.mark.red{border-left-color:#ff6a3d}.mark.red::after{color:#ff6a3d}
-#stats{font-size:12px;color:var(--anatomy-mid);line-height:1.5}#stats b{color:var(--anatomy-hi,var(--anatomy-mid));font-weight:600}
-#shot{min-height:3.6em;font-size:12px;line-height:1.4}
-@media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:60px}.ctl button small{display:none}}`;
+const CSS = `.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle 70% at 34% 46%,#ffffff 0%,#dfe8ff 30%,rgba(150,180,255,0) 100%)}
+.afl{font-family:var(--anatomy-mono);fill:#3a3d42;font-weight:600}.afl.hi{fill:#111;font-weight:700}.afl-h{font-family:var(--anatomy-mono);fill:#fff;font-weight:700}
+.ctl #go{font-weight:600;letter-spacing:.06em}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Switchboard: space drops the spanner, left and right change the distance, up and down the fault level, M maintenance mode">${backSvg}<canvas class="fx-layer fx-gl fx-inner" aria-hidden="true"></canvas>${frontSvg}<canvas class="fx-layer fx-gl fx-outer" aria-hidden="true"></canvas><div class="fx-flash" aria-hidden="true"></div></div>`;
+const stage = stageHtml({
+  W, H, fig: "Fig 10", title: "Arc flash", xray: true,
+  label: "An open low-voltage switchboard with three copper busbars and a spanner perched above them, and a worker standing in front of it at the working distance. The arc flash boundary is marked on the floor. An x-ray mode turns the side of the board to glass.",
+  keysHelp: "Switchboard: drag to rotate, X for x-ray, space drops the spanner, left and right change the distance, up and down the fault level, M maintenance mode",
+  extra: `<div class="fx-flash" aria-hidden="true"></div>`,
+});
 
-const ePct = (e) => ((Math.log10(e) - Math.log10(0.3)) / (Math.log10(100) - Math.log10(0.3)) * 100).toFixed(1);
 const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Fault level</span><div class="slide"><input id="fault" type="range" min="5" max="60" step="1" value="25" aria-label="Prospective bolted fault current"></div><output id="fault-out">25 kA</output></div>
   <div class="ctl-row"><span class="ctl-label">Protection</span><button type="button" data-prot="inst" aria-pressed="true">Breaker<small>instant above 10 kA, else 0.4 s</small></button><button type="button" data-prot="maint" aria-pressed="false">Maintenance mode<small>instant above 3 kA</small></button><button type="button" data-prot="backup" aria-pressed="false">Upstream only<small>1 s</small></button></div>
@@ -555,24 +326,18 @@ const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Energy</span><div class="meter"><span id="e-fill" class="fill"></span><span class="mark red" style="left:${ePct(1.2)}%" data-label="1.2 burn"></span><span id="e-mark" class="mark" style="left:${ePct(8)}%" data-label="your PPE 8"></span></div><output id="e-out">0 cal</output></div>
   <div class="ctl-row"><span class="ctl-label">Arc</span><span id="stats"></span></div>
   <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="go">DROP THE SPANNER</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
-  <div id="shot" aria-live="polite">Someone's left a spanner on the bar support. Set things up, then drop it.</div>
 </div>`;
 
-const card = k.plateHtml({
-  fig: "Fig 10",
-  title: "Arc flash",
-  hint: "Tap: drop the spanner",
-  readout: "",
-  keys: [
-    { mark: "lit", label: "The arc, the plasma and molten copper out of the front, the boundary on the floor" },
-    { mark: "raised", label: "415 V switchboard, door open, copper busbars, and the person working on it" },
-  ],
-  caption: "Bridge two busbars with a dropped spanner and the arc vaporises copper, which expands thousands of times over and comes out of the front of the board as a ball of plasma, molten metal and pressure. How badly it gets you comes down to three things: how much current the arc draws, how long it lasts before the protection clears it, and how far away you are. Energy is counted in cal/cm²; 1.2 is enough for a second-degree burn on bare skin, and the arc flash boundary is how far out that reaches. Time is the big lever, and it catches people out: drop the fault level below the breaker's instantaneous pickup and it waits out its time delay, so less current can mean far more energy.",
-  body: stageHtml,
-});
 
-const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
-const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not an arc flash study. Real: the IEEE 1584-2002 empirical equations (under 1 kV, enclosed, earthed, 32 mm gap, distance exponent 1.473), the 1.2 cal/cm² boundary and the NFPA 70E PPE categories. Real studies use the newer, more detailed IEEE 1584-2018 model and your actual protection curves. Made up: the protection settings, the burn grading, when clothes catch fire, the knockdown and the visuals.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/arc-flash" style="color:inherit">Source</a></p>`;
+const foot = footHtml({
+  theme, slug: "arc-flash",
+  real: "the IEEE 1584-2002 empirical equations (under 1 kV, enclosed, earthed, 32 mm gap, distance exponent 1.473), the 1.2 cal/cm² boundary and the NFPA 70E PPE categories. Real studies use the newer, more detailed IEEE 1584-2018 model and your actual protection curves.",
+  made: "the protection settings, the burn grading, when clothes catch fire, the knockdown and the visuals.",
+});
 const name = theme === "light" ? "light.html" : "index.html";
-writeFileSync(join(HERE, name), k.pageHtml({ title: "Arc flash", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + glScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 700 }));
+writeFileSync(join(HERE, name), pageMk2({
+  k, title: "Arc flash", fig: "Fig 10", hint: "Tap: drop the spanner", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  caption: "Bridge two busbars with a dropped spanner and the arc vaporises copper, which expands thousands of times over and comes out of the front of the board as a ball of plasma, molten metal and pressure. How badly it gets you comes down to three things: how much current the arc draws, how long it lasts before the protection clears it, and how far away you are. Energy is counted in cal/cm²; 1.2 is enough for a second-degree burn on bare skin, and the arc flash boundary is how far out that reaches. Time is the big lever, and it catches people out: drop the fault level below the breaker's instantaneous pickup and it waits out its time delay, so less current can mean far more energy.",
+  script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
+}));
 console.log("wrote", name);
