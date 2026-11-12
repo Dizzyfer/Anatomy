@@ -1,6 +1,6 @@
 # Car crash
 
-The same crash fifty years apart. A sedan hits an offset barrier, with the driver's side cut away so you can watch the crash dummy, the seatbelt, the airbag and the cabin. Pick a 1959-style or a 2009-style car, change the speed, take the belt off, and watch the g-trace.
+The same crash fifty years apart. A sedan hits an offset barrier in real 3D: spin it round, and hit X-ray to turn the bodywork to glass and watch the crash dummy, the seatbelt, the airbag and the cabin. Pick a 1959-style or a 2009-style car, change the speed, take the belt off, and watch the g-trace.
 
 **[▶ Play with it](https://dizzyfer.github.io/Anatomy/crash/)** · [light version](https://dizzyfer.github.io/Anatomy/crash/light.html) · [all figures](https://dizzyfer.github.io/Anatomy/)
 
@@ -22,7 +22,7 @@ The same crash fifty years apart. A sedan hits an offset barrier, with the drive
 - Meters for chest g (60 g limit), head injury criterion (HIC 700 limit) and footwell intrusion, plus a live g-trace of the car and the chest.
 - Crash, Even slower and Demo tour. One second on screen is 25 ms of crash.
 
-Keyboard: space = crash, O / N = old or new car, B = belt, A = airbag, up/down = speed.
+Keyboard: X = x-ray, space = crash, O / N = old or new car, B = belt, A = airbag, up/down = speed.
 
 ## The numbers
 
@@ -32,4 +32,4 @@ Made up: the cars, the force curves, the one-dimensional dummy, the head numbers
 
 ## How it's built
 
-Built with [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22). To rebuild, drop `src/build.mjs` and `src/solid.mjs` into Anatomy as `examples/crash/` and run `node build.mjs` (`--light` for the light theme).
+Mark II: drawn in real 3D with a small WebGL2 renderer (`mk2/engine.mjs` in this repo: soft shadows, ambient occlusion, ink outlines, bloom, x-ray), on top of the camera and page conventions of [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22). Drag to rotate, pinch or ctrl-scroll to zoom, double click to reset the view. To rebuild, copy this repo's `mk2/` folder into an Anatomy checkout, drop `src/build.mjs` in as `examples/crash/build.mjs` and run `node build.mjs` (`--light` for the light theme).

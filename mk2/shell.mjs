@@ -26,7 +26,7 @@ export const MK_CSS = (W, H) => `
 .mk-top .mk-figno{font-size:12px;color:var(--mk-accent);letter-spacing:.08em;text-transform:uppercase}
 .mk-top .mk-sub{font-size:12px;color:var(--anatomy-muted);letter-spacing:.06em;text-transform:uppercase;margin-left:auto;text-align:right}
 .mk-fig{margin:0;display:grid;gap:14px}
-.mk-stage{position:relative;aspect-ratio:${W}/${H};border-radius:14px;overflow:hidden;background:radial-gradient(120% 90% at 50% 58%,var(--mk-stage-a) 0%,var(--mk-stage-b) 78%);box-shadow:0 0 0 1px var(--mk-line),0 18px 50px -24px #000;touch-action:pan-y;cursor:grab;outline:none;user-select:none;-webkit-user-select:none}
+.mk-stage{position:relative;aspect-ratio:${W}/${H};max-height:calc(100vh - 92px);min-height:260px;width:100%;border-radius:14px;overflow:hidden;background:radial-gradient(120% 90% at 50% 58%,var(--mk-stage-a) 0%,var(--mk-stage-b) 78%);box-shadow:0 0 0 1px var(--mk-line),0 18px 50px -24px #000;touch-action:pan-y;cursor:grab;outline:none;user-select:none;-webkit-user-select:none}
 .mk-stage:focus-visible{box-shadow:0 0 0 2px var(--mk-accent)}
 .mk-stage.mk-drag{cursor:grabbing}
 .mk-gl{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -81,6 +81,7 @@ export const MK_CSS = (W, H) => `
 .mk-fig:fullscreen .mk-stage{aspect-ratio:auto;height:100%}
 .mk-fig:fullscreen .ctl{grid-template-columns:1fr;overflow:auto}
 .mk-fig:fullscreen .mk-cap,.mk-fig:fullscreen .mk-keys{display:none}
+@media (min-width:1320px){.mk-page{width:min(1640px,100% - 44px)}.mk-fig{grid-template-columns:minmax(0,1fr) 388px;align-items:start}.mk-fig .ctl{grid-template-columns:1fr;max-height:calc(100vh - 92px);overflow:auto}}
 @media (max-width:820px){.ctl{grid-template-columns:1fr}.mk-top .mk-sub{display:none}}
 @media (max-width:820px) and (orientation:portrait){.mk-fig:fullscreen{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) 42vh}}
 @media (max-width:560px){.mk-page{width:calc(100% - 16px);margin-top:18px}.mk-stage{border-radius:10px;aspect-ratio:1/1.08}.mk-story{font-size:12.5px;top:42px;bottom:auto;left:12px;right:12px}.mk-inset{top:auto;bottom:10px;left:10px}.mk-tools{flex-direction:row;right:10px;bottom:10px}.mk-tools button[data-mk="xray"]{position:static}.mk-hint{top:auto;bottom:56px;left:auto;right:10px;transform:none}.ctl{padding:12px}.ctl-label{width:64px}.ctl button small{display:none}.ctl output{min-width:78px}.mk-hud.tl span{display:none}.mk-read{font-size:11px;padding:5px 9px}.mk-tools button{width:30px;height:30px}.mk-tools button[data-mk="zin"],.mk-tools button[data-mk="zout"]{display:none}}

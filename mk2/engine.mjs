@@ -370,7 +370,7 @@ precision mediump float;void main(){}`;
 precision highp float;precision highp sampler2DShadow;
 in vec3 vPos;in vec3 vNrm;in vec4 vCol;in vec3 vEmi;in vec3 vMat;
 uniform vec3 uR,uU,uT,uL,uLX,uLY,uLZ,uLC;uniform float uLR,uShT;uniform sampler2DShadow uSh;
-uniform vec3 uSky,uGnd,uKey,uXcol;uniform float uXray,uLightT;uniform int uMode;
+uniform vec3 uSky,uGnd,uKey,uXcol;uniform float uXray,uLightT,uXfill;uniform int uMode;
 layout(location=0) out vec4 o0;layout(location=1) out vec4 o1;layout(location=2) out vec4 o2;
 float shadow(vec3 p,vec3 n){
   vec3 q=p+n*uLR*uShT*2.5-uLC;vec3 s=vec3(dot(q,uLX),dot(q,uLY),-dot(q,uLZ))/uLR*.5+.5;
@@ -411,11 +411,11 @@ void main(){
     o2=vec4(nvw.xy*.5+.5,0.,1.);
   }else if(uMode==1){
     float a=vCol.a;vec3 g=tone(gloss);
-    o0=vec4(tone(surf+vEmi)*a+g*(vMat.z>.5?0.:.9),clamp(a+dot(g,vec3(.33))*.8*(vMat.z>.5?0.:1.),0.,1.));
+    float gk=vMat.z>.5?0.:.55;o0=vec4(tone(surf+vEmi)*a+g*gk,clamp(a+dot(g,vec3(.33))*gk,0.,1.));
     o1=vec4(tone(vEmi)*a,a*.5);o2=vec4(0.);
   }else{
     float fr=pow(1.-nv,2.2);float a=mix(1.,.03+.3*fr,uXray);
-    vec3 c=mix(tone(surf+gloss+vEmi),uXcol*(.3+.9*fr),uXray*.9);
+    vec3 c=mix(tone(surf+gloss+vEmi),mix(uXcol*(.3+.9*fr),vec3(.82,.9,1.),uXfill),uXray*.9);
     o0=vec4(c*a,a);o1=vec4(uXcol*fr*uXray*uLightT*.45,0.);o2=vec4(0.);
   }
 }`;
@@ -544,7 +544,7 @@ o=vec4(c.rgb+bl,clamp(c.a+max(bl.r,max(bl.g,bl.b))*1.1,0.,1.));}`;
     gl.uniform1f(pMain.u("uShT"), 2 / SH); bindTex(0, shTex); gl.uniform1i(pMain.u("uSh"), 0);
     const L = E.light;
     gl.uniform3fv(pMain.u("uSky"), lt ? L.skyL : L.sky); gl.uniform3fv(pMain.u("uGnd"), lt ? L.gndL : L.gnd); gl.uniform3fv(pMain.u("uKey"), lt ? L.keyL : L.key);
-    gl.uniform3fv(pMain.u("uXcol"), lt ? [0.12, 0.42, 0.95] : [0.4, 0.82, 1]); gl.uniform1f(pMain.u("uXray"), E.xray); gl.uniform1f(pMain.u("uLightT"), lt ? 0.25 : 0.75);
+    gl.uniform3fv(pMain.u("uXcol"), lt ? [0.12, 0.42, 0.95] : [0.4, 0.82, 1]); gl.uniform1f(pMain.u("uXray"), E.xray); gl.uniform1f(pMain.u("uLightT"), lt ? 0.25 : 0.75); gl.uniform1f(pMain.u("uXfill"), lt ? 0.7 : 0);
     gl.uniform1i(pMain.u("uMode"), 0); gl.bindVertexArray(gO.vao); gl.drawArrays(gl.TRIANGLES, 0, gO.count);
     // 3 ambient occlusion at half size
     gl.disable(gl.DEPTH_TEST); gl.bindVertexArray(gFS);
