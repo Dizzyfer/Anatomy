@@ -26,11 +26,4 @@ MESG values (maximum experimental safe gap) are the reference gases from IEC 600
 
 ## How it's built
 
-Built with [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22), an open-source kit for interactive isometric figures. Massive credit to him: the drawing kit, the isometric camera and the WebGL layer are all his work.
-
-- `index.html` / `light.html` are fully self-contained. Open either one in a browser, no install needed.
-- `src/build.mjs` is the source. To rebuild, clone Anatomy, drop it in as `examples/ex-d-flamepath/build.mjs`, and run `node build.mjs` (add `--light` for the light theme).
-
-## Licence
-
-MIT. See [LICENSE](../LICENSE). The pages include the Anatomy kit, which is MIT-licensed © 2026 Ryan. Its notice is in the same file.
+Mark II: drawn in real 3D with a small WebGL2 renderer (`mk2/engine.mjs` in this repo: soft shadows, ambient occlusion, ink outlines, bloom, x-ray), on top of the camera and page conventions of [**Anatomy**](https://github.com/wheresryan22/anatomy) by Ryan (wheresryan22). Drag to rotate, pinch or ctrl-scroll to zoom, double click to reset the view. To rebuild, copy this repo's `mk2/` folder into an Anatomy checkout, drop `src/build.mjs` in as `examples/ex-d-flamepath/build.mjs` and run `node build.mjs` (`--light` for the light theme).
