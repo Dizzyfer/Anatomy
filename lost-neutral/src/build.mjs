@@ -2,14 +2,11 @@ import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as k from "../../kit/iso-kit.mjs";
-import { glCamera } from "../../kit/gl.mjs";
-import { kitScript, glScript } from "../../scripts/inline-kit.mjs";
+import { engineScript, stageHtml, pageMk2, footHtml } from "../../mk2/shell.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const theme = process.argv.includes("--light") ? "light" : "dark";
-
-const W = 640;
-const H = 440;
+const W = 960, H = 600;
 
 // Truth: 400/230 V three-phase four-wire; AS 60038 puts 230 V at +10 % / −6 % (216 to 253 V). Lose the neutral and each row's
 // voltage is set by where the star point floats, which depends on the load on each phase (Millman). Toy simplification: running drivers
@@ -26,204 +23,52 @@ const MODEL = {
 const ROWS_Y = [-30, 0, 30];
 const COLS_X = [-38, -10, 18, 46];
 const ZB = 98, ZL = 80;
-const PLATE = { x: -82, y: -62, w: 182, d: 124, r: 8 };
-const PLATE_H = 12, FOOT_H = 5;
 const DB = { x: 78, y: -26, w: 12, d: 46 };
 const DBZ = 70;
 const POSTS = [[-60, -46], [-60, 46], [68, -46], [68, 46]];
-
-const P = k.fitProjection(
-  [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [-60, -46, ZB + 6], [68, 46, ZB + 6], [DB.x + DB.w, DB.y + DB.d, DBZ + 4], [-60, 46, ZB + 6]],
-  W, H, { pad: 18, azimuth: 45 },
-);
-const at = (p) => k.iso(p, P);
-const S = (paths, style) => k.solidSvg(paths, style);
-const L = (d, style) => k.lineSvg(d, style);
-const Dt = (points, style) => k.dotsSvg(points, style);
-const depth2 = ([x, y]) => k.depthOf([x, y, 0], P);
-const byDepth = (pts) => [...pts].sort((a, b) => depth2(a) - depth2(b));
-const slab = (plan, z, h, r = 1.2, bevel = 0.5) => k.slabOf({ r, ...plan }, z, h, P, 4, bevel);
-
-function plate() {
-  const out = [`<path class="iso-halo" d="${k.haloOf(PLATE, -PLATE_H - FOOT_H, PLATE_H, P)}"/>`];
-  for (const [x, y] of byDepth(k.corners(PLATE, 22))) {
-    out.push(S(k.cylinder(x, y, 7, -PLATE_H - FOOT_H, 1.6, P, 28), { tone: "lo" }));
-    out.push(S(k.cylinder(x, y, 5.4, -PLATE_H - FOOT_H + 1.6, FOOT_H - 1.6, P, 28), { tone: "mid" }));
-  }
-  out.push(S(k.slabOf(PLATE, -PLATE_H, PLATE_H, P, 8, 1.6), { tone: "mid", inner: L(k.sideSeam(PLATE, -PLATE_H / 2, P), { tone: "faint" }) }));
-  out.push(L(k.planOutline(k.insetPlan(PLATE, 5), 0, P), { tone: "lo" }));
-  const screws = k.corners(PLATE, 10);
-  out.push(L(screws.map(([x, y]) => k.ring(x, y, 2.2, 0, P, 16)).join(""), { tone: "lo" }));
-  out.push(Dt(screws.map(([x, y]) => at([x, y, 0])), { size: 0.5 }));
-  return out.join("");
-}
-
-function board() {
-  const out = [];
-  out.push(`<path class="iso-halo" d="${k.haloOf({ ...k.insetPlan({ ...DB, r: 1 }, -3) }, 0, 0.1, P)}"/>`);
-  out.push(S(slab(DB, 0, DBZ, 1, 0.5), { tone: "hi" }));
-  const m = k.sideMatrix([DB.x + DB.w + 0.02, DB.y + DB.d - 1], DBZ - 4, P, "right");
-  const brk = (x, ph) => `<g data-part="mcb-${ph}" class="mcb" data-on="true"><rect x="${x}" y="8" width="5" height="10" rx=".5"/><rect class="tog" x="${x + 1.5}" y="10" width="2" height="3" rx=".3"/><text class="iso-face-text" data-tone="lo" x="${x + 2.5}" y="21" font-size="1.8" text-anchor="middle">L${ph + 1}</text></g>`;
-  out.push(`<g transform="${m}">
-    <text class="iso-face-text" data-tone="lo" x="3" y="4.4" font-size="2.6">DB-LIGHTING  400/230 V</text>
-    ${brk(6, 0)}${brk(14, 1)}${brk(22, 2)}
-    <rect x="4" y="27" width="32" height="5" rx=".6" class="nbar"/>
-    <text class="iso-face-text" data-tone="lo" x="4" y="36" font-size="2">NEUTRAL LINK</text>
-    <g data-part="nterm"><circle cx="27" cy="29.5" r="1.8" class="screw"/><path data-part="nslot" d="M25.6 29.5h2.8" class="slot"/></g>
-  </g>`);
-  return out.join("");
-}
-
-// screen position of the neutral terminal (for the arc glow)
-// local (27, 29.5) on the face: x runs along −y from DB.y + DB.d − 1, y runs down from DBZ − 4
-const NT = [DB.x + DB.w + 0.5, DB.y + DB.d - 1 - 27, DBZ - 4 - 29.5];
-
-const NJ = [64, ROWS_Y[0] - 2, ZB + 2.6];
-const PH = ["l1", "l2", "l3"];
-function cables() {
-  const out = [];
-  const up = (dx, cls) => {
-    const sx = DB.x + DB.w / 2, sy = DB.y + 10 + dx;
-    const pts = [[sx, sy, DBZ], [sx, sy, ZB + 2.6], [64, sy, ZB + 2.6]].map(at);
-    return `<path class="cab ${cls}" d="${k.pathOf(pts)}"/>`;
-  };
-  out.push(up(-4.5, "l1"), up(-1.5, "l2"), up(1.5, "l3"), `<g data-part="nwire">${up(4.5, "nn")}</g>`);
-  return out.join("");
-}
-
-function frame() {
-  const out = [];
-  const post = ([x, y]) => S(slab({ x: x - 1.6, y: y - 1.6, w: 3.2, d: 3.2 }, 0, ZB, 0.4, 0.2), { tone: "mid" });
-  for (const p of POSTS.filter(([x, y]) => depth2([x, y]) < depth2([0, 0]))) out.push(post(p));
-  for (const x of [-60, 68]) out.push(S(slab({ x: x - 2, y: -48, w: 4, d: 96 }, ZB, 3, 0.4, 0.2), { tone: "mid" }));
-  return out.join("");
-}
-
-function lum(r, c) {
-  const x = COLS_X[c], y = ROWS_Y[r], i = r * 4 + c, out = [];
-  out.push(S(k.cylinder(x, y, 0.6, ZL + 6, ZB - ZL - 6, P, 10), { tone: "mid" }));
-  out.push(`<g class="drv">${S(slab({ x: x + 2, y: y - 2.5, w: 7, d: 5 }, ZB - 3, 2.6, 0.4, 0.2), { tone: "hi" })}</g>`);
-  out.push(S(k.cylinder(x, y, 8, ZL + 2, 4, P, 32, 1.2), { tone: "hi", inner: L(k.sideArc(x, y, 8, ZL + 4, P, 24), { tone: "faint" }) }));
-  out.push(S(k.cylinder(x, y, 3, ZL + 6, 1.4, P, 20, 0.3), { tone: "hi" }));
-  out.push(`<path class="lens" d="${k.sideArc(x, y, 7.6, ZL + 1.6, P, 28)}"/>`);
-  return `<g class="lum" data-lum="${i}" data-st="on">${out.join("")}</g>`;
-}
-
-function rows() {
-  const out = [];
-  for (let r = 0; r < 3; r++) {
-    out.push(`<g class="beam ph-${PH[r]}">${S(slab({ x: -62, y: ROWS_Y[r] - 1.5, w: 132, d: 3 }, ZB - 0.2, 2.4, 0.3, 0.1), { tone: "mid" })}</g>`);
-    out.push(`<path class="cab ${PH[r]}" d="${k.pathOf([[-60, ROWS_Y[r] + 2, ZB + 2.6], [60, ROWS_Y[r] + 2, ZB + 2.6]].map(at))}"/>`);
-    out.push(`<path class="cab nn" data-rn="${r}" d="${k.pathOf([[-60, ROWS_Y[r] - 2, ZB + 2.6], [64, ROWS_Y[r] - 2, ZB + 2.6]].map(at))}"/>`);
-    for (let c = 0; c < 4; c++) out.push(lum(r, c));
-    out.push(k.faceTextSvg(k.sideMatrix([-61.98, ROWS_Y[r] + 4], ZB + 1.8, P, "right"), "L" + (r + 1), { size: 2.6, tone: "mid" }));
-  }
-  // the shared neutral run along the side, back to the board
-  out.push(`<path class="cab nn" d="${k.pathOf([[64, -32, ZB + 2.6], [64, 32, ZB + 2.6]].map(at))}"/>`);
-  for (let r = 0; r < 3; r++) out.push(`<path class="cab ${PH[r]}" d="${k.pathOf([[64, -20 + r * 2, ZB + 2.6], [64, ROWS_Y[r] + 2, ZB + 2.6], [60, ROWS_Y[r] + 2, ZB + 2.6]].map(at))}"/>`);
-  for (const p of POSTS.filter(([x, y]) => depth2([x, y]) >= depth2([0, 0]))) out.push(S(slab({ x: p[0] - 1.6, y: p[1] - 1.6, w: 3.2, d: 3.2 }, 0, ZB, 0.4, 0.2), { tone: "mid" }));
-  const tag = at([-20, ROWS_Y[0] - 2, ZB + 9]);
-  out.push(`<g data-part="nlive" style="display:none"><text class="nlive-t" x="${tag[0].toFixed(1)}" y="${tag[1].toFixed(1)}" text-anchor="middle">L1 neutral: 230 V</text></g>`);
-  return out.join("");
-}
-
-const floorSvg = k.figureSvg({
-  width: W, height: H,
-  label: "A lighting gantry over a warehouse floor: twelve LED high bays in three rows, each row on its own phase, all sharing one neutral back to the lighting distribution board, which has three breakers and a neutral link.",
-  body: [plate()],
-});
-const layer = (body) => `<svg xmlns="http://www.w3.org/2000/svg" class="iso-svg fx-layer" viewBox="0 0 ${W} ${H}" aria-hidden="true">${body}</svg>`;
-const topSvg = layer([board(), cables(), frame(), rows()].join(""));
-const PZ = { x: 12, y: 26, w: 128, h: 112, cx: 64, cy: 66, R: 34 };
+const PLATE = { x: -82, y: -62, w: 182, d: 124, r: 8 };
+const P = k.fitProjection([...k.boxCorners(PLATE, -0.8, 0), [-62, -48, 104], [70, -48, 104], [70, 48, 104], [-62, 48, 104], [92, 20, 70]], W, H, { pad: 22, azimuth: 45, elevation: 30 });
+const DATA = { W, H, P, PLATE };
+const NT = [DB.x + DB.w + 1.6, DB.y + DB.d - 1 - 27, DBZ - 4 - 29.5], NJ = [64, ROWS_Y[0] - 2, ZB + 2.8];
+const LUMS = []; for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) LUMS.push([COLS_X[c], ROWS_Y[r]]);
+const PH = ["l1", "l2", "l3"], PZ = { w: 128, h: 112, cx: 64, cy: 66, R: 34 };
 const pv = (re, im) => [PZ.cx + (im / 230) * PZ.R, PZ.cy - (re / 230) * PZ.R];
 const VERT = [0, -120, 120].map((a) => pv(230 * Math.cos(a * Math.PI / 180), 230 * Math.sin(a * Math.PI / 180)));
-const phasorSvg = layer(`<g class="pz" transform="translate(${PZ.x} ${PZ.y})">
-  <rect x="0" y="0" width="${PZ.w}" height="${PZ.h}" rx="6" class="pz-bg"/>
-  <text x="8" y="13" class="pz-h">STAR POINT</text>
-  <path class="pz-tri" d="M${VERT.map((v) => v.map((n) => n.toFixed(1)).join(" ")).join("L")}Z"/>
-  <path class="pz-zero" d="M${PZ.cx - 2.5} ${PZ.cy}h5M${PZ.cx} ${PZ.cy - 2.5}v5"/>
+const phasorSvg = `<svg viewBox="0 0 ${PZ.w} ${PZ.h}" class="pz"><text x="8" y="13" class="pz-h">STAR POINT</text>
+  <path class="pz-tri" d="M${VERT.map((v) => v.map((n) => n.toFixed(1)).join(" ")).join("L")}Z"/><path class="pz-zero" d="M${PZ.cx - 2.5} ${PZ.cy}h5M${PZ.cx} ${PZ.cy - 2.5}v5"/>
   ${VERT.map((v, r) => `<line data-part="sp${r}" class="pz-sp ph-${PH[r]}" x1="${PZ.cx}" y1="${PZ.cy}" x2="${v[0].toFixed(1)}" y2="${v[1].toFixed(1)}"/>`).join("")}
   ${VERT.map((v, r) => `<circle class="pz-v ph-${PH[r]}" cx="${v[0].toFixed(1)}" cy="${v[1].toFixed(1)}" r="2.6"/>`).join("")}
   ${[0, 1, 2].map((r) => `<circle data-part="nr${r}" class="pz-nr" cx="${PZ.cx}" cy="${PZ.cy}" r="2.4" style="display:none"/>`).join("")}
   <circle data-part="nl" class="pz-n" cx="${PZ.cx}" cy="${PZ.cy}" r="3"/>
-  ${VERT.map((v, r) => { const dx = v[0] - PZ.cx, dy = v[1] - PZ.cy, m = Math.hypot(dx, dy); return `<text data-part="pt${r}" class="pz-t" x="${(v[0] + (dx / m) * 9).toFixed(1)}" y="${(v[1] + (dy / m) * 9 + 3).toFixed(1)}" text-anchor="${Math.abs(dx) < 4 ? "middle" : dx > 0 ? "end" : "start"}">L${r + 1} 230</text>`; }).join("")}
-</g>`);
+  ${VERT.map((v, r) => { const dx = v[0] - PZ.cx, dy = v[1] - PZ.cy, m = Math.hypot(dx, dy); return `<text data-part="pt${r}" class="pz-t" x="${(v[0] + (dx / m) * 9).toFixed(1)}" y="${(v[1] + (dy / m) * 9 + 3).toFixed(1)}" text-anchor="${Math.abs(dx) < 4 ? "middle" : dx > 0 ? "end" : "start"}">L${r + 1} 230</text>`; }).join("")}</svg>`;
+Object.assign(DATA, { MODEL, LUMS, PZ, NT, NJ, ROWS_Y, COLS_X, ZB, ZL, DB, DBZ, POSTS });
 
-const LUMS = [];
-for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) LUMS.push([COLS_X[c], ROWS_Y[r]]);
-const DATA = { W, H, camera: glCamera(P), P, MODEL, LUMS, PZ, NT, NJ };
-
-const SHARED = `
-uniform float uLight;
-uniform float uB[12];
-uniform float uPop[12];
-uniform float uSmoke[12];
-uniform float uArc;
-uniform float uJoint;
-uniform vec3 uNT;
-const vec2 LP[12]=vec2[12](${LUMS.map(([x, y]) => `vec2(${x.toFixed(1)},${y.toFixed(1)})`).join(",")});
-vec4 inkFor(vec3 seen,float cover){vec3 ab=1.-seen;float a=max(max(ab.r,max(ab.g,ab.b)),cover);return vec4(vec3(a)-ab,a);}
-vec4 over(vec4 t,vec4 u){return t+u*(1.-t.a);}
-vec4 glowInk(vec3 hue,float e){vec3 c=tonemap(hue*e,1.3);float a=max(c.r,max(c.g,c.b));float la=1.-exp(-1.4*e);return mix(vec4(c,a),inkFor(mix(vec3(1.),hue*.8,la),0.)*la,uLight);}
-vec4 smokeInk(float h){float a=(1.-exp(-h))*mix(.55,.45,uLight);return vec4(mix(vec3(.32,.3,.28),vec3(.22,.2,.18),uLight)*a,a);}
-`;
-// GLSL ES 1.0 has no array constructors, so unroll the positions
-const unroll = (fn) => LUMS.map(([x, y], i) => fn(`vec2(${x.toFixed(1)},${y.toFixed(1)})`, i)).join("\n");
-
-const FLOOR = SHARED.replace(/const vec2 LP.*\n/, "") + `
-void main(){
-  vec2 vb=viewOf(gl_FragCoord.xy);
-  vec3 p=onFloor(vb,0.);
-  float inPlate=step(${(PLATE.x + 4).toFixed(1)},p.x)*step(p.x,${(PLATE.x + PLATE.w - 4).toFixed(1)})*step(${(PLATE.y + 4).toFixed(1)},p.y)*step(p.y,${(PLATE.y + PLATE.d - 4).toFixed(1)});
-  float e=0.;
-${unroll((v, i) => `  e+=uB[${i}]*exp(-pow(length(p.xy-${v})/17.,2.));`)}
-  vec4 o=glowInk(mix(vec3(1.,.93,.82),vec3(1.,.8,.45),uLight),e*mix(.55,.8,uLight)*inPlate);
-  o.rgb=min(o.rgb,vec3(o.a));
-  gl_FragColor=o;
-}`;
-
-const FX = SHARED.replace(/const vec2 LP.*\n/, "") + `
-void main(){
-  vec2 vb=viewOf(gl_FragCoord.xy);
-  vec4 o=vec4(0.);
-  float cone=0.,pop=0.,smk=0.;
-${unroll((v, i) => `  {
-    vec2 a=project(vec3(${v},${(ZL + 1).toFixed(1)})),b=project(vec3(${v},0.));
-    vec2 ab=b-a;float h=clamp(dot(vb-a,ab)/dot(ab,ab),0.,1.);
-    float w=(3.+h*16.)*uK;
-    cone+=uB[${i}]*exp(-pow(length(vb-a-ab*h)/w,2.))*(1.-h)*.35+uB[${i}]*exp(-pow(length(vb-a)/(5.*uK),2.))*.9;
-    if(uPop[${i}]>.002) pop+=uPop[${i}]*(exp(-pow(length(vb-a)/(1.6*uK),2.))*2.4+exp(-pow(length(vb-a)/(10.*uK),2.))*.7);
-    if(uSmoke[${i}]>.002){vec2 d=(vb-a)/uK;float up=-d.y;smk+=uSmoke[${i}]*exp(-pow(d.x/(3.+up*.3),2.))*smoothstep(-2.,4.,up)*exp(-up/28.)*smoothstep(.35,.8,fbm2(vec2(d.x*.15,up*.1-uTime*1.5)+${(i * 1.7).toFixed(1)}));}
-  }`)}
-  o=smokeInk(smk*1.4);
-  o=over(glowInk(vec3(1.,.93,.82),cone),o);
-  o=over(glowInk(vec3(.62,.78,1.),pop),o);
-  if(uArc+uJoint>.002){
-    vec2 d=(vb-project(uNT))/uK;
-    float fl=.5+.5*noise2(vec2(uTime*40.,3.));
-    o=over(glowInk(vec3(1.,.4,.1),exp(-pow(length(d)/3.,2.))*uJoint*1.4),o);
-    o=over(glowInk(vec3(.62,.78,1.),(exp(-pow(length(d)/.8,2.))*2.+exp(-pow(length(d)/5.,2.))*.5)*uArc*fl),o);
-  }
-  o.rgb=min(o.rgb,vec3(o.a));
-  float dd=(hash12(gl_FragCoord.xy+uTime)-.5)/255.*smoothstep(0.,1.5/255.,o.a);
-  gl_FragColor=max(o+dd,0.);
-}`;
-
+const vp = (v) => (v / 420 * 100).toFixed(1);
+const meterRow = (r, col) => `<div class="ctl-row"><span class="ctl-label"><span class="ph" style="background:${col}"></span>L${r + 1} row</span><div class="meter"><span class="band" style="left:${vp(216)}%;width:${(vp(253) - vp(216)).toFixed(1)}%"></span><span id="v${r}-fill" class="fill"></span>${r === 0 ? `<span class="mark quiet" style="left:${vp(230)}%"></span>` : ""}<span class="mark maxmark${r ? " quiet" : ""}" style="left:${vp(264)}%" data-label="264 V driver max"></span></div><output id="v${r}-out">230 V</output></div>`;
+const countRow = (r, col, v) => `<div class="slide" style="min-width:70px"><input id="row${r}" type="range" min="0" max="4" step="1" value="${v}" aria-label="Lights on, row L${r + 1}"></div><output id="row${r}-out" style="min-width:40px">${v} on</output>`;
 const LIVE = `
+${engineScript()}
 const D = __DATA__;
-const { P, MODEL: M } = D;
-const stage = document.querySelector(".fx-stage");
-const q = (n) => stage.querySelector('[data-part="' + n + '"]');
+const stage = document.querySelector(".mk-stage");
 const readout = document.querySelector("[data-readout]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
-const LIGHT = document.body.dataset.theme === "light" ? 1 : 0;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-const U = ["uB", "uPop", "uSmoke", "uArc", "uJoint", "uNT"];
-const floor = glLayer({ canvas: stage.querySelector(".fx-floor"), fragment: ${JSON.stringify(FLOOR)}, view: [D.W, D.H], camera: D.camera, uniforms: U, fixed: { uLight: LIGHT } });
-const fx = glLayer({ canvas: stage.querySelector(".fx-top"), fragment: ${JSON.stringify(FX)}, view: [D.W, D.H], camera: D.camera, uniforms: U, fixed: { uLight: LIGHT } });
-const GL = !!(floor && fx);
-if (GL) stage.setAttribute("data-gl", "");
-
+const lightTheme = document.body.dataset.theme === "light";
+const E = mk2(stage, D.P, { W: D.W, H: D.H, pivot: [4, 0, 50], plate: { ...D.PLATE, h: 12, foot: 5 }, shadowBox: [-90, -70, -18, 108, 70, 110] });
+const { box, cyl, prism, circle, lathe, tube, sphere, loft, roundPoly, rrect, tris } = E;
+E.bindTools(stage);
+const xbtn = stage.querySelector('[data-mk="xray"]');
+const setX = (on) => { E.setXray(on); if (xbtn) xbtn.setAttribute("aria-pressed", String(on)); };
+const sceneG = stage.querySelector('[data-part="scene"]');
+const iso = (p) => E.project(p), depthOf = (p) => E.depthOf(p);
+const shakeEls = [stage.querySelector(".mk-gl"), stage.querySelector(".mk-over")];
+// a tap on the stage that isn't a drag or a press on the toolbar
+const onTap = (fn) => { let d0 = null; stage.addEventListener("pointerdown", (ev) => { d0 = ev.target.closest(".mk-tools,button,a") ? null : [ev.clientX, ev.clientY]; }); stage.addEventListener("pointerup", (ev) => { if (d0 && Math.hypot(ev.clientX - d0[0], ev.clientY - d0[1]) < 6) fn(ev); d0 = null; }); };
+// 3x4 matrix for a cached object turning about a vertical axis through (cx, cy)
+const rotZ = (cx, cy, a) => { const c = Math.cos(a), s = Math.sin(a); return [c, -s, 0, s, c, 0, 0, 0, 1, cx - c * cx + s * cy, cy - s * cx - c * cy, 0]; };
+const mixHex = (a, b, t) => { const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)), A = h(a), B = h(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * Math.min(1, Math.max(0, t))).toString(16).padStart(2, "0")).join(""); };
+const setShake = (x, y) => { const t = x || y ? "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)" : ""; for (const e of shakeEls) if (e.style.transform !== t) e.style.transform = t; };
+const M = D.MODEL, P = D.P;
 // phasors: 230 V at 0, −120, +120
 const SRC = [0, -120, 120].map((a) => [230 * Math.cos(a * Math.PI / 180), 230 * Math.sin(a * Math.PI / 180)]);
 let where = "link", neutral = "solid", drvKind = "narrow", counts = [4, 2, 1], nRow = [[0, 0], [0, 0], [0, 0]];
@@ -283,9 +128,6 @@ function step(dt) {
   });
 }
 
-const lumG = [...stage.querySelectorAll("[data-lum]")];
-const mcbG = [0, 1, 2].map((r) => q("mcb-" + r)), nterm = q("nterm"), nslot = q("nslot"), nwire = q("nwire"), nlive = q("nlive");
-const rowN = [0, 1, 2].map((r) => stage.querySelector('[data-rn="' + r + '"]')), pzN = q("nl"), pzSp = [0, 1, 2].map((r) => q("sp" + r)), pzNr = [0, 1, 2].map((r) => q("nr" + r)), pzT = [0, 1, 2].map((r) => q("pt" + r));
 const ui = {
   n: [...document.querySelectorAll("[data-n]")], where: [...document.querySelectorAll("[data-where]")], drv: [...document.querySelectorAll("[data-drv]")],
   rows: [0, 1, 2].map((r) => document.querySelector("#row" + r)), rowsOut: [0, 1, 2].map((r) => document.querySelector("#row" + r + "-out")),
@@ -313,49 +155,93 @@ function syncUi() {
   ui.slow.setAttribute("aria-pressed", String(slow)); ui.tour.setAttribute("aria-pressed", String(touring));
 }
 
-function draw() {
-  lumG.forEach((g, i) => {
-    const l = lums[i];
-    const st = !switched(i) || !mcb[rowOf(i)] ? (l.st === "dead" ? "dead" : "idle") : l.st;
-    if (g.dataset.st !== st) g.dataset.st = st;
+// ---------------- the gantry, the board and the lights, in real 3D ----------------
+const TAU = Math.PI * 2, ZB = D.ZB, ZL = D.ZL, DB = D.DB, DBZ = D.DBZ;
+const PHC = ["#d9534f", "#e8e8e4", "#3d7bd9"], NEU = lightTheme ? "#2a2a2a" : "#6a6a6a";
+const pz = stage.querySelector(".pz-wrap"), qz = (n) => pz.querySelector('[data-part="' + n + '"]');
+const pzN = qz("nl"), pzSp = [0, 1, 2].map((r) => qz("sp" + r)), pzNr = [0, 1, 2].map((r) => qz("nr" + r)), pzT = [0, 1, 2].map((r) => qz("pt" + r));
+const cab = (pts, col, r = 0.55) => tube(pts, r, col, { seg: 5, mat: "plastic" });
+function hallStatic() {
+  const o = [], ST = { mat: "paint" };
+  // a concrete floor with bay lines
+  o.push(box(D.PLATE.x + 3, D.PLATE.x + D.PLATE.w - 3, D.PLATE.y + 3, D.PLATE.y + D.PLATE.d - 3, 0, 0.5, "#8d8980", { mat: "concrete" }));
+  for (const y of [-45, 45]) o.push(box(-70, 60, y - 0.6, y + 0.6, 0.5, 0.56, "#e2b53a", { bevel: 0, mat: "matte" }));
+  // the gantry: posts, side beams, a beam per row, cable along each
+  for (const [x, y] of D.POSTS) o.push(box(x - 1.6, x + 1.6, y - 1.6, y + 1.6, 0.5, ZB, "#6a727b", ST), box(x - 3, x + 3, y - 3, y + 3, 0.5, 1.6, "#565d65", ST));
+  for (const x of [-60, 68]) o.push(box(x - 2, x + 2, -48, 48, ZB, ZB + 3, "#6a727b", ST));
+  D.ROWS_Y.forEach((y, r) => {
+    o.push(box(-62, 70, y - 1.5, y + 1.5, ZB - 0.2, ZB + 2.2, "#7b848d", ST));
+    o.push(cab([[-60, y + 2, ZB + 2.8], [60, y + 2, ZB + 2.8]], PHC[r]), cab([[64, -20 + r * 2, ZB + 2.8], [64, y + 2, ZB + 2.8], [60, y + 2, ZB + 2.8]], PHC[r]));
   });
-  mcbG.forEach((g, r) => (g.dataset.on = String(mcb[r])));
-  const atLink = where === "link";
-  nterm.dataset.state = atLink ? neutral : "solid"; nwire.style.opacity = atLink && neutral === "broken" ? "0.25" : "1";
-  nslot.setAttribute("transform", atLink && neutral === "loose" ? "rotate(" + (35 + 20 * Math.sin(now * 3)).toFixed(0) + " 27 29.5)" : "");
-  const n1 = Math.hypot(nRow[0][0], nRow[0][1]);
-  const liveN = !atLink && neutral !== "solid" && n1 > 40;
-  rowN[0].dataset.live = String(liveN); rowN[0].dataset.cut = String(!atLink && neutral !== "solid");
-  nlive.style.display = liveN && neutral === "broken" ? "" : "none";
-  if (liveN) nlive.querySelector("text").textContent = "L1 neutral: " + Math.round(n1) + " V";
+  o.push(cab([[64, -32, ZB + 2.8], [64, 32, ZB + 2.8]], NEU, 0.6));
+  // the board: enclosure, the gear tray behind the door, and the risers up to the gantry
+  o.push(box(DB.x, DB.x + DB.w, DB.y, DB.y + DB.d, 0.5, DBZ, "#c9cdd2", ST), box(DB.x + DB.w, DB.x + DB.w + 0.4, DB.y + 1.5, DB.y + DB.d - 1.5, 26, DBZ - 2, "#dfe2e6", ST));
+  const fx0 = DB.x + DB.w + 0.4, fy = (u) => DB.y + DB.d - 1 - u, fz = (v) => DBZ - 4 - v;
+  o.push(box(fx0, fx0 + 1, fy(36), fy(4), fz(32), fz(27), "#c9a227", { mat: "metal" })); // the neutral link bar
+  const sx = DB.x + DB.w / 2;
+  [-4.5, -1.5, 1.5].forEach((dx, r) => o.push(cab([[sx, DB.y + 10 + dx, DBZ], [sx, DB.y + 10 + dx, ZB + 2.8], [64, DB.y + 10 + dx, ZB + 2.8]], PHC[r])));
+  // every high bay: stem, driver box, dome
+  D.LUMS.forEach(([x, y]) => {
+    o.push(cyl(x, y, 0.6, ZL + 6, ZB, "#8f959d", 8, { mat: "steel" }), box(x + 2, x + 9, y - 2.5, y + 2.5, ZB - 3.2, ZB - 0.4, "#2f3338", { mat: "plastic" }));
+    o.push(lathe([[8, ZL + 2], [8.4, ZL + 2], [8.4, ZL + 3.4], [3.2, ZL + 6.4], [3.2, ZL + 7.6], [0, ZL + 7.6]], "#3a3e44", { c: [x, y, 0], seg: 28, mat: "paint" }));
+  });
+  return o;
+}
+let fx = [];
+const rn2 = () => Math.random();
+function draw(dt = 0) {
+  const atLink = where === "link", live = [], d = DRV();
+  // the lights
+  const B = lums.map((l, i) => (!switched(i) || !mcb[rowOf(i)] || l.st === "dead" || l.st === "off" || l.st === "idle" ? 0 : l.st === "flick" ? (rn2() < 0.5 ? 0.15 : 0.9) : 1));
+  D.LUMS.forEach(([x, y], i) => {
+    const l = lums[i], b = B[i], dead = l.st === "dead", over = b > 0 && rowShow[rowOf(i)] > d.max ? 1 : 0;
+    const col = dead ? "#2a2522" : b > 0 ? (over ? "#fff8ee" : "#fff1c8") : "#8a8f96";
+    live.push(cyl(x, y, 7.6, ZL + 1.4, ZL + 2.1, col, 24, { mat: "plastic", bevel: 0, emit: b > 0 ? [over ? "#ffffff" : "#ffe9b0", b] : undefined, emitK: 2.4 + over * 1.2 }));
+    if (b > 0) live.push(lathe([[8.5, ZL + 1.4], [8.9, ZL + 1.4], [8.9, ZL + 2.6], [8.5, ZL + 2.6]], "#fff1c8", { c: [x, y, 0], seg: 24, flat: true, emit: [over ? "#ffffff" : "#ffe9b0", b], emitK: 2.2 }));
+    if (dead) live.push(box(x + 2, x + 9, y - 2.5, y + 2.5, ZB - 3.25, ZB - 0.35, "#1a1614", { mat: "matte", bevel: 0 }));
+    if (l.popAt !== null && dt > 0) { const a = now - l.popAt; if (a < 0.2) for (let j = 0; j < 4; j++) fx.push({ k: "spark", p: [x + 5, y, ZB - 2], v: [(rn2() - 0.5) * 160, (rn2() - 0.5) * 160, 20 + rn2() * 120], life: 0, max: 0.4 + rn2() * 0.5 }); if (a < 5 && rn2() < dt * 10 * Math.exp(-a / 2.5)) fx.push({ k: "smoke", p: [x + 5, y, ZB], v: [(rn2() - 0.5) * 4, (rn2() - 0.5) * 4, 10 + rn2() * 8], life: 0, max: 2 + rn2() * 2 }); }
+  });
+  // breakers: handle up is on, down and red is tripped
+  const fx0 = DB.x + DB.w + 0.4, fy = (u) => DB.y + DB.d - 1 - u, fz = (v) => DBZ - 4 - v;
+  [6, 14, 22].forEach((u, r) => { live.push(box(fx0, fx0 + 1.6, fy(u + 5), fy(u), fz(18), fz(8), "#f1efe9", { mat: "plastic" }), box(fx0 + 1.6, fx0 + 2.6, fy(u + 3.5), fy(u + 1.5), mcb[r] ? fz(13) : fz(17), mcb[r] ? fz(10) : fz(14), mcb[r] ? "#3ddc84" : "#ff4a3d", { mat: "plastic", bevel: 0, emit: [mcb[r] ? "#3ddc84" : "#ff4a3d", 0.6] })); });
+  // the neutral terminal screw: fine, loose and wobbling, or gone
+  const st = atLink ? neutral : "solid", wob = st === "loose" ? Math.sin(now * 3) * 0.4 : 0;
+  live.push(prism(circle(fy(27) + wob, fz(29.5), 1.8, 12), "x", fx0 + 1, fx0 + (st === "loose" ? 2.6 : 1.7), st === "broken" ? "#ff4a3d" : st === "loose" ? "#ffb347" : "#d6d9dc", { mat: "steel", emit: st !== "solid" ? [st === "broken" ? "#ff4a3d" : "#ffb347", 0.5] : undefined }));
+  // neutrals: the shared one down to the link, and each row's own
+  const sx = DB.x + DB.w / 2, nCut = atLink && neutral === "broken";
+  if (!nCut) live.push(cab([[sx, DB.y + 14.5, DBZ], [sx, DB.y + 14.5, ZB + 2.8], [64, DB.y + 14.5, ZB + 2.8]], NEU, 0.6));
+  else live.push(cab([[sx, DB.y + 14.5, DBZ + 14], [sx, DB.y + 14.5, ZB + 2.8], [64, DB.y + 14.5, ZB + 2.8]], NEU, 0.6));
+  const n1 = Math.hypot(nRow[0][0], nRow[0][1]), liveN = !atLink && neutral !== "solid" && n1 > 40, cut0 = !atLink && neutral !== "solid";
+  D.ROWS_Y.forEach((y, r) => { const hot = r === 0 && liveN; live.push(tube(r === 0 && cut0 ? [[-60, y - 2, ZB + 2.8], [56, y - 2, ZB + 2.8]] : [[-60, y - 2, ZB + 2.8], [64, y - 2, ZB + 2.8]], 0.55, hot ? "#ff4a3d" : NEU, { seg: 5, mat: "plastic", emit: hot ? ["#ff4a3d", 0.7] : undefined })); });
+  let svg = E.render([{ cache: "hall", rev: 0, parts: hallStatic }, { parts: live }]);
+  // pools of light on the floor, and the cones they come down in
+  D.LUMS.forEach(([x, y], i) => { const b = B[i]; if (b <= 0) return; E.sprite([x, y, 0.8], 26, lightTheme ? "#ffd884" : "#ffe9b0", (lightTheme ? 0.34 : 0.26) * b, !lightTheme); E.sprite([x, y, ZL], 15, lightTheme ? "#ffd884" : "#fff1c8", (lightTheme ? 0.3 : 0.22) * b, !lightTheme); });
+  // the arcing joint
+  if (arc > 0.02 || joint > 0.05) { const p = atLink ? D.NT : D.NJ; E.sprite(p, 3 + 6 * clamp(joint, 0, 1.5), "#ffb060", 0.5 * clamp(joint, 0, 1), true, 1); if (arc > 0.02) { E.sprite(p, 5 + 5 * arc, "#cfe0ff", 0.9 * arc, true, 1); for (let j = 0; j < 3; j++) E.line(p, [p[0] + (rn2() - 0.5) * 6, p[1] + (rn2() - 0.5) * 6, p[2] + (rn2() - 0.5) * 6], 1.8, "#ffffff", arc, true); } }
+  lums.forEach((l, i) => { if (l.popAt !== null && now - l.popAt < 0.4) E.sprite([D.LUMS[i][0] + 5, D.LUMS[i][1], ZB - 2], 14, "#fff1c4", Math.exp(-(now - l.popAt) / 0.12), true, 1); });
+  fx = fx.filter((p) => { p.life += dt; if (p.life > p.max) return false; const t = p.life / p.max, o = [p.p[0], p.p[1], p.p[2]]; if (p.k === "spark") p.v[2] -= 300 * dt; for (let i = 0; i < 3; i++) p.p[i] += p.v[i] * dt; if (p.k === "spark") E.line(o, p.p, 1.8, "#ffd27a", 1 - t, true); else E.sprite(p.p, 3 + 10 * t, lightTheme ? "#55524e" : "#3a3836", 0.45 * (1 - t)); return true; });
+  // lettering: the board's door, the row tags, and the warning when a neutral's gone live
+  const m = E.faceMatrix([fx0 + 0.05, DB.y + DB.d - 1, DBZ - 4], [0, -1, 0], [0, 0, -1]);
+  if (m) svg += '<g transform="' + m + '"><text class="pt lo" x="3" y="4.4" font-size="2.5">DB-LIGHTING  400/230 V</text>' + [6, 14, 22].map((u, r) => '<text class="pt lo" x="' + (u + 2.5) + '" y="21.4" font-size="1.9" text-anchor="middle">L' + (r + 1) + "</text>").join("") + '<text class="pt lo" x="4" y="36" font-size="2">NEUTRAL LINK</text></g>';
+  D.ROWS_Y.forEach((y, r) => { const p = E.project([-66, y, ZB + 6]); svg += '<text class="mk-lab row-t" data-state="' + (!mcb[r] ? "off" : rowShow[r] > d.max ? "bad" : rowShow[r] < d.off || rowShow[r] > 253 ? "warn" : "ok") + '" x="' + p[0].toFixed(1) + '" y="' + p[1].toFixed(1) + '" text-anchor="end">L' + (r + 1) + " " + (mcb[r] ? Math.round(rowShow[r]) + " V" : "off") + "</text>"; });
+  if (liveN && neutral === "broken") { const p = E.project([-20, D.ROWS_Y[0] - 2, ZB + 10]); svg += '<text class="mk-lab nlive-t" x="' + p[0].toFixed(1) + '" y="' + p[1].toFixed(1) + '" text-anchor="middle">L1 neutral: ' + Math.round(n1) + " V</text>"; }
+  if (E.xray > 0.02) svg += E.callouts([
+    { p: atLink ? D.NT : D.NJ, text: atLink ? "Neutral link" : "L1 neutral joint", sub: neutral === "solid" ? inA.toFixed(1) + " A coming back through it" : neutral === "loose" ? "loose: arcing, " + Math.round(joint * 40) + " W" : "open circuit" },
+    { p: [D.LUMS[0][0] + 5, D.LUMS[0][1], ZB - 2], text: "LED driver", sub: "rated " + d.name }, { p: [64, 20, ZB + 2.8], text: "Shared neutral", sub: "carries the difference between phases" },
+  ], E.xray, E.fs < 0.62 ? {} : { topR: 70, topL: 220 });
+  if (sceneG.innerHTML !== svg) sceneG.innerHTML = svg;
   // the phasor inset
-  const pv = (p) => [D.PZ.cx + (p[1] / 230) * D.PZ.R, D.PZ.cy - (p[0] / 230) * D.PZ.R];
-  const L = pv(vn);
-  pzN.setAttribute("cx", L[0].toFixed(1)); pzN.setAttribute("cy", L[1].toFixed(1));
+  const pv = (p) => [D.PZ.cx + (p[1] / 230) * D.PZ.R, D.PZ.cy - (p[0] / 230) * D.PZ.R], Lp = pv(vn);
+  pzN.setAttribute("cx", Lp[0].toFixed(1)); pzN.setAttribute("cy", Lp[1].toFixed(1));
   for (let r = 0; r < 3; r++) {
     const a = pv(nRow[r]);
-    pzSp[r].setAttribute("x1", a[0].toFixed(1)); pzSp[r].setAttribute("y1", a[1].toFixed(1));
-    pzSp[r].style.opacity = mcb[r] && counts[r] > 0 ? "1" : "0.2";
-    const sep = Math.hypot(a[0] - L[0], a[1] - L[1]) > 2.5;
+    pzSp[r].setAttribute("x1", a[0].toFixed(1)); pzSp[r].setAttribute("y1", a[1].toFixed(1)); pzSp[r].style.opacity = mcb[r] && counts[r] > 0 ? "1" : "0.2";
+    const sep = Math.hypot(a[0] - Lp[0], a[1] - Lp[1]) > 2.5;
     pzNr[r].style.display = sep ? "" : "none"; pzNr[r].setAttribute("cx", a[0].toFixed(1)); pzNr[r].setAttribute("cy", a[1].toFixed(1));
     pzT[r].textContent = "L" + (r + 1) + " " + (mcb[r] ? Math.round(rowShow[r]) : "off");
-    pzT[r].dataset.state = !mcb[r] ? "off" : rowShow[r] > DRV().max ? "bad" : rowShow[r] < DRV().off || rowShow[r] > 253 ? "warn" : "ok";
+    pzT[r].dataset.state = !mcb[r] ? "off" : rowShow[r] > d.max ? "bad" : rowShow[r] < d.off || rowShow[r] > 253 ? "warn" : "ok";
   }
-  const B = lums.map((l, i) => {
-    if (!switched(i) || !mcb[rowOf(i)] || l.st === "dead" || l.st === "off" || l.st === "idle") return 0;
-    if (l.st === "flick") return Math.random() < 0.5 ? 0.15 : 0.9;
-    return 1;
-  });
-  if (GL && !window.__noGL) {
-    const u = {
-      uB: B,
-      uPop: lums.map((l) => (l.popAt === null ? 0 : Math.exp(-(now - l.popAt) / 0.15) * (now - l.popAt < 1 ? 1 : 0))),
-      uSmoke: lums.map((l) => (l.popAt === null ? 0 : Math.exp(-(now - l.popAt) / 6))),
-      uArc: arc, uJoint: clamp(joint, 0, 1.5), uNT: where === "link" ? D.NT : D.NJ,
-    };
-    floor.draw(u, now); fx.draw(u, now);
-  }
-  const text = rowShow.map((v, r) => "L" + (r + 1) + " " + (mcb[r] ? Math.round(v) + " V" : "off")).join(" · ") + " · " + (where === "link" ? "neutral link " : "L1 neutral ") + neutral;
+  const text = rowShow.map((v, r) => "L" + (r + 1) + " " + (mcb[r] ? Math.round(v) + " V" : "off")).join(" · ") + " · " + (atLink ? "neutral link " : "L1 neutral ") + neutral;
   if (readout.textContent !== text) readout.textContent = text;
 }
 
@@ -407,7 +293,7 @@ function tick(t) {
   }
   const n = 12;
   for (let i = 0; i < n; i++) step(sdt / n);
-  draw(); syncUi(); story();
+  draw(sdt); syncUi(); story();
   frame = visible ? requestAnimationFrame(tick) : 0;
 }
 const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
@@ -428,77 +314,33 @@ ui.rows.forEach((el, r) => el.addEventListener("input", () => setRow(r, +el.valu
 ui.fresh.addEventListener("click", doFresh);
 ui.slow.addEventListener("click", () => { slow = !slow; run(); });
 ui.tour.addEventListener("click", () => { touring = !touring; if (touring) { tourStep = -1; tourClock = 0; actions = []; } run(); });
-stage.addEventListener("click", () => setN(neutral === "solid" ? "broken" : "solid"));
+onTap(() => setN(neutral === "solid" ? "broken" : "solid"));
 stage.addEventListener("keydown", (ev) => {
-  const map = { " ": () => setN(neutral === "solid" ? "broken" : "solid"), n: () => setN(neutral === "solid" ? "loose" : neutral === "loose" ? "broken" : "solid"), b: () => setWhere(where === "link" ? "circuit" : "link"), w: () => setDrv(drvKind === "narrow" ? "wide" : "narrow"), r: doFresh, "1": () => setRow(0, (counts[0] + 1) % 5), "2": () => setRow(1, (counts[1] + 1) % 5), "3": () => setRow(2, (counts[2] + 1) % 5), s: () => { slow = !slow; run(); } };
+  const map = { x: () => { setX(!E.xrayOn); run(); }, " ": () => setN(neutral === "solid" ? "broken" : "solid"), n: () => setN(neutral === "solid" ? "loose" : neutral === "loose" ? "broken" : "solid"), b: () => setWhere(where === "link" ? "circuit" : "link"), w: () => setDrv(drvKind === "narrow" ? "wide" : "narrow"), r: doFresh, "1": () => setRow(0, (counts[0] + 1) % 5), "2": () => setRow(1, (counts[1] + 1) % 5), "3": () => setRow(2, (counts[2] + 1) % 5), s: () => { slow = !slow; run(); } };
   if (map[ev.key]) { ev.preventDefault(); map[ev.key](); }
 });
-window.__fig = { freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
+window.__fig = { E, freeze: () => { visible = false; cancelAnimationFrame(frame); frame = 0; } };
 draw(); syncUi(); story();
 `;
 
-const CSS = `.fx-stage{position:relative;cursor:pointer}
-.fx-layer{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.fx-gl{display:block}
-body[data-theme="dark"] .fx-gl{mix-blend-mode:screen}
-.iso-plate{overflow:hidden}
-.cab{fill:none;stroke-width:1.1;stroke-linecap:round;stroke-linejoin:round}
-.cab.l1{stroke:#d9534f}.cab.l2{stroke:#e8e8e4}.cab.l3{stroke:#3d7bd9}.cab.nn{stroke:#0e0e0e}
-body[data-theme="light"] .cab.l2{stroke:#b9b9b4}body[data-theme="light"] .cab.nn{stroke:#222}
-body[data-theme="dark"] .cab.nn{stroke:#5a5a5a;stroke-dasharray:none}
-.lens{fill:none;stroke:var(--anatomy-mid);stroke-width:1.2;stroke-linecap:round}
-.lum[data-st="on"] .lens{stroke:#fff1c8}.lum[data-st="flick"] .lens{stroke:#d8c690}
-.lum[data-st="dead"] .iso-fill,.lum[data-st="dead"] .iso-shade,.lum[data-st="dead"] .iso-top{fill:#2a2522}
-.lum[data-st="dead"] .lens{stroke:#3a2a1a}
-.drv .iso-fill,.drv .iso-shade{fill:#8a9096}.drv .iso-top{fill:#a7adb4}
-.mcb rect{fill:var(--anatomy-paper);stroke:var(--anatomy-mid);stroke-width:.3}
-.mcb .tog{fill:#3ddc84;stroke:none}.mcb[data-on="false"] .tog{fill:#ff4a3d;transform:translateY(5px)}
-.nbar{fill:#c9a227;stroke:var(--anatomy-mid);stroke-width:.25}
-.screw{fill:#d6d9dc;stroke:var(--anatomy-mid);stroke-width:.3}.slot{stroke:#333;stroke-width:.5}
-[data-part="nterm"][data-state="broken"] .screw{fill:#ff4a3d}
-[data-part="nterm"][data-state="loose"] .screw{fill:#ffb347}
-.pz-bg{fill:var(--anatomy-paper);stroke:var(--anatomy-lo);stroke-width:.6;opacity:.92}
-.pz-h{font-family:var(--anatomy-mono);font-size:7px;letter-spacing:.08em;fill:var(--anatomy-lo)}
-.pz-tri{fill:none;stroke:var(--anatomy-lo);stroke-width:.6;stroke-dasharray:2 2}
-.pz-zero{stroke:var(--anatomy-mid);stroke-width:.7}
-.pz-sp{stroke-width:2;stroke-linecap:round}
+const CSS = `.pz-wrap{left:14px;top:50px;width:21%;max-width:190px;min-width:124px;padding:0}.pz{display:block;width:100%;height:auto}
+.pz-h{font-family:var(--anatomy-mono);font-size:7px;letter-spacing:.08em;fill:var(--anatomy-lo)}.pz-tri{fill:none;stroke:var(--anatomy-lo);stroke-width:.6;stroke-dasharray:2 2}.pz-zero{stroke:var(--anatomy-mid);stroke-width:.7}.pz-sp{stroke-width:2;stroke-linecap:round}
 .pz-sp.ph-l1,.pz-v.ph-l1{stroke:#d9534f;fill:#d9534f}.pz-sp.ph-l2,.pz-v.ph-l2{stroke:#cfcfca;fill:#cfcfca}.pz-sp.ph-l3,.pz-v.ph-l3{stroke:#3d7bd9;fill:#3d7bd9}
 body[data-theme="light"] .pz-sp.ph-l2,body[data-theme="light"] .pz-v.ph-l2{stroke:#9a9a95;fill:#9a9a95}
-.pz-n{fill:#ffb347;stroke:var(--anatomy-paper);stroke-width:.8}
-.pz-nr{fill:var(--anatomy-paper);stroke:#ff6a3d;stroke-width:1}
-.pz-t{font-family:var(--anatomy-mono);font-size:7px;fill:var(--anatomy-mid)}
-.pz-t[data-state="bad"]{fill:#ff5a2a}.pz-t[data-state="warn"]{fill:#ffb347}.pz-t[data-state="off"]{fill:var(--anatomy-lo)}
-.cab.nn[data-cut="true"]{stroke-dasharray:3 2}
-.cab.nn[data-live="true"]{stroke:#ff4a3d;stroke-dasharray:3 2}
-.nlive-t{font-family:var(--anatomy-mono);font-size:7px;fill:#ff4a3d}
-.ctl{display:grid;gap:12px;margin:14px 0 6px;font-family:var(--anatomy-mono);font-size:12px;color:var(--anatomy-mid)}
-.ctl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.ctl-label{min-width:72px;text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--anatomy-lo)}
-.ctl button{font:inherit;color:var(--anatomy-mid);background:transparent;border:1px solid var(--anatomy-lo);border-radius:6px;padding:7px 10px;cursor:pointer;line-height:1.15;text-align:left;min-height:36px}
-.ctl button:hover{border-color:var(--anatomy-mid)}
-.ctl button[aria-pressed="true"]{color:var(--anatomy-lit);border-color:var(--anatomy-lit)}
-.ctl button small{display:block;font-size:10px;color:var(--anatomy-lo)}
-.ctl [data-n="broken"]{border-color:#ff6a3d;color:#ff6a3d}
-.ctl #fresh{border-color:#ff6a3d;color:#ff6a3d}
-.slide{position:relative;flex:1;min-width:90px}
-.slide input{width:100%;accent-color:var(--anatomy-lit);margin:0}
-.ctl output{min-width:72px;text-align:right;color:var(--anatomy-hi,var(--anatomy-mid))}
-.meter{position:relative;flex:1;min-width:110px;height:10px;margin-top:14px;border:1px solid var(--anatomy-lo);border-radius:5px}
-.meter .fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .1s;background:var(--anatomy-mid)}
-.meter .fill[data-state="ok"]{background:#3ddc84}.meter .fill[data-state="warn"]{background:#ffb347}.meter .fill[data-state="bad"]{background:#ff5a2a}.meter .fill[data-state="off"]{background:transparent}
-.band{position:absolute;top:0;bottom:0;background:rgba(61,220,132,.14);pointer-events:none}
-.mark{position:absolute;top:-14px;bottom:-3px;width:0;border-left:1px dashed #ff6a3d;pointer-events:none}
-.mark::after{content:attr(data-label);position:absolute;top:0;left:4px;font-size:10px;white-space:nowrap;color:#ff6a3d}
-.mark.quiet::after{content:none}
-.ph{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
-#stats{font-size:12px;color:var(--anatomy-mid);line-height:1.5}#stats b{color:var(--anatomy-hi,var(--anatomy-mid));font-weight:600}
-#shot{min-height:3.6em;font-size:12px;line-height:1.4}
-@media (max-width:520px){.ctl-label{min-width:52px}.ctl button{padding:7px 8px}.ctl output{min-width:60px}.ctl button small{display:none}}`;
+.pz-n{fill:#ffb347;stroke:var(--mk-stage-b);stroke-width:.8}.pz-nr{fill:var(--mk-stage-b);stroke:#ff6a3d;stroke-width:1}
+.pz-t{font-family:var(--anatomy-mono);font-size:7px;fill:var(--anatomy-mid)}.pz-t[data-state="bad"]{fill:#ff5a2a}.pz-t[data-state="warn"]{fill:#ffb347}.pz-t[data-state="off"]{fill:var(--anatomy-lo)}
+.pt{font-family:var(--anatomy-mono);fill:#23262b;font-weight:600}.pt.lo{fill:#4a5058}
+.row-t[data-state="bad"]{fill:#ff5a2a}.row-t[data-state="warn"]{fill:#ffb347}.row-t[data-state="off"]{fill:var(--anatomy-lo)}.nlive-t{fill:#ff4a3d}
+@media (max-width:560px){.pz-wrap{top:auto;width:34%}}
+.ph{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}.meter .band{position:absolute;top:0;bottom:0;background:rgba(61,220,132,.18)}.mark.quiet{border-left-style:dotted;opacity:.6}.mark.quiet::after{content:none}`;
 
-const stageHtml = `<div class="iso-stage fx-stage" tabindex="0" role="group" aria-label="Lighting array: space breaks or fixes the neutral, N cycles solid, loose and broken, 1 2 3 change how many lights are on per row, W swaps the drivers, R replaces dead ones">${floorSvg}<canvas class="fx-layer fx-gl fx-floor" aria-hidden="true"></canvas>${topSvg}<canvas class="fx-layer fx-gl fx-top" aria-hidden="true"></canvas>${phasorSvg}</div>`;
+const stage = stageHtml({
+  W, H, fig: "Fig 13", title: "Lost neutral", xray: true,
+  label: "A lighting gantry over a warehouse floor: twelve LED high bays in three rows, each row on its own phase, all sharing one neutral back to the lighting distribution board, which has three breakers and a neutral link. An inset shows where the star point has floated to.",
+  keysHelp: "Lighting array: drag to rotate, X for x-ray, space breaks or fixes the neutral, N cycles solid, loose and broken, 1 2 3 change how many lights are on per row, W swaps the drivers, R replaces dead ones",
+  extra: `<div class="mk-inset pz-wrap" aria-hidden="true">${phasorSvg}</div>`,
+});
 
-const vp = (v) => (v / 420 * 100).toFixed(1);
-const meterRow = (r, col) => `<div class="ctl-row"><span class="ctl-label"><span class="ph" style="background:${col}"></span>L${r + 1} row</span><div class="meter"><span class="band" style="left:${vp(216)}%;width:${(vp(253) - vp(216)).toFixed(1)}%"></span><span id="v${r}-fill" class="fill"></span>${r === 0 ? `<span class="mark quiet" style="left:${vp(230)}%"></span>` : ""}<span class="mark maxmark${r ? " quiet" : ""}" style="left:${vp(264)}%" data-label="264 V driver max"></span></div><output id="v${r}-out">230 V</output></div>`;
-const countRow = (r, col, v) => `<div class="slide" style="min-width:70px"><input id="row${r}" type="range" min="0" max="4" step="1" value="${v}" aria-label="Lights on, row L${r + 1}"></div><output id="row${r}-out" style="min-width:40px">${v} on</output>`;
 const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   <div class="ctl-row"><span class="ctl-label">Where</span><button type="button" data-where="circuit" aria-pressed="false">L1's own neutral<small>one circuit</small></button><button type="button" data-where="link" aria-pressed="true">Board neutral link<small>shared by all three rows</small></button></div>
   <div class="ctl-row"><span class="ctl-label">Neutral</span><button type="button" data-n="solid" aria-pressed="true">Solid</button><button type="button" data-n="loose" aria-pressed="false">Loose<small>making and breaking</small></button><button type="button" data-n="broken" aria-pressed="false">Broken</button></div>
@@ -507,24 +349,18 @@ const CONTROLS = `<div class="ctl" role="group" aria-label="Test controls">
   ${meterRow(0, "#d9534f")}${meterRow(1, "#bdbdb8")}${meterRow(2, "#3d7bd9")}
   <div class="ctl-row"><span class="ctl-label">Neutral</span><span id="stats"></span></div>
   <div class="ctl-row"><span class="ctl-label">Run</span><button type="button" id="fresh">Replace dead drivers</button><button type="button" id="slow" aria-pressed="false">Slow-mo</button><button type="button" id="tour" aria-pressed="true">Demo tour</button></div>
-  <div id="shot" aria-live="polite"></div>
 </div>`;
 
-const card = k.plateHtml({
-  fig: "Fig 13",
-  title: "Lost neutral",
-  hint: "Tap: break the neutral",
-  readout: "",
-  keys: [
-    { mark: "lit", label: "Light from each high bay; the loose joint arcing; drivers popping" },
-    { mark: "raised", label: "Twelve LED high bays on three phases, one shared neutral, the lighting board" },
-  ],
-  caption: "Three rows of LED high bays, one row per phase. Each row has its own neutral back to the board's neutral link, and the link takes them all home. Break one row's own neutral and that row just goes off, though its neutral is now live through the drivers. Break the shared link instead and nothing goes off. With the link connected, each row gets its 230 V no matter what the others are doing. Lose it and the star point floats: it slides toward the most heavily loaded row, so that row drops and the lightly loaded row climbs toward 400 V. A driver that sees too little drops out, and one that sees too much cooks its surge protection and dies, often short, which trips its row. Then the two rows left are in series across 400 V and it cascades. Balanced loads hide it completely, until somebody switches a row off.",
-  body: stageHtml,
-});
 
-const other = theme === "light" ? ["index.html", "Dark version"] : ["light.html", "Light version"];
-const FOOT = `<p style="font-family:var(--anatomy-mono);font-size:11px;color:var(--anatomy-lo);margin:28px 0 8px;line-height:1.6">A toy, not a fault study. Real: 400/230 V three-phase four-wire, the AS 60038 range of 230 V +10 %/−6 % (216 to 253 V), the floating star point (Millman's theorem), and typical driver input ranges of 198 to 264 V (narrow) and 90 to 305 V (wide range, Mean Well HLG style). Made up: 150 W fittings treated as fixed loads while running (real constant-power drivers can make it worse), where drivers drop out, how fast they die above their rating, the MOV failing short and tripping the row, and the loose joint's behaviour.<br>Built with <a href="https://github.com/wheresryan22/anatomy" style="color:inherit">Anatomy</a> by Ryan (MIT). · <a href="${other[0]}" style="color:inherit">${other[1]}</a> · <a href="../" style="color:inherit">More figures</a> · <a href="https://github.com/Dizzyfer/Anatomy/tree/main/lost-neutral" style="color:inherit">Source</a></p>`;
+const foot = footHtml({
+  theme, slug: "lost-neutral",
+  real: "400/230 V three-phase four-wire, the AS 60038 range of 230 V +10 %/−6 % (216 to 253 V), the floating star point (Millman's theorem), and typical driver input ranges of 198 to 264 V (narrow) and 90 to 305 V (wide range, Mean Well HLG style).",
+  made: "150 W fittings treated as fixed loads while running (real constant-power drivers can make it worse), where drivers drop out, how fast they die above their rating, the MOV failing short and tripping the row, and the loose joint's behaviour.",
+});
 const name = theme === "light" ? "light.html" : "index.html";
-writeFileSync(join(HERE, name), k.pageHtml({ title: "Lost neutral", theme, body: `<style>${CSS}</style>${card.replace("<figcaption", CONTROLS + "<figcaption")}${FOOT}`, script: kitScript() + glScript() + LIVE.replace("__DATA__", JSON.stringify(DATA)), width: 700 }));
+writeFileSync(join(HERE, name), pageMk2({
+  k, title: "Lost neutral", fig: "Fig 13", hint: "Tap: break the neutral", theme, W, H, stage, controls: CONTROLS, css: CSS, foot,
+  caption: "Three rows of LED high bays, one row per phase. Each row has its own neutral back to the board's neutral link, and the link takes them all home. Break one row's own neutral and that row just goes off, though its neutral is now live through the drivers. Break the shared link instead and nothing goes off. With the link connected, each row gets its 230 V no matter what the others are doing. Lose it and the star point floats: it slides toward the most heavily loaded row, so that row drops and the lightly loaded row climbs toward 400 V. A driver that sees too little drops out, and one that sees too much cooks its surge protection and dies, often short, which trips its row. Then the two rows left are in series across 400 V and it cascades. Balanced loads hide it completely, until somebody switches a row off.",
+  script: LIVE.replace("__DATA__", JSON.stringify(DATA)),
+}));
 console.log("wrote", name);
