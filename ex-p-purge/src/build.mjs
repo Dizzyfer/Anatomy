@@ -330,7 +330,7 @@ setX(true); syncUi(); draw();
 
 const CSS = `.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle 70% at 55% 45%,#fff8e8 0%,#ffd9a0 40%,rgba(255,170,90,0) 100%)}
 .pt{font-family:var(--anatomy-mono);fill:#23262b;font-weight:700}.pt.lo{fill:#5a6068;font-weight:600}.pt.face{fill:#c9ced3;font-weight:600}.pt.lcd{fill:#9ff0c0}.pt.bench{fill:var(--anatomy-muted);font-weight:600;letter-spacing:.08em;opacity:.8}
-.mk-hint{top:46px}
+@media (min-width:561px){.mk-hint{top:46px}}
 .ctl #air,.ctl #power{padding:7px 14px;font-weight:600;letter-spacing:.06em;min-width:104px;text-align:center}
 .meter{margin-top:12px}.meter .fill[data-state="low"]{background:var(--anatomy-mid)}
 .mark:not(.red){border-left-color:var(--mk-accent)}.mark:not(.red)::after{color:var(--mk-accent)}`;

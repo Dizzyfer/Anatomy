@@ -386,7 +386,7 @@ setX(true); syncUi(); draw();
 
 const CSS = `.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle 70% at 50% 50%,#fff8e8 0%,#ffd9a0 40%,rgba(255,170,90,0) 100%)}
 .pt{font-family:var(--anatomy-mono);fill:#23262b;font-weight:700}.pt.lo{fill:#5a6068;font-weight:600}.pt.bench{fill:var(--anatomy-muted);font-weight:600;letter-spacing:.08em;opacity:.8}
-.mk-hint{top:46px}
+@media (min-width:561px){.mk-hint{top:46px}}
 .dsub{font-weight:400;font-size:calc(10px*var(--mk-ts,1))}
 .tlab{font-size:calc(13px*var(--mk-ts,1))}.tlab[data-s="hot"]{fill:var(--mk-warn)}.tlab[data-s="fire"]{fill:var(--mk-danger)}
 .ctl #energise{padding:7px 14px;font-weight:600;letter-spacing:.06em;min-width:128px;text-align:center}

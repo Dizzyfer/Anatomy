@@ -387,7 +387,7 @@ setX(true); syncUi(); draw();
 const CSS = `.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle 70% at 50% 42%,#fff8e8 0%,#ffd9a0 40%,rgba(255,170,90,0) 100%)}
 .pt{font-family:var(--anatomy-mono);fill:#23262b;font-weight:700}.pt.lo{fill:#5a6068;font-weight:600}.pt.bench{fill:var(--anatomy-muted);font-weight:600;letter-spacing:.08em;opacity:.8}
 .tlab{font-size:calc(13px*var(--mk-ts,1))}.tlab[data-s="hot"]{fill:var(--mk-warn)}.tlab[data-s="fire"]{fill:var(--mk-danger)}.dlab{font-weight:400;font-size:calc(10px*var(--mk-ts,1))}.dlab[data-bad="true"]{fill:var(--mk-danger)}
-.mk-hint{top:46px}
+@media (min-width:561px){.mk-hint{top:46px}}
 .ctl #tip,.ctl #clean{font-weight:600;letter-spacing:.06em}
 .ctl output[data-bad="true"]{color:var(--mk-danger)}
 .slide{padding-top:12px}.notch{position:absolute;top:8px;bottom:0;width:0;border-left:2px solid var(--anatomy-mid);pointer-events:none}.notch::after{content:attr(data-label);position:absolute;bottom:100%;left:-2px;font-size:9.5px;white-space:nowrap;color:var(--anatomy-muted)}

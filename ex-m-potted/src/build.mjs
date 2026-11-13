@@ -348,7 +348,7 @@ const CSS = `.fx-flash{position:absolute;inset:0;pointer-events:none;opacity:0;b
 .pt{font-family:var(--anatomy-mono);fill:#23262b;font-weight:700}.pt.bench{fill:var(--anatomy-muted);font-weight:600;letter-spacing:.08em;opacity:.8}
 .tlab{font-size:calc(13px*var(--mk-ts,1))}.tlab[data-s="fire"]{fill:var(--mk-danger)}
 .clab{fill:var(--mk-good)}.clab[data-bad="true"]{fill:var(--mk-danger)}
-.mk-hint{top:46px}
+@media (min-width:561px){.mk-hint{top:46px}}
 .ctl #run{padding:7px 14px;font-weight:600;letter-spacing:.06em;min-width:96px;text-align:center}.ctl #fault{font-weight:600;letter-spacing:.06em}
 .ctl output[data-bad="true"]{color:var(--mk-danger)}
 .notch{position:absolute;top:2px;bottom:2px;width:0;border-left:2px solid var(--anatomy-mid);pointer-events:none}
