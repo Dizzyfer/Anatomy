@@ -1179,7 +1179,7 @@ function tick(t) {
 let tourFired = false;
 const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
 const takeOver = () => { touring = false; };
-const guard = (fn) => (...a) => { takeOver(); if (booming() || playing) return; fn(...a); res = null; shown = false; say("Set. Hit FIRE."); run(); };
+const guard = (fn) => (...a) => { takeOver(); if (booming()) return; playing = false; fn(...a); res = null; shown = false; fx = []; say("Set. Hit FIRE."); run(); };
 const setGas = guard((i) => { gas = (i + GASES.length) % GASES.length; });
 const setHole = guard((v) => { hole = clamp(Math.round(v), 0, 40); });
 const setSize = guard((v) => { size = clamp(Math.round(v / 5) * 5, 10, 100); });
